@@ -1,135 +1,177 @@
 ---
 name: delegate-to-codex
-description: Call the OpenAI Codex CLI (`codex exec`) non-interactively to get a second opinion, a code review, or to run it as a subagent that reads/investigates or edits code. Use when you want an independent Codex (GPT-5.5) run — e.g. "get a second opinion from Codex", "have Codex review this", "delegate this to a Codex subagent", or spawn a read-only reviewer vs. an edit-capable worker.
+description: Call the OpenAI Codex CLI (`codex exec`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent Codex run. Use for Codex CLI subagent-style delegation, long-running worker runs, worktree-isolated edits, machine-readable JSONL output, `codex exec review`, resume flows, and harness gotchas around sandboxing, profiles, and `--dangerously-bypass-approvals-and-sandbox`.
 ---
 
 # Delegate to Codex (CLI)
 
-Run the `codex` CLI programmatically via `codex exec` (non-interactive) to get a second
-opinion, a review, or to delegate a task to a subagent. Two agent configs are provided:
-a **read-only reviewer** and an **edit-capable worker**.
-
-These skills assume you are running inside a **sandboxed environment**, so the edit worker
-is granted full autonomy (no approval prompts, no inner sandbox) — permission gating is
-not needed.
+Run `codex exec` non-interactively for independent investigation, review, or a
+delegated worker. For edit tasks, isolate the worker in a branch/worktree and
+capture enough state to poll, resume, review, and clean up.
 
 ## Prerequisites
 
-- `codex` is on PATH (`codex --version`) and already authenticated (`codex login` or
-  `OPENAI_API_KEY` / `CODEX_HOME`).
-- `codex exec` is non-interactive by design.
+- Verify `codex` is on PATH with `codex --version`.
+- Verify auth is available with `codex login`, ChatGPT auth, or a scoped
+  `CODEX_API_KEY`/`OPENAI_API_KEY` setup.
+- Run inside a Git repository unless you intentionally pass
+  `--skip-git-repo-check`.
+- When copying bundled configs, resolve `skill_dir` to the directory containing
+  this `SKILL.md`; `assets/...` is not relative to the target repo.
 
-## Step 1 — Commit first (before an edit task)
+## Step 1 - Choose isolation
 
-Before delegating anything that edits files, **commit your current work** so nothing can
-be lost and the subagent's changes are isolated and reviewable:
+For read-only review, stay in the current checkout and use `-s read-only`.
+
+For edit work, prefer a new worktree. This keeps long runs from modifying the
+main agent's files and makes the resulting diff easy to inspect or discard.
 
 ```bash
-git add -A && git commit -m "checkpoint before delegating to Codex"
+slug="codex-$(date +%Y%m%d-%H%M%S)"
+branch="agent/codex/$slug"
+worktree="../$(basename "$PWD")-$slug"
+git worktree add -b "$branch" "$worktree" HEAD
+mkdir -p "$worktree/.agent-runs/$slug"
 ```
 
-Then inspect exactly what the subagent did with `git diff` and revert cleanly if needed.
-(Codex also has `codex apply` to apply its produced diff to your tree.)
+If the worker needs uncommitted local changes, either commit only the intentional
+prerequisite changes first or create an explicit patch and apply it inside the
+worktree. Do not use a blind `git add -A` checkpoint when unrelated user work is
+present.
 
-## Step 2 — Write the prompt to a markdown file
+## Step 2 - Write a prompt file
 
-**Always put the prompt in a markdown file and feed it via stdin — do not fight the shell
-with an inline string.** This lets you write a long, detailed, well-structured prompt
-(headings, code blocks, file lists, acceptance criteria) with zero quoting/escaping
-issues. Use your Write tool to create it:
+Write the full brief to a markdown file under the run directory. For read-only
+runs this can be under `/tmp`; for edit runs keep it inside the worker worktree:
 
-```
-/tmp/codex-prompt.md
-```
-
-**Invest in the prompt.** A detailed brief gets a dramatically better result than a
-one-liner. Include:
-
-- **Context**: what the project is, the relevant files/paths, and how they fit together.
-- **Task**: precisely what you want done or reviewed, and what is out of scope.
-- **Constraints**: conventions to follow, things not to touch, libraries to prefer.
-- **Acceptance criteria**: how the subagent should know it succeeded (tests pass, specific
-  behavior), and what to return (a findings list, a diff summary, etc.).
-
-## Step 3 — Model & effort defaults
-
-Always use **GPT-5.5 at high reasoning effort**:
-
-```
--m gpt-5.5 -c model_reasoning_effort="high"
+```text
+/tmp/codex-$slug/prompt.md
+$worktree/.agent-runs/$slug/prompt.md
 ```
 
-`model_reasoning_effort` accepts `minimal, low, medium, high, xhigh`. Use `high` as the
-default; drop to `low`/`medium` only for trivial tasks.
+Include:
 
-## Step 4 — Run one of the two agent configs
+- Context: relevant files, commands, docs, and current branch/base.
+- Task: exactly what to do or review, plus what is out of scope.
+- Constraints: style, libraries, files not to touch, branch/worktree rules.
+- Acceptance criteria: tests/builds to run and what "done" means.
+- Output contract: summary, changed files, verification evidence, open risks.
 
-The prompt is piped from the file; the trailing `-` tells Codex to read it from stdin.
+## Step 3 - Pick model and effort
+
+Use GPT-5.5 high for demanding work:
+
+```bash
+-m gpt-5.5 -c model_reasoning_effort='"high"'
+```
+
+Use medium or low only for small scans or mechanical tasks. Do not hard-code this
+when the user explicitly asks for a different model or cost/latency profile.
+
+## Step 4 - Launch the run
 
 ### Read-only reviewer / second opinion
 
-`-s read-only` lets Codex read files and run read-only commands but **cannot modify the
-filesystem** — a hard read-only guarantee.
-
 ```bash
-cat /tmp/codex-prompt.md | codex exec \
-  -m gpt-5.5 -c model_reasoning_effort="high" \
+run_dir="/tmp/codex-$slug"
+prompt_file="$run_dir/prompt.md"
+mkdir -p "$run_dir"
+
+codex exec \
+  -C "$PWD" \
+  -m gpt-5.5 -c model_reasoning_effort='"high"' \
   -s read-only \
-  -o /tmp/codex-out.txt \
-  -
+  --json \
+  -o "$run_dir/final.md" \
+  - < "$prompt_file" \
+  > "$run_dir/events.jsonl"
 ```
 
-### Edit worker (has the harness edit tool)
+### Edit worker
 
-In a sandbox, run the edit worker with `--dangerously-bypass-approvals-and-sandbox` — this
-flag is intended precisely for externally sandboxed automation, and lets Codex edit files
-(via its `apply_patch` tool) and run commands with no restrictions or prompts:
+Use `workspace-write` with no prompts as the default unattended local worker. It
+can edit within the worktree while keeping Codex's sandbox boundary.
 
 ```bash
-cat /tmp/codex-prompt.md | codex exec \
-  -m gpt-5.5 -c model_reasoning_effort="high" \
-  --dangerously-bypass-approvals-and-sandbox \
-  -o /tmp/codex-out.txt \
-  -
+run_dir="$worktree/.agent-runs/$slug"
+
+codex exec \
+  -C "$worktree" \
+  -m gpt-5.5 -c model_reasoning_effort='"high"' \
+  --sandbox workspace-write \
+  -a never \
+  --json \
+  -o "$run_dir/final.md" \
+  - < "$run_dir/prompt.md" \
+  > "$run_dir/events.jsonl"
 ```
 
-Add `-C <dir>` / `--cd <dir>` to set the working root and `--skip-git-repo-check` to run
-outside a git repo.
+Use `--dangerously-bypass-approvals-and-sandbox` only inside a separate
+container/VM/CI runner whose filesystem, network, and secrets are already
+bounded. A worktree alone is not a security sandbox.
 
-## Capturing the result
+## Step 5 - Harvest and review
 
-- `-o, --output-last-message <FILE>` → writes the agent's final message to a file (best
-  for programmatic capture).
-- `--json` → streams events as JSONL on stdout (parse the final `agent_message`).
-- `--output-schema <FILE>` → force the final response to match a JSON Schema.
+- Parse `thread.started` in `events.jsonl` for the session id.
+- Read `final.md` for the final answer.
+- Inspect the worktree diff with `git -C "$worktree" diff`.
+- Run `codex exec review --base <base>` or a separate read-only reviewer before
+  merging, cherry-picking, or opening a PR.
 
-## Built-in review mode (alternative)
+## Resume
 
-Codex has a first-class non-interactive reviewer for a pure second opinion on a diff:
+Continue a non-ephemeral session:
 
 ```bash
-codex exec review --base main -m gpt-5.5 -c model_reasoning_effort="high"
-# or: codex exec review --uncommitted   (staged + unstaged + untracked)
-# or: codex exec review --commit <sha>
+codex exec resume --last "Continue from the previous result and address only the remaining gaps."
+codex exec resume <session-id> "Address the reviewer findings and rerun verification."
 ```
 
-## Reusable named profiles (alternative)
+Do not use `--ephemeral` for a run you may need to resume; it avoids persisting
+session rollout files.
 
-Define the two agents once as Codex **profiles** and select them with `-p`. Profiles live
-at `$CODEX_HOME/<name>.config.toml` (default `~/.codex/`). Drop-in configs are in `assets/`:
+## Built-in review mode
 
-- `assets/reviewer.config.toml` → read-only reviewer (GPT-5.5 high, `read-only`)
-- `assets/editor.config.toml` → edit worker (GPT-5.5 high, `danger-full-access`)
+For pure review, prefer the first-class review command:
 
 ```bash
-cp assets/reviewer.config.toml "${CODEX_HOME:-$HOME/.codex}/reviewer.config.toml"
-cp assets/editor.config.toml   "${CODEX_HOME:-$HOME/.codex}/editor.config.toml"
-
-cat /tmp/codex-prompt.md | codex exec -p reviewer -
-cat /tmp/codex-prompt.md | codex exec -p editor -
+codex exec review --base main -m gpt-5.5 -c model_reasoning_effort='"high"'
+codex exec review --uncommitted
+codex exec review --commit <sha>
 ```
 
-## Notes
+## Reusable named profiles
 
-- `codex exec` is one-shot. Continue a prior run with `codex exec resume --last` (or by id).
-- Persist a session-free run with `--ephemeral`; ignore user config with `--ignore-user-config`.
+Profiles live at `$CODEX_HOME/<name>.config.toml` (default `~/.codex/`). Drop-in
+configs are in `assets/`:
+
+- `assets/reviewer.config.toml` -> read-only reviewer.
+- `assets/editor.config.toml` -> workspace-write edit worker with no prompts.
+
+```bash
+skill_dir="<directory containing this SKILL.md>"
+cp "$skill_dir/assets/reviewer.config.toml" "${CODEX_HOME:-$HOME/.codex}/reviewer.config.toml"
+cp "$skill_dir/assets/editor.config.toml"   "${CODEX_HOME:-$HOME/.codex}/editor.config.toml"
+
+codex exec -C "$worktree" -p reviewer - < "$run_dir/prompt.md"
+codex exec -C "$worktree" -p editor   - < "$run_dir/prompt.md"
+```
+
+## Gotchas
+
+- `codex exec` reads the full prompt from stdin when you pass `-`. If you also
+  pass a prompt argument, piped stdin becomes extra context instead of the
+  instruction.
+- `-p` selects a Codex config profile, not a custom subagent. Custom Codex
+  subagents are TOML files under `.codex/agents/` or `~/.codex/agents/`.
+- `--json` writes JSONL events to stdout. If you also want the final answer as a
+  simple file, pass `-o <file>`.
+- `-s read-only` is a hard filesystem boundary; commands that write caches,
+  build artifacts, or temp files inside the repo can fail.
+- `workspace-write -a never` is usually enough for unattended edit workers.
+  Reach for danger-full-access only after an external sandbox is already in
+  place.
+- Worktrees do not include ignored local files by default. Copy only explicit
+  prerequisites such as `.env.local`, and never copy broad secret directories.
+- `codex apply` applies the latest diff produced by a Codex agent to the current
+  tree. Check `pwd`, branch, and `git status` before using it.

@@ -1,14 +1,13 @@
-# Codex profile: edit-capable worker subagent (for sandboxed environments).
+# Codex profile: edit-capable worker subagent.
 # Install as $CODEX_HOME/editor.config.toml (default ~/.codex/editor.config.toml),
 # then run:  cat prompt.md | codex exec -p editor -
 
 model = "gpt-5.5"
 model_reasoning_effort = "high"
 
-# Full autonomy: edit files and run commands with no restrictions. Safe because the
-# environment is externally sandboxed. Use "workspace-write" instead if you want Codex
-# to protect system dirs and restrict network.
-sandbox_mode = "danger-full-access"
+# Bounded autonomy: edit files and run commands inside the workspace without
+# approval prompts. Use danger-full-access only inside an external container/VM.
+sandbox_mode = "workspace-write"
 
 # Non-interactive: never pause for approvals.
 approval_policy = "never"
