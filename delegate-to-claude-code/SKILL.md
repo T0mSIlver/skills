@@ -1,24 +1,19 @@
 ---
 name: delegate-to-claude-code
-description: Call the Claude Code CLI (`claude`) through Remote Control/tmux, non-interactively, or as a background/worktree run to get a second opinion, run a code review, or delegate read-only or edit-capable work. Use for Claude Code subagent-style delegation, `claude-rc-spawn`, `claude -p`, `--bg`, `--worktree`, `--tmux`, plan/read-only reviewers, acceptEdits/auto edit workers, JSON/stream-json capture, resume flows, and gotchas around permission modes, worktree cleanup, agent personas, and `--dangerously-skip-permissions`.
+description: Call the Claude Code CLI (`claude`) as a delegated reviewer, second opinion, or edit worker. Use for Claude Code subagent-style delegation with `claude-rc-spawn`, `claude -p`, `--bg`, `--worktree`, `--tmux`, plan/read-only reviewers, acceptEdits/auto edit workers, JSON/stream-json capture, resume flows, and gotchas around permission modes, worktree cleanup, agent personas, and `--dangerously-skip-permissions`. For persistent `claude remote-control` repo servers, use the claude-remote-control-server skill instead.
 ---
 
 # Delegate to Claude Code (CLI)
 
-Run `claude` for independent investigation, review, or a delegated worker.
+Run `claude` for independent investigation, review, or a delegated worker. The
+default path is `claude-rc-spawn`: it starts interactive Claude inside detached
+tmux with Remote Control enabled, pastes the prompt, and returns a tmux/session
+handle.
 
-There are two separate Remote Control flows:
-
-1. **Prompted delegation from the main agent:** use `claude-rc-spawn`. It starts
-   an interactive `claude --remote-control` session inside detached tmux, waits
-   for the TUI, pastes the prompt, and presses Enter. The main agent gets a
-   tmux/session handle while the user can also watch or steer the session from
-   claude.ai/code.
-2. **User-dispatched work from claude.ai/mobile:** run a long-lived
-   `claude remote-control` server. It does not take an initial prompt and does
-   not create a local chat input. It waits for Claude.ai or the Claude app to
-   spawn sessions on this machine. For repos that should survive reboots, install
-   it as a user systemd service with `scripts/install-claude-rc-server-service.sh`.
+Because delegated Claude sessions use Remote Control, the user can see and steer
+them from claude.ai/code or the Claude app. Keep this in mind when naming
+sessions and writing prompts. Persistent repo Remote Control servers are a
+separate concern; use the `claude-remote-control-server` skill for those.
 
 Claude Code also has first-class support for `--worktree`, `--bg`,
 `claude agents`, `--tmux`, session names, resume, and print-mode budget caps.
@@ -29,9 +24,6 @@ than user-visible Remote Control.
 
 - Verify `claude` is on PATH with `claude --version`.
 - Verify `tmux` and `claude-rc-spawn` are on PATH.
-- For a persistent repo Remote Control server, verify `systemctl --user` works.
-  Use `loginctl enable-linger "$USER"` so the service starts after reboot
-  before an interactive login.
 - Verify auth is available with `claude auth login` or `ANTHROPIC_API_KEY`.
 - For Remote Control, auth must be a full claude.ai login. API keys,
   `claude setup-token`, and `CLAUDE_CODE_OAUTH_TOKEN` are not enough.
@@ -87,7 +79,7 @@ on it for background `--bg` agents.
 
 ## Step 4 - Launch the run
 
-### Flow 1: prompted Remote Control tmux session
+### Remote Control tmux session
 
 Use `claude-rc-spawn` when the main agent has a specific brief to hand to
 Claude. This is the normal path for a reviewer, second opinion, or delegated
@@ -123,66 +115,7 @@ claude.ai/code and select the session by name. Leave the tmux session running
 until the Claude task is complete.
 
 Do not use this helper for a server that should sit around waiting for future
-mobile/web tasks. `claude-rc-spawn` is intentionally one Claude session per
-delegated prompt.
-
-### Flow 2: persistent Remote Control server
-
-Use server mode when the user wants to open claude.ai/code or the Claude app and
-spawn fresh sessions on this machine. This is a repo service, not a single
-delegated task.
-
-Install or update the service for the current repo:
-
-```bash
-scripts/install-claude-rc-server-service.sh
-```
-
-Install a second repo service from this repo's installer:
-
-```bash
-REPO_DIR=/home/dev/work/localvoxtral \
-SERVICE_NAME=claude-rc-localvoxtral \
-SESSION_NAME=localvoxtral@devbox \
-SESSION_PREFIX=devbox-localvoxtral \
-CAPACITY=8 \
-scripts/install-claude-rc-server-service.sh
-```
-
-The installer writes a user unit like this:
-
-```ini
-[Service]
-WorkingDirectory=/home/dev/work/localvoxtral
-ExecStart=/usr/bin/env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL \
-  /home/dev/.local/bin/claude remote-control \
-    --name "localvoxtral@devbox" \
-    --remote-control-session-name-prefix "devbox-localvoxtral" \
-    --spawn worktree \
-    --capacity 8
-Restart=always
-RestartSec=30
-```
-
-`--spawn worktree` gives each on-demand remote session its own git worktree.
-Use a repo-specific name/prefix so concurrent machines and repos are easy to
-distinguish in claude.ai/code.
-
-Operate the service with:
-
-```bash
-systemctl --user status claude-rc-localvoxtral.service
-journalctl --user -u claude-rc-localvoxtral.service -f
-systemctl --user restart claude-rc-localvoxtral.service
-```
-
-If the service should survive reboot before login, confirm:
-
-```bash
-loginctl show-user "$USER" -p Linger
-```
-
-The output should be `Linger=yes`.
+mobile/web tasks. Use `claude-remote-control-server` for that.
 
 ### Fallback: noninteractive capture
 
@@ -304,18 +237,10 @@ right mode every time.
   access. If `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, or a non-default
   `ANTHROPIC_BASE_URL` is active, Remote Control can fail before the session
   starts. Prefer `claude-rc-spawn` or explicitly launch with those vars unset.
-- `claude remote-control` is server mode; it does not create a local interactive
-  prompt. Use it for user-dispatched sessions, and use `claude-rc-spawn` for a
-  main-agent-launched task with an injected prompt.
-- A persistent server should be supervised by systemd, not kept alive only by
-  tmux. Use one service per repo, with distinct `SERVICE_NAME`, `SESSION_NAME`,
-  and `SESSION_PREFIX` values such as `claude-rc-skills` / `skills@devbox` /
-  `devbox-skills`.
-- `StartLimitIntervalSec=0` plus `Restart=always` keeps the server retrying
-  after reboot or temporary network/auth trouble. Check the user journal for the
-  current claude.ai/code environment URL.
-- Remote Control is tied to the local process. For prompted runs, keep the tmux
-  session alive; for server mode, keep the systemd service active.
+- `claude remote-control` server mode is not delegation. Use
+  `claude-remote-control-server` for persistent repo servers.
+- Remote Control is tied to the local process. Keep the tmux session alive until
+  the delegated run is complete.
 - Background agents are managed with `claude agents`; name them with `--name` so
   the main agent can tell concurrent runs apart.
 - For large automation, split maker and checker: run an edit worker, then a fresh

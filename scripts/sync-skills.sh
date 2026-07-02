@@ -19,6 +19,7 @@ DESTINATIONS=(
 BIN_DIR="${LOCAL_BIN_DIR:-$HOME/.local/bin}"
 HELPERS=(
   claude-rc-spawn
+  install-claude-rc-server-service.sh
 )
 
 log() {

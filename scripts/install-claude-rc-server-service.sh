@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-REPO_DIR="${REPO_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+if [[ -z "${REPO_DIR:-}" ]]; then
+  if git -C "$PWD" rev-parse --show-toplevel >/dev/null 2>&1; then
+    REPO_DIR="$(git -C "$PWD" rev-parse --show-toplevel)"
+  else
+    REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+  fi
+fi
 REPO_DIR="$(cd "$REPO_DIR" && pwd -P)"
 REPO_NAME="$(basename "$REPO_DIR")"
 SERVICE_NAME="${SERVICE_NAME:-claude-rc-$REPO_NAME}"

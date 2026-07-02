@@ -8,11 +8,12 @@ The important trick is not just "how to launch the CLI"; it is how to launch it
 without losing control of the main checkout. Prefer isolated branches/worktrees,
 machine-readable output, and explicit run state.
 
-| Skill | CLI | Model default | Read-only vs edit mechanism |
-|-------|-----|---------------|-----------------------------|
-| [`delegate-to-claude-code`](delegate-to-claude-code/SKILL.md) | `claude` | Opus 4.8 @ high; Sonnet 5 @ low for trivial tasks | `--permission-mode plan` vs `--permission-mode acceptEdits` / `auto`; bypass only in isolated sandboxes |
-| [`delegate-to-codex`](delegate-to-codex/SKILL.md) | `codex exec` | GPT-5.5 @ high | `-s read-only` vs `--sandbox workspace-write -a never`; danger bypass only in isolated sandboxes |
-| [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | `opencode run` | GLM-5.2 | primary/all agents with `edit: deny` vs `edit: allow` + `--auto` |
+| Skill | CLI | Purpose |
+|-------|-----|---------|
+| [`delegate-to-claude-code`](delegate-to-claude-code/SKILL.md) | `claude` | Delegate reviewer/editor runs; `--permission-mode plan` vs `acceptEdits` / `auto` |
+| [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | `claude remote-control` | Run persistent per-repo Remote Control servers under systemd |
+| [`delegate-to-codex`](delegate-to-codex/SKILL.md) | `codex exec` | Delegate reviewer/editor runs; `-s read-only` vs `workspace-write` |
+| [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | `opencode run` | Delegate reviewer/editor runs; primary/all agents with `edit: deny` vs `edit: allow` |
 
 ## Shared conventions
 
@@ -71,8 +72,8 @@ directory containing a `SKILL.md` into the three native locations. If GitHub
 fetching fails because credentials or the network are unavailable, the sync
 still updates the native folders from the current local checkout. It updates
 only skills managed by this repo and leaves unrelated local skills alone. It
-also installs repo-managed helper commands, such as `claude-rc-spawn`, into
-`~/.local/bin`.
+also installs repo-managed helper commands, such as `claude-rc-spawn` and
+`install-claude-rc-server-service.sh`, into `~/.local/bin`.
 
 For private GitHub repos, the timer needs noninteractive git credentials. The
 installer imports currently available `GITHUB_TOKEN`, `GH_TOKEN`, and
