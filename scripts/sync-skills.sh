@@ -16,6 +16,11 @@ DESTINATIONS=(
   "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
 )
 
+BIN_DIR="${LOCAL_BIN_DIR:-$HOME/.local/bin}"
+HELPERS=(
+  claude-rc-spawn
+)
+
 log() {
   printf '[%s] %s\n' "$(date -Is)" "$*"
 }
@@ -116,4 +121,15 @@ for dest_root in "${DESTINATIONS[@]}"; do
   done
 
   install -m 0644 "$current_manifest" "$manifest"
+done
+
+mkdir -p "$BIN_DIR"
+for helper in "${HELPERS[@]}"; do
+  helper_path="$SYNC_SOURCE/scripts/$helper"
+  if [[ -f "$helper_path" ]]; then
+    install -m 0755 "$helper_path" "$BIN_DIR/$helper"
+    log "installed $helper to $BIN_DIR"
+  else
+    log "helper $helper was not found under $SYNC_SOURCE/scripts"
+  fi
 done

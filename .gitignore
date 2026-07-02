@@ -1,3 +1,7 @@
 # OS / editor cruft
 .DS_Store
 *.swp
+
+# Local agent/session state
+.agent-runs/
+.claude/worktrees/

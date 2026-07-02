@@ -1,0 +1,319 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: claude-rc-spawn [options] [prompt text]
+
+Start an interactive Claude Code session in a detached tmux session with
+Remote Control enabled, then paste and submit the prompt.
+
+Options:
+  --cwd DIR                         Working directory for Claude (default: PWD)
+  --prompt-file FILE                Read prompt from FILE instead of arguments/stdin
+  --name NAME                       Claude session display name
+  --tmux-session NAME               tmux session name
+  --permission-mode MODE            Claude permission mode (default: plan)
+  --model MODEL                     Claude model alias/name (default: opus)
+  --effort LEVEL                    Claude effort level (default: high)
+  --worktree [NAME]                 Pass --worktree to Claude, optionally named
+  --agent NAME                      Pass --agent to Claude
+  --add-dir DIR                     Pass an additional directory; repeatable
+  --rc-prefix PREFIX                Remote Control auto-name prefix
+  --delay SECONDS                   Seconds to wait before prompt paste (default: 5)
+  --no-submit                       Paste the prompt but do not press Enter
+  --keep-auth-env                   Keep token/API-key auth env vars
+  --dry-run                         Print launch details without starting tmux
+  -h, --help                        Show this help
+  --                                Remaining arguments are passed to claude
+
+Prompt input priority:
+  1. --prompt-file FILE
+  2. prompt text arguments
+  3. stdin, when stdin is not a TTY
+USAGE
+}
+
+die() {
+  printf 'claude-rc-spawn: %s\n' "$*" >&2
+  exit 1
+}
+
+need_arg() {
+  local opt="$1"
+  local value="${2-}"
+  [[ -n "$value" ]] || die "$opt requires a value"
+}
+
+sanitize_name() {
+  printf '%s' "$1" |
+    tr '[:upper:]' '[:lower:]' |
+    sed -E 's/[^a-z0-9_.-]+/-/g; s/^-+//; s/-+$//; s/-+/-/g' |
+    cut -c 1-90
+}
+
+quote_cmd() {
+  printf '%q ' "$@"
+}
+
+cwd="$PWD"
+prompt_file=""
+name=""
+tmux_session=""
+permission_mode="plan"
+model="opus"
+effort="high"
+worktree=""
+worktree_set=0
+agent=""
+rc_prefix=""
+delay="5"
+submit=1
+keep_auth_env=0
+dry_run=0
+
+declare -a add_dirs=()
+declare -a claude_extra=()
+declare -a prompt_parts=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cwd)
+      need_arg "$1" "${2-}"
+      cwd="$2"
+      shift 2
+      ;;
+    --prompt-file)
+      need_arg "$1" "${2-}"
+      prompt_file="$2"
+      shift 2
+      ;;
+    --name|-n)
+      need_arg "$1" "${2-}"
+      name="$2"
+      shift 2
+      ;;
+    --tmux-session)
+      need_arg "$1" "${2-}"
+      tmux_session="$2"
+      shift 2
+      ;;
+    --permission-mode)
+      need_arg "$1" "${2-}"
+      permission_mode="$2"
+      shift 2
+      ;;
+    --model)
+      need_arg "$1" "${2-}"
+      model="$2"
+      shift 2
+      ;;
+    --effort)
+      need_arg "$1" "${2-}"
+      effort="$2"
+      shift 2
+      ;;
+    --worktree|-w)
+      worktree_set=1
+      if [[ $# -gt 1 && "${2:0:1}" != "-" ]]; then
+        worktree="$2"
+        shift 2
+      else
+        worktree=""
+        shift
+      fi
+      ;;
+    --agent)
+      need_arg "$1" "${2-}"
+      agent="$2"
+      shift 2
+      ;;
+    --add-dir)
+      need_arg "$1" "${2-}"
+      add_dirs+=("$2")
+      shift 2
+      ;;
+    --rc-prefix|--remote-control-session-name-prefix)
+      need_arg "$1" "${2-}"
+      rc_prefix="$2"
+      shift 2
+      ;;
+    --delay)
+      need_arg "$1" "${2-}"
+      delay="$2"
+      shift 2
+      ;;
+    --no-submit)
+      submit=0
+      shift
+      ;;
+    --keep-auth-env)
+      keep_auth_env=1
+      shift
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      claude_extra+=("$@")
+      break
+      ;;
+    --*)
+      die "unknown option: $1 (put additional claude flags after --)"
+      ;;
+    *)
+      prompt_parts+=("$1")
+      shift
+      ;;
+  esac
+done
+
+command -v tmux >/dev/null 2>&1 || die "tmux is not on PATH"
+command -v claude >/dev/null 2>&1 || die "claude is not on PATH"
+
+[[ -d "$cwd" ]] || die "working directory does not exist: $cwd"
+cwd="$(cd "$cwd" && pwd -P)"
+
+case "$delay" in
+  ''|*[!0-9.]*)
+    die "--delay must be a number of seconds"
+    ;;
+esac
+
+repo_root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -n "$repo_root" ]]; then
+  repo_name="$(basename "$repo_root")"
+else
+  repo_name="$(basename "$cwd")"
+fi
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+slug_base="$(sanitize_name "${repo_name}-${timestamp}")"
+host_name="${HOSTNAME:-$(hostname -s 2>/dev/null || hostname 2>/dev/null || printf host)}"
+
+if [[ -z "$name" ]]; then
+  name="${repo_name}@${host_name}/${timestamp}"
+fi
+
+if [[ -z "$tmux_session" ]]; then
+  tmux_session="claude-rc-${slug_base}"
+else
+  tmux_session="$(sanitize_name "$tmux_session")"
+fi
+
+[[ -n "$tmux_session" ]] || die "tmux session name is empty after sanitizing"
+
+run_dir="$cwd/.agent-runs/$tmux_session"
+saved_prompt="$run_dir/prompt.md"
+launch_script="$run_dir/launch.sh"
+tmux_log="$run_dir/tmux.log"
+
+if tmux has-session -t "$tmux_session" 2>/dev/null; then
+  die "tmux session already exists: $tmux_session"
+fi
+
+mkdir -p "$run_dir"
+
+if [[ -n "$prompt_file" ]]; then
+  [[ -f "$prompt_file" ]] || die "prompt file does not exist: $prompt_file"
+  cp "$prompt_file" "$saved_prompt"
+elif [[ ${#prompt_parts[@]} -gt 0 ]]; then
+  printf '%s\n' "${prompt_parts[*]}" > "$saved_prompt"
+elif [[ ! -t 0 ]]; then
+  cp /dev/stdin "$saved_prompt"
+else
+  : > "$saved_prompt"
+fi
+
+declare -a cmd=()
+if [[ "$keep_auth_env" -eq 0 ]]; then
+  cmd+=(env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN)
+  if [[ -n "${ANTHROPIC_BASE_URL:-}" && "${ANTHROPIC_BASE_URL}" != "https://api.anthropic.com"* ]]; then
+    cmd+=(-u ANTHROPIC_BASE_URL)
+  fi
+fi
+
+cmd+=(claude --remote-control --name "$name")
+
+if [[ -n "$rc_prefix" ]]; then
+  cmd+=(--remote-control-session-name-prefix "$rc_prefix")
+fi
+
+cmd+=(--permission-mode "$permission_mode" --model "$model" --effort "$effort")
+
+if [[ "$worktree_set" -eq 1 ]]; then
+  if [[ -n "$worktree" ]]; then
+    cmd+=(--worktree "$worktree")
+  else
+    cmd+=(--worktree)
+  fi
+fi
+
+if [[ -n "$agent" ]]; then
+  cmd+=(--agent "$agent")
+fi
+
+for dir in "${add_dirs[@]}"; do
+  cmd+=(--add-dir "$dir")
+done
+
+cmd+=("${claude_extra[@]}")
+
+{
+  printf '#!/usr/bin/env bash\n'
+  printf 'set +e\n'
+  printf 'cd %q\n' "$cwd"
+  printf 'cmd=('
+  printf ' %q' "${cmd[@]}"
+  printf ' )\n'
+  printf 'printf "%%s\\n" %q\n' '[claude-rc-spawn] starting Claude Remote Control session:'
+  printf 'printf "  %%q" "${cmd[@]}"\n'
+  printf 'printf "\\\\n"\n'
+  printf '"${cmd[@]}"\n'
+  printf 'status=$?\n'
+  printf 'printf "\\n[claude-rc-spawn] claude exited with status %%s. Shell left open for inspection.\\n" "$status"\n'
+  printf 'exec "${SHELL:-/bin/bash}" -l\n'
+} > "$launch_script"
+chmod 700 "$launch_script"
+
+if [[ "$dry_run" -eq 1 ]]; then
+  printf 'tmux_session=%s\n' "$tmux_session"
+  printf 'claude_name=%s\n' "$name"
+  printf 'cwd=%s\n' "$cwd"
+  printf 'run_dir=%s\n' "$run_dir"
+  printf 'prompt_file=%s\n' "$saved_prompt"
+  printf 'launch_script=%s\n' "$launch_script"
+  printf 'tmux_log=%s\n' "$tmux_log"
+  printf 'claude_command=%s\n' "$(quote_cmd "${cmd[@]}")"
+  exit 0
+fi
+
+tmux new-session -d -s "$tmux_session" -c "$cwd" "$launch_script"
+tmux pipe-pane -t "$tmux_session:0.0" -o "cat >> $(printf '%q' "$tmux_log")"
+
+if [[ -s "$saved_prompt" ]]; then
+  sleep "$delay"
+  if ! tmux has-session -t "$tmux_session" 2>/dev/null; then
+    die "tmux session exited before prompt injection; see $tmux_log"
+  fi
+  buffer_name="${tmux_session}-prompt"
+  tmux load-buffer -b "$buffer_name" "$saved_prompt"
+  tmux paste-buffer -d -p -r -b "$buffer_name" -t "$tmux_session:0.0"
+  if [[ "$submit" -eq 1 ]]; then
+    tmux send-keys -t "$tmux_session:0.0" Enter
+  fi
+fi
+
+printf 'tmux_session=%s\n' "$tmux_session"
+printf 'claude_name=%s\n' "$name"
+printf 'cwd=%s\n' "$cwd"
+printf 'run_dir=%s\n' "$run_dir"
+printf 'prompt_file=%s\n' "$saved_prompt"
+printf 'tmux_log=%s\n' "$tmux_log"
+printf 'attach_command=tmux attach -t %s\n' "$tmux_session"

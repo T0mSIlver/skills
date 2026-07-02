@@ -19,6 +19,10 @@ machine-readable output, and explicit run state.
 - **Worktree first for edits.** Launch edit workers in a new branch/worktree so
   long runs do not modify the main agent's checkout. Commit or patch in only the
   exact local state the worker needs; do not blindly `git add -A` unrelated work.
+- **Remote-visible Claude sessions.** For Claude Code delegation, prefer
+  `claude-rc-spawn`: it starts interactive Claude in detached tmux with Remote
+  Control enabled, injects the prompt, and leaves a session the user can inspect
+  from claude.ai/code.
 - **Prompt as a file.** Write the brief to a markdown file with context, task,
   constraints, acceptance criteria, and required output shape. Feed or attach
   that file instead of hand-writing a large inline string.
@@ -66,7 +70,9 @@ fetched tree into a temporary directory, and then syncs every top-level
 directory containing a `SKILL.md` into the three native locations. If GitHub
 fetching fails because credentials or the network are unavailable, the sync
 still updates the native folders from the current local checkout. It updates
-only skills managed by this repo and leaves unrelated local skills alone.
+only skills managed by this repo and leaves unrelated local skills alone. It
+also installs repo-managed helper commands, such as `claude-rc-spawn`, into
+`~/.local/bin`.
 
 For private GitHub repos, the timer needs noninteractive git credentials. The
 installer imports currently available `GITHUB_TOKEN`, `GH_TOKEN`, and
@@ -77,6 +83,9 @@ Useful commands:
 
 ```bash
 scripts/sync-skills.sh
+scripts/install-claude-rc-server-service.sh
 systemctl --user status skills-sync.timer
+systemctl --user status claude-rc-skills.service
 journalctl --user -u skills-sync.service -n 80 --no-pager
+journalctl --user -u claude-rc-skills.service -n 80 --no-pager
 ```
