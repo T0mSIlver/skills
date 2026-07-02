@@ -1,0 +1,13 @@
+# Codex profile: edit-capable worker subagent.
+# Install as $CODEX_HOME/editor.config.toml (default ~/.codex/editor.config.toml),
+# then run:  cat prompt.md | codex exec -p editor -
+
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+
+# Bounded autonomy: edit files and run commands inside the workspace without
+# approval prompts. Use danger-full-access only inside an external container/VM.
+sandbox_mode = "workspace-write"
+
+# Non-interactive: never pause for approvals.
+approval_policy = "never"
