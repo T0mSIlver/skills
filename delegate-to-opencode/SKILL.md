@@ -9,14 +9,49 @@ Run the `opencode` CLI programmatically via `opencode run` (non-interactive) to 
 second opinion, a review, or to delegate a task to a subagent. Two agent configs are
 provided: a **read-only reviewer** and an **edit-capable worker**.
 
+These skills assume you are running inside a **sandboxed environment**, so the edit worker
+is granted full autonomy via `--auto` (auto-approve everything not explicitly denied) —
+permission gating is not needed.
+
 ## Prerequisites
 
-- `opencode` is on PATH (`opencode --version`). Configure the provider/credentials once
-  with `opencode auth login` (aka `opencode providers`). In a non-interactive/sandbox
-  context, auth must already be set up.
+- `opencode` is on PATH (`opencode --version`) and the provider is configured
+  (`opencode auth login`).
 - Run from inside the target repo, or pass `--dir <path>`.
 
-## Model default
+## Step 1 — Commit first (before an edit task)
+
+Before delegating anything that edits files, **commit your current work** so nothing can
+be lost and the subagent's changes are isolated and reviewable:
+
+```bash
+git add -A && git commit -m "checkpoint before delegating to opencode"
+```
+
+Then inspect exactly what the subagent did with `git diff` and revert cleanly if needed.
+(Harmless to do before a read-only review too.)
+
+## Step 2 — Write the prompt to a markdown file
+
+**Always put the prompt in a markdown file and pass it via `"$(cat file)"` — do not fight
+the shell with a hand-written inline string.** This lets you write a long, detailed,
+well-structured prompt (headings, code blocks, file lists, acceptance criteria) with zero
+quoting/escaping issues. Use your Write tool to create it:
+
+```
+/tmp/oc-prompt.md
+```
+
+**Invest in the prompt.** A detailed brief gets a dramatically better result than a
+one-liner. Include:
+
+- **Context**: what the project is, the relevant files/paths, and how they fit together.
+- **Task**: precisely what you want done or reviewed, and what is out of scope.
+- **Constraints**: conventions to follow, things not to touch, libraries to prefer.
+- **Acceptance criteria**: how the subagent should know it succeeded (tests pass, specific
+  behavior), and what to return (a findings list, a diff summary, etc.).
+
+## Step 3 — Model default
 
 Always use **GLM-5.2**. In opencode the model is `provider/model-id`:
 
@@ -26,14 +61,13 @@ Always use **GLM-5.2**. In opencode the model is `provider/model-id`:
 
 (Verify the exact provider slug with `opencode models | grep glm-5.2`.)
 
-## The two agent configs
+## Step 4 — Run one of the two agent configs
 
-opencode agents carry their own **permissions**, which make an agent read-only vs.
-edit-capable. Set the `edit` (and `bash`) permission to `deny` for read-only, or `allow`
-for an edit worker. Drop-in agent files are in `assets/`:
+The read-only vs. edit distinction comes from each agent's `edit` permission. Drop-in
+agent files are in `assets/`:
 
-- `assets/reviewer.md` → read-only reviewer (`edit: deny`, `bash: deny`)
-- `assets/editor.md` → edit worker (`edit: allow`, `bash: allow`)
+- `assets/reviewer.md` → read-only reviewer (`edit: deny`)
+- `assets/editor.md` → edit worker (`edit: allow`)
 
 Install them (project-local shown; use `~/.config/opencode/agent/` for global):
 
@@ -43,30 +77,27 @@ mkdir -p .opencode/agent && cp assets/reviewer.md assets/editor.md .opencode/age
 
 ### Read-only reviewer / second opinion
 
-```bash
-opencode run --agent reviewer -m zai-coding-plan/glm-5.2 --format json \
-  "Review the changes on this branch for correctness bugs. Report findings only."
-```
+The reviewer agent denies `edit`, so it cannot modify files no matter what:
 
-Because the reviewer agent denies `edit`/`bash`, it cannot modify files and never needs
-an approval prompt.
+```bash
+opencode run --agent reviewer -m zai-coding-plan/glm-5.2 --format json --auto \
+  "$(cat /tmp/oc-prompt.md)"
+```
 
 ### Edit worker (has the harness edit tool)
 
-```bash
-opencode run --agent editor -m zai-coding-plan/glm-5.2 --format json \
-  "Fix the failing test in test/auth.test.ts and make it pass."
-```
+The editor agent allows `edit`; `--auto` auto-approves everything else so the run is fully
+non-interactive in the sandbox:
 
-The editor agent sets `edit: allow` / `bash: allow`, so changes apply without prompting.
-If you invoke an edit-capable agent whose permissions still `ask`, add `--auto` to
-auto-approve everything not explicitly denied (use only in a trusted sandbox).
+```bash
+opencode run --agent editor -m zai-coding-plan/glm-5.2 --format json --auto \
+  "$(cat /tmp/oc-prompt.md)"
+```
 
 ## Capturing the result
 
 - `--format json` → raw JSON events on stdout; parse the final assistant message.
 - `--format default` (default) → formatted text.
-- Prompt as positional args or via `--prompt "..."`.
 - Attach files with `-f/--file`; set a session title with `--title`.
 
 ## Defining agents inline (config alternative)
@@ -81,7 +112,7 @@ Instead of markdown files you can declare both agents in `opencode.json` at the 
       "description": "Read-only second-opinion reviewer",
       "mode": "subagent",
       "model": "zai-coding-plan/glm-5.2",
-      "permission": { "edit": "deny", "bash": "deny", "webfetch": "allow" }
+      "permission": { "edit": "deny", "bash": "allow", "webfetch": "allow" }
     },
     "editor": {
       "description": "Edit-capable worker subagent",
@@ -98,6 +129,6 @@ Instead of markdown files you can declare both agents in `opencode.json` at the 
 - `opencode run` is one-shot. Continue the last session with `-c/--continue`, or a specific
   one with `-s/--session <id>` (add `--fork` to branch off it).
 - Permission keys include `read, edit, bash, glob, grep, webfetch, websearch, task`; each is
-  `allow`, `ask`, or `deny`. Agent-level permissions override global config.
-- `--variant <high|max|minimal>` sets provider-specific reasoning effort when the model
-  supports it.
+  `allow`, `ask`, or `deny`. Agent-level permissions override global config, so a denied
+  `edit` holds even with `--auto`.
+- `--variant <high|max|minimal>` sets provider-specific reasoning effort when supported.

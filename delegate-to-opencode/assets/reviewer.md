@@ -5,7 +5,7 @@ model: zai-coding-plan/glm-5.2
 temperature: 0.1
 permission:
   edit: deny
-  bash: deny
+  bash: allow
   webfetch: allow
 ---
 

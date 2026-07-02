@@ -9,13 +9,48 @@ Run the `claude` CLI programmatically (headless / `-p` print mode) to get a seco
 opinion, a review, or to delegate a task to a subagent. Two agent configs are provided:
 a **read-only reviewer** and an **edit-capable worker**.
 
+These skills assume you are running inside a **sandboxed environment**, so the edit worker
+is granted full autonomy (no permission prompts) — permission gating is not needed.
+
 ## Prerequisites
 
-- `claude` is on PATH (`claude --version`). Authenticate once with `claude auth` (or set
-  `ANTHROPIC_API_KEY`). In a non-interactive/sandbox context, auth must already be set up.
+- `claude` is on PATH (`claude --version`) and already authenticated (`claude auth` or
+  `ANTHROPIC_API_KEY`).
 - Run from inside the target repo, or pass `--add-dir <path>` to grant access.
 
-## Model & effort defaults
+## Step 1 — Commit first (before an edit task)
+
+Before delegating anything that edits files, **commit your current work** so nothing can
+be lost and the subagent's changes are isolated and reviewable:
+
+```bash
+git add -A && git commit -m "checkpoint before delegating to Claude Code"
+```
+
+Then you can inspect exactly what the subagent did with `git diff` and revert cleanly if
+needed. (Harmless to do before a read-only review too.)
+
+## Step 2 — Write the prompt to a markdown file
+
+**Always put the prompt in a markdown file and feed it via stdin — do not fight the shell
+with an inline string.** This lets you write a long, detailed, well-structured prompt
+(headings, code blocks, file lists, acceptance criteria) with zero quoting/escaping
+issues. Use your Write tool to create it:
+
+```
+/tmp/cc-prompt.md
+```
+
+**Invest in the prompt.** A detailed brief gets a dramatically better result than a
+one-liner. Include:
+
+- **Context**: what the project is, the relevant files/paths, and how they fit together.
+- **Task**: precisely what you want done or reviewed, and what is out of scope.
+- **Constraints**: conventions to follow, things not to touch, libraries to prefer.
+- **Acceptance criteria**: how the subagent should know it succeeded (tests pass, specific
+  behavior), and what to return (a findings list, a diff summary, etc.).
+
+## Step 3 — Model & effort defaults
 
 Pick the model with `--model` and reasoning depth with `--effort`:
 
@@ -27,20 +62,17 @@ Pick the model with `--model` and reasoning depth with `--effort`:
 `opus` resolves to the latest Opus (`claude-opus-4-8`); `sonnet` to the latest Sonnet
 (`claude-sonnet-5`). `--effort` accepts `low, medium, high, xhigh, max`.
 
-## The two agent configs
+## Step 4 — Run one of the two agent configs
 
-Permission mode is what makes an agent read-only vs. edit-capable:
-
-- **Read-only reviewer** → `--permission-mode plan`. The harness blocks every mutating
-  action (Edit, Write, mutating Bash), so the run can read/search/inspect but **cannot
-  change files** — a hard guarantee, and fully non-interactive.
-- **Edit worker** → `--permission-mode acceptEdits`. Edit/Write are auto-accepted so the
-  run applies changes without prompting.
+The prompt comes from the file over stdin; no prompt argument is passed.
 
 ### Read-only reviewer / second opinion
 
+`--permission-mode plan` blocks every mutating action (Edit, Write, mutating Bash), so the
+run can read/search/inspect but **cannot change files** — a hard read-only guarantee.
+
 ```bash
-claude -p "Review the changes on this branch for correctness bugs. Report findings only." \
+cat /tmp/cc-prompt.md | claude -p \
   --model opus --effort high \
   --permission-mode plan \
   --output-format json \
@@ -49,41 +81,24 @@ claude -p "Review the changes on this branch for correctness bugs. Report findin
 
 ### Edit worker (has the harness edit tool)
 
+In a sandbox, run the edit worker fully autonomously with `--dangerously-skip-permissions`
+so it applies edits and runs Bash (e.g. tests) without any prompts:
+
 ```bash
-claude -p "Fix the failing test in tests/test_auth.py and make it pass." \
+cat /tmp/cc-prompt.md | claude -p \
   --model opus --effort high \
-  --permission-mode acceptEdits \
+  --dangerously-skip-permissions \
   --output-format json \
   --add-dir .
 ```
 
-For a fully autonomous edit run in a trusted sandbox (also auto-runs Bash such as tests),
-add `--dangerously-skip-permissions` instead of `acceptEdits`. Only do this in a sandbox
-with no untrusted input — it bypasses **all** permission checks.
-
 ## Capturing the result
 
-- `--output-format json` → one JSON object; the reply is the `.result` field. Extract with
-  `claude -p ... --output-format json | jq -r '.result'`.
+- `--output-format json` → one JSON object; the reply is `.result`. Extract with
+  `... | jq -r '.result'`. The session id is `.session_id`.
 - `--output-format text` (default) → raw text on stdout.
 - `--json-schema '<schema>'` → force the final message to match a JSON schema (structured
   output). Combine with `--output-format json`.
-- Prompt via stdin instead of an argument: `echo "$PROMPT" | claude -p --model opus ...`.
-
-## Restricting tools (optional)
-
-To hand the subagent a narrower toolset, use `--tools` (built-in set) or the
-allow/deny lists — independent of permission mode:
-
-```bash
-# read-only, search-only toolset
-claude -p "$PROMPT" --model opus --effort high --permission-mode plan \
-  --tools "Read,Grep,Glob,WebSearch,WebFetch"
-
-# scope Bash to safe read commands while still allowing edits
-claude -p "$PROMPT" --model opus --effort high --permission-mode acceptEdits \
-  --allowedTools "Read Edit Write Grep Glob Bash(git diff:*) Bash(git log:*) Bash(rg:*)"
-```
 
 ## Reusable named agents (alternative)
 
@@ -97,20 +112,12 @@ Install them into the repo (or `~/.claude/agents/` for global) and invoke:
 
 ```bash
 mkdir -p .claude/agents && cp assets/cc-*.md .claude/agents/
-claude -p "$PROMPT" --agent cc-reviewer --effort high --permission-mode plan
-```
-
-You can also pass agents inline without files:
-
-```bash
-claude -p "$PROMPT" --permission-mode plan --effort high \
-  --agents '{"cc-reviewer":{"description":"Read-only reviewer","prompt":"You are a meticulous read-only code reviewer. Investigate and report findings; never modify files.","tools":["Read","Grep","Glob","WebSearch"],"model":"opus"}}' \
-  --agent cc-reviewer
+cat /tmp/cc-prompt.md | claude -p --agent cc-reviewer --effort high --permission-mode plan
 ```
 
 ## Notes
 
 - `claude -p` skips the workspace-trust dialog — only run it in directories you trust.
 - Print mode is one-shot. To continue a prior run add `--continue` (most recent) or
-  `--resume <session-id>`; capture the id from `--output-format json`'s `.session_id`.
+  `--resume <session-id>`.
 - Use `--max-budget-usd <amount>` to cap spend on an autonomous run.
