@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Remote Control Server"
+  short_description: "Run persistent Claude Remote Control services"
+  default_prompt: "Use $claude-remote-control-server to install or inspect a persistent Claude Remote Control server for this repo."
