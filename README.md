@@ -47,7 +47,9 @@ machine-readable output, and explicit run state.
   Prefer stdin where supported; for opencode, use `--file` for very large briefs.
 
 Each skill directory contains a `SKILL.md` with concrete commands and an
-`assets/` folder with drop-in agent/profile configs.
+`assets/` folder with drop-in agent/profile configs. Skill-specific executable
+helpers live in that skill's `scripts/` folder. The root `scripts/` directory is
+reserved for repo maintenance scripts.
 
 ## Keep local native skill folders current
 
@@ -72,7 +74,7 @@ directory containing a `SKILL.md` into the three native locations. If GitHub
 fetching fails because credentials or the network are unavailable, the sync
 still updates the native folders from the current local checkout. It updates
 only skills managed by this repo and leaves unrelated local skills alone. It
-also installs repo-managed helper commands, such as `claude-rc-spawn` and
+also installs skill-managed helper commands, such as `claude-rc-spawn` and
 `install-claude-rc-server-service.sh`, into `~/.local/bin`.
 
 For private GitHub repos, the timer needs noninteractive git credentials. The
@@ -84,7 +86,7 @@ Useful commands:
 
 ```bash
 scripts/sync-skills.sh
-scripts/install-claude-rc-server-service.sh
+install-claude-rc-server-service.sh
 systemctl --user status skills-sync.timer
 systemctl --user status claude-rc-skills.service
 journalctl --user -u skills-sync.service -n 80 --no-pager

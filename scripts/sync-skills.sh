@@ -16,10 +16,9 @@ DESTINATIONS=(
   "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
 )
 
-BIN_DIR="${LOCAL_BIN_DIR:-$HOME/.local/bin}"
-HELPERS=(
-  claude-rc-spawn
-  install-claude-rc-server-service.sh
+HELPER_SPECS=(
+  "delegate-to-claude-code/scripts/claude-rc-spawn:claude-rc-spawn"
+  "claude-remote-control-server/scripts/install-claude-rc-server-service.sh:install-claude-rc-server-service.sh"
 )
 
 log() {
@@ -124,13 +123,16 @@ for dest_root in "${DESTINATIONS[@]}"; do
   install -m 0644 "$current_manifest" "$manifest"
 done
 
-mkdir -p "$BIN_DIR"
-for helper in "${HELPERS[@]}"; do
-  helper_path="$SYNC_SOURCE/scripts/$helper"
+bin_dir="${LOCAL_BIN_DIR:-$HOME/.local/bin}"
+mkdir -p "$bin_dir"
+for helper_spec in "${HELPER_SPECS[@]}"; do
+  helper_source="${helper_spec%%:*}"
+  helper_name="${helper_spec##*:}"
+  helper_path="$SYNC_SOURCE/$helper_source"
   if [[ -f "$helper_path" ]]; then
-    install -m 0755 "$helper_path" "$BIN_DIR/$helper"
-    log "installed $helper to $BIN_DIR"
+    install -m 0755 "$helper_path" "$bin_dir/$helper_name"
+    log "installed $helper_name to $bin_dir"
   else
-    log "helper $helper was not found under $SYNC_SOURCE/scripts"
+    log "helper $helper_name was not found at $helper_source"
   fi
 done
