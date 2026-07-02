@@ -43,3 +43,40 @@ machine-readable output, and explicit run state.
 
 Each skill directory contains a `SKILL.md` with concrete commands and an
 `assets/` folder with drop-in agent/profile configs.
+
+## Keep local native skill folders current
+
+This repo includes a small sync setup that keeps the same skill versions
+available to Claude Code, Codex, and opencode:
+
+| Location | Serves |
+|----------|--------|
+| `~/.claude/skills/` | Claude Code (native) |
+| `~/.codex/skills/` | Codex (native) |
+| `~/.config/opencode/skills/` | opencode (native) |
+
+Install the user-level timer:
+
+```bash
+scripts/install-sync-timer.sh
+```
+
+The timer runs every 2 minutes. Each run fetches `origin/main`, exports that
+fetched tree into a temporary directory, and then syncs every top-level
+directory containing a `SKILL.md` into the three native locations. If GitHub
+fetching fails because credentials or the network are unavailable, the sync
+still updates the native folders from the current local checkout. It updates
+only skills managed by this repo and leaves unrelated local skills alone.
+
+For private GitHub repos, the timer needs noninteractive git credentials. The
+installer imports currently available `GITHUB_TOKEN`, `GH_TOKEN`, and
+`SSH_AUTH_SOCK` values into the user systemd manager without writing them to the
+unit file.
+
+Useful commands:
+
+```bash
+scripts/sync-skills.sh
+systemctl --user status skills-sync.timer
+journalctl --user -u skills-sync.service -n 80 --no-pager
+```
