@@ -1,0 +1,12 @@
+# Codex profile: read-only second-opinion reviewer.
+# Install as $CODEX_HOME/reviewer.config.toml (default ~/.codex/reviewer.config.toml),
+# then run:  codex exec -p reviewer "Review this branch; report findings only."
+
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+
+# Read-only: can read files and run read-only commands, cannot modify the filesystem.
+sandbox_mode = "read-only"
+
+# Non-interactive: never pause for approvals.
+approval_policy = "never"
