@@ -49,8 +49,9 @@ $worktree/.agent-runs/$slug/prompt.md
 ```
 
 Include context, exact task, constraints, acceptance criteria, verification
-commands, and required final output. For very long prompts, use `--file` instead
-of `"$(cat file)"` to avoid shell argument-length limits.
+commands, and required final output. Use `--file prompt.md` by itself for long
+briefs, or inline `"$(cat prompt.md)"` only for prompts safely under shell
+argument limits.
 
 ## Step 3 - Model default
 
@@ -98,7 +99,7 @@ run_dir="/tmp/opencode-$slug"
 prompt_file="$run_dir/prompt.md"
 mkdir -p "$run_dir"
 
-opencode run \
+timeout --signal=TERM 2700 opencode run \
   --dir "$PWD" \
   --agent reviewer \
   -m zai-coding-plan/glm-5.2 \
@@ -106,7 +107,6 @@ opencode run \
   --title "$slug-review" \
   --auto \
   --file "$prompt_file" \
-  "Follow the attached prompt file exactly." \
   > "$run_dir/events.jsonl"
 ```
 
@@ -115,7 +115,7 @@ opencode run \
 ```bash
 run_dir="$worktree/.agent-runs/$slug"
 
-opencode run \
+timeout --signal=TERM 2700 opencode run \
   --dir "$worktree" \
   --agent editor \
   -m zai-coding-plan/glm-5.2 \
@@ -123,17 +123,28 @@ opencode run \
   --title "$slug-edit" \
   --auto \
   --file "$run_dir/prompt.md" \
-  "Follow the attached prompt file exactly." \
   > "$run_dir/events.jsonl"
 ```
 
 `--auto` auto-approves actions that would otherwise ask; explicit `deny` rules
 still hold. Keep destructive or out-of-scope tools denied in the agent config.
 
+The `timeout` wrapper matters because opencode has no stream timeout: explicit
+provider overload errors are retried, but silent provider stalls can otherwise
+wait forever. Treat timeout exit as a clean failure for the orchestrator to
+kill, stagger, or relaunch.
+
+Run at most two concurrent opencode instances per machine. Stagger additional
+runs; a third process can block before its first log entry on the shared
+SQLite/WAL state under `~/.local/share/opencode/opencode.db`.
+
 ## Capture, resume, and fork
 
 - `--format json` emits raw JSON events. Parse the final text event and capture
   the `sessionID`.
+- During a healthy `--format json` run, `events.jsonl` streams continuously. If
+  it is still 0 bytes after about 5 minutes, or its mtime is stale for more
+  than 10 minutes, assume the run is hung; kill and relaunch instead of waiting.
 - `opencode session list` shows saved sessions.
 - Continue the last session with `opencode run --continue "..."`.
 - Continue a specific session with `opencode run --session <id> "..."`.
@@ -182,8 +193,12 @@ Instead of markdown files, declare the agents in `opencode.json`:
   the remote opencode server.
 - opencode has session resume/fork controls but no native worktree creation
   flag. Create and clean up Git worktrees yourself.
-- Passing `"$(cat prompt.md)"` is fine for moderate prompts, but very large
-  prompts can hit shell argument limits. Prefer `--file prompt.md` for long
-  briefs.
+- In opencode 1.17.13, combining `--file prompt.md` with a positional message
+  makes the CLI treat the message as another file path and fail with `File not
+  found: <message text>`. Use `--file` with no positional message, or inline
+  `"$(cat prompt.md)"` for prompts safely under argv limits.
+- Check `~/.local/share/opencode/log/opencode.log` when a run goes quiet. It is
+  one shared log with UTC timestamps; grep for `run=` or `agent=` to distinguish
+  "never initialized" from "stalled mid-stream".
 - Worktrees do not copy ignored local files. Copy only explicit required files
   into the worker worktree.

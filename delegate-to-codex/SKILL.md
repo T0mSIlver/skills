@@ -99,7 +99,6 @@ codex exec \
   -C "$worktree" \
   -m gpt-5.5 -c model_reasoning_effort='"high"' \
   --sandbox workspace-write \
-  -a never \
   --json \
   -o "$run_dir/final.md" \
   - < "$run_dir/prompt.md" \
@@ -168,9 +167,12 @@ codex exec -C "$worktree" -p editor   - < "$run_dir/prompt.md"
   simple file, pass `-o <file>`.
 - `-s read-only` is a hard filesystem boundary; commands that write caches,
   build artifacts, or temp files inside the repo can fail.
-- `workspace-write -a never` is usually enough for unattended edit workers.
-  Reach for danger-full-access only after an external sandbox is already in
-  place.
+- On codex-cli 0.142.x, `codex exec` rejects `-a/--ask-for-approval`; it is
+  already non-interactive. Sandbox flags such as `--sandbox workspace-write`
+  still apply.
+- ChatGPT-plan usage limits abort runs mid-flight with a reset-at timestamp.
+  Fall back to another vendor, such as opencode, until that time and retry
+  Codex after the stated reset.
 - Worktrees do not include ignored local files by default. Copy only explicit
   prerequisites such as `.env.local`, and never copy broad secret directories.
 - `codex apply` applies the latest diff produced by a Codex agent to the current
