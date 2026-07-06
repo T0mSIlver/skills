@@ -102,6 +102,10 @@ fi
 
 # --discard: drop the local edits everywhere and reinstall the repo version.
 if [[ -n "$discard" ]]; then
+  if ((dry_run)); then
+    log "dry run: would remove $discard from: ${DESTINATIONS[*]} and reinstall it from the repo"
+    exit 0
+  fi
   removed=0
   for dest_root in "${DESTINATIONS[@]}"; do
     if [[ -d "$dest_root/$discard" ]]; then
@@ -125,21 +129,36 @@ if [[ -n "$discard" ]]; then
   done
   if ((reinstalled)); then
     log "reinstalled $discard from the repo"
+  elif [[ ! -d "$repo_dir/$discard" ]]; then
+    log "$discard is no longer in the repo (removed upstream); nothing will reinstall it"
   else
     log "reinstall did not complete (sync busy or unavailable); the timer will reinstall $discard within minutes"
   fi
   exit 0
 fi
 
-# Base the PR on what the sync actually deploys: FETCH_HEAD when the fetch
-# succeeds ($REMOTE/$BRANCH tracking refs can lag or be absent), the local
-# remote-tracking ref only as a fallback.
+# Base the PR on the commit the sync actually deployed (the
+# .skills-sync-commit breadcrumb): the installed copies were made from that
+# tree, so a newer base would fold reverts of fresh upstream work into the
+# diff. Fallbacks: FETCH_HEAD after a successful fetch, then the local
+# remote-tracking ref.
 base_ref="$REMOTE/$BRANCH"
 if git -C "$repo_dir" fetch --prune "$REMOTE" "$BRANCH" >/dev/null 2>&1; then
   base_ref="FETCH_HEAD"
 else
   log "warning: git fetch failed; comparing against the local $REMOTE/$BRANCH"
 fi
+for dest_root in "${DESTINATIONS[@]}"; do
+  if [[ -f "$dest_root/.skills-sync-commit" ]]; then
+    deployed_commit="$(<"$dest_root/.skills-sync-commit")"
+    if [[ -n "$deployed_commit" ]] &&
+      git -C "$repo_dir" cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
+      base_ref="$deployed_commit"
+    fi
+    break
+  fi
+done
+log "PR base: $base_ref"
 
 stamp="$(date +%Y%m%dT%H%M%S)"
 branch_name="skills-pr/${stamp}-$(hostname -s)"
@@ -147,6 +166,7 @@ tmp_root="$(mktemp -d)"
 wt="$tmp_root/wt"
 cleanup() {
   git -C "$repo_dir" worktree remove --force "$wt" >/dev/null 2>&1 || true
+  git -C "$repo_dir" branch -D "$branch_name" >/dev/null 2>&1 || true
   rm -rf "$tmp_root"
 }
 trap cleanup EXIT
@@ -164,6 +184,17 @@ wanted() {
 
 declare -A claimed=()
 included=()
+
+# Pristine copy of a skill at $base_ref, extracted once on demand — used to
+# tell "this destination has its own edits" from "it merely differs from the
+# already-imported copy of another destination".
+base_scratch="$tmp_root/base"
+pristine_skill() {
+  local skill="$1"
+  [[ -d "$base_scratch/$skill" ]] && return 0
+  mkdir -p "$base_scratch"
+  git -C "$repo_dir" archive "$base_ref" "$skill" 2>/dev/null | tar -x -C "$base_scratch"
+}
 
 # import_dir <source-dir> <skill-name> <origin-desc>: copy the source into
 # the worktree, then let git decide whether it actually differs — mtimes
@@ -189,8 +220,19 @@ for dest_root in "${DESTINATIONS[@]}"; do
   while IFS= read -r skill; do
     [[ -n "$skill" ]] || continue
     wanted "$skill" || continue
-    [[ -n "${claimed[$skill]:-}" ]] && continue
     [[ -d "$dest_root/$skill" ]] || continue
+    if [[ -n "${claimed[$skill]:-}" ]]; then
+      # Another destination already claimed this skill. Warn only when this
+      # copy has its OWN edits (differs from the base) that also differ from
+      # the claimed copy — a pristine copy trivially differs from the
+      # imported one and needs no warning.
+      if pristine_skill "$skill" &&
+        ! diff -rq -x .DS_Store -x '*.swp' -- "$dest_root/$skill" "$base_scratch/$skill" >/dev/null 2>&1 &&
+        ! diff -rq -x .DS_Store -x '*.swp' -- "$dest_root/$skill" "$wt/$skill" >/dev/null 2>&1; then
+        log "warning: $skill also has different local edits in $dest_root — NOT included (using ${claimed[$skill]}). PR them separately after this one merges, or drop them: skills-pr --discard $skill"
+      fi
+      continue
+    fi
     import_dir "$dest_root/$skill" "$skill" "$dest_root/$skill"
   done <"$manifest"
 done
@@ -215,7 +257,14 @@ fi
 
 git -C "$wt" commit -q -m "$title" -m "$body"
 git -C "$wt" push -q -u "$REMOTE" "$branch_name"
-pr_url="$(cd "$wt" && gh pr create --base "$BRANCH" --head "$branch_name" --title "$title" --body "$body")"
+if ! pr_url="$(cd "$wt" && gh pr create --base "$BRANCH" --head "$branch_name" --title "$title" --body "$body")"; then
+  # Do not leave an orphan remote branch behind on gh failure; the local
+  # edits are still installed (held), so nothing is lost by deleting it.
+  if git -C "$wt" push -q -d "$REMOTE" "$branch_name" 2>/dev/null; then
+    die "gh pr create failed; the pushed branch was removed — fix gh (auth? network?) and re-run skills-pr"
+  fi
+  die "gh pr create failed and the pushed branch could not be removed — open a PR manually from $REMOTE/$branch_name"
+fi
 printf '%s\n' "$pr_url"
 log ""
 log "PR opened: $pr_url"

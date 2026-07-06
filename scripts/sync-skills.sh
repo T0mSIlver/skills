@@ -73,6 +73,7 @@ if git fetch --prune "$REMOTE" "$BRANCH"; then
   if git archive FETCH_HEAD | tar -x -C "$ARCHIVE_DIR"; then
     SYNC_SOURCE="$ARCHIVE_DIR"
     SYNC_COMMIT="$(git rev-parse --short FETCH_HEAD 2>/dev/null || true)"
+    SYNC_COMMIT_FULL="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
     log "using fetched $REMOTE/$BRANCH"
   else
     log "git archive failed; continuing with local checkout"
@@ -82,6 +83,9 @@ else
 fi
 if [[ -z "$SYNC_COMMIT" ]]; then
   SYNC_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)-local"
+fi
+if [[ -z "${SYNC_COMMIT_FULL:-}" ]]; then
+  SYNC_COMMIT_FULL="$(git rev-parse HEAD 2>/dev/null || true)"
 fi
 # Strip userinfo (user:token@) from the remote URL before it lands in the
 # generated READMEs — HTTPS remotes can embed a PAT.
@@ -193,9 +197,11 @@ for dest_root in "${DESTINATIONS[@]}"; do
     while IFS= read -r old_skill; do
       [[ -n "$old_skill" ]] || continue
       if ! grep -Fxq -- "$old_skill" "$current_manifest"; then
-        # A held skill carries local edits — preserve them before the
-        # upstream removal wins, like any other upstream change while held.
-        if [[ "${last_flag[$old_skill]:-synced}" == "held" && -d "$dest_root/$old_skill" ]]; then
+        # Local edits (whether the hold was already flagged or made since
+        # the last sync) — preserve them before the upstream removal wins,
+        # like any other upstream change while held.
+        if [[ -d "$dest_root/$old_skill" && -n "${last_hash[$old_skill]:-}" ]] \
+          && [[ "$(tree_hash "$dest_root/$old_skill")" != "${last_hash[$old_skill]}" ]]; then
           replaced="$(mktemp -d -t skills-sync-replaced-XXXXXX)/$old_skill"
           mkdir -p "$replaced"
           rsync -a -- "$dest_root/$old_skill/" "$replaced/"
@@ -262,8 +268,11 @@ for dest_root in "${DESTINATIONS[@]}"; do
   rm -f "$new_state"
 
   write_dest_readme "$dest_root" "$held_skills"
-  # Breadcrumb for skills-pr: where the repo checkout lives.
+  # Breadcrumbs for skills-pr: where the repo checkout lives, and which
+  # commit the installed copies were deployed from (so a PR is based on the
+  # deployed tree, not a newer fetch that would fold upstream reverts in).
   printf '%s\n' "$REPO_DIR" >"$dest_root/.skills-sync-repo"
+  printf '%s\n' "$SYNC_COMMIT_FULL" >"$dest_root/.skills-sync-commit"
   install -m 0644 "$current_manifest" "$manifest"
 done
 
