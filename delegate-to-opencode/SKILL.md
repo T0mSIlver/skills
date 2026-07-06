@@ -49,9 +49,16 @@ $worktree/.agent-runs/$slug/prompt.md
 ```
 
 Include context, exact task, constraints, acceptance criteria, verification
-commands, and required final output. Use `--file prompt.md` by itself for long
-briefs, or inline `"$(cat prompt.md)"` only for prompts safely under shell
-argument limits.
+commands, and required final output. The brief reaches opencode as the
+positional message — inline it with `"$(cat prompt.md)"`. `--file` does NOT
+send file contents as the prompt: it only attaches files to a message, and a
+non-empty message is still required. If a brief is too large to inline
+comfortably, keep a short instruction as the positional and attach the brief —
+with the positional BEFORE the flag (see Gotchas for why the order matters):
+
+```bash
+opencode run "Follow the attached prompt file exactly." --file prompt.md ...
+```
 
 ## Step 3 - Model default
 
@@ -106,9 +113,18 @@ timeout --signal=TERM 2700 opencode run \
   --format json \
   --title "$slug-review" \
   --auto \
-  --file "$prompt_file" \
+  "$(cat "$prompt_file")" \
+  < /dev/null \
   > "$run_dir/events.jsonl"
 ```
+
+The `< /dev/null` is mandatory, not decoration: `opencode run` reads stdin on
+startup, and when it is launched from a non-interactive harness (the Claude Code
+Bash tool, cron, most orchestrators) stdin is an open, silent pipe/socket that
+never sends data and never closes. opencode parks in its event loop waiting for
+that stdin, wedging at `init` before it ever creates a session or contacts the
+model — the exact "stalls, nothing in events.jsonl" symptom. Redirecting from
+`/dev/null` delivers an immediate EOF so the run proceeds. See Gotchas.
 
 ### Edit worker
 
@@ -122,7 +138,8 @@ timeout --signal=TERM 2700 opencode run \
   --format json \
   --title "$slug-edit" \
   --auto \
-  --file "$run_dir/prompt.md" \
+  "$(cat "$run_dir/prompt.md")" \
+  < /dev/null \
   > "$run_dir/events.jsonl"
 ```
 
@@ -145,6 +162,10 @@ SQLite/WAL state under `~/.local/share/opencode/opencode.db`.
 - During a healthy `--format json` run, `events.jsonl` streams continuously. If
   it is still 0 bytes after about 5 minutes, or its mtime is stale for more
   than 10 minutes, assume the run is hung; kill and relaunch instead of waiting.
+  A run that is 0 bytes from the very start and whose log stops at `init` (no
+  `created id=ses_...` line) is almost always the missing `< /dev/null`
+  redirect, not a provider or DB problem — confirm the launch has it before
+  investigating anything else.
 - `opencode session list` shows saved sessions.
 - Continue the last session with `opencode run --continue "..."`.
 - Continue a specific session with `opencode run --session <id> "..."`.
@@ -178,6 +199,18 @@ Instead of markdown files, declare the agents in `opencode.json`:
 
 ## Gotchas
 
+- Missing `< /dev/null` is the top cause of a run that "stalls with an empty
+  events.jsonl". `opencode run` reads stdin at startup; under a non-interactive
+  harness stdin is an open pipe/socket that never closes, so opencode blocks in
+  its event loop (`epoll_wait` on fd 0) waiting for input that never arrives. It
+  wedges at `init` — before any session is created or the model is contacted —
+  and only the `timeout` wrapper ever ends it. Symptoms: `events.jsonl` 0 bytes
+  from the start, `~/.local/share/opencode/log/opencode.log` ends at `init` with
+  no `created id=ses_...`, the process idle at ~0% CPU holding fd 0 as a
+  connected socket and no outbound TCP. Always redirect `< /dev/null` on every
+  `opencode run` launched from the Claude Code Bash tool, cron, or any
+  orchestrator. Confirmed by A/B: identical command hangs without the redirect,
+  completes with it.
 - `mode: subagent` plus `opencode run --agent <name>` is a trap: opencode falls
   back to the default primary agent, so your read-only/edit permissions may not
   be active. Use `mode: all` or `mode: primary` for direct-run agents.
@@ -193,10 +226,18 @@ Instead of markdown files, declare the agents in `opencode.json`:
   the remote opencode server.
 - opencode has session resume/fork controls but no native worktree creation
   flag. Create and clean up Git worktrees yourself.
-- In opencode 1.17.13, combining `--file prompt.md` with a positional message
-  makes the CLI treat the message as another file path and fail with `File not
-  found: <message text>`. Use `--file` with no positional message, or inline
-  `"$(cat prompt.md)"` for prompts safely under argv limits.
+- `--file` never carries the prompt. It is an attachment flag ("file(s) to
+  attach to message"; `run.ts` declares it `array: true`), and `opencode run`
+  still requires a non-empty positional message — `--file` alone dies with
+  `You must provide a message or a command`. Worse, yargs array flags greedily
+  consume the positionals that follow them, so `--file prompt.md "do X"` —
+  and the `--file=prompt.md` form too — swallow the message into the file
+  list and die with `File not found: do X`. All three failure modes verified
+  on 1.17.13. Safe forms: inline the brief as the positional message
+  (`"$(cat prompt.md)"`), or put the message BEFORE the flag:
+  `opencode run "Follow the attached prompt file exactly." --file prompt.md`.
+  Briefs that could start with a `-` need the inline form quoted as one
+  argument (they already are with `"$(cat ...)"`).
 - Check `~/.local/share/opencode/log/opencode.log` when a run goes quiet. It is
   one shared log with UTC timestamps; grep for `run=` or `agent=` to distinguish
   "never initialized" from "stalled mid-stream".
