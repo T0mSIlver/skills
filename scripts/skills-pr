@@ -94,6 +94,12 @@ fi
 [[ -n "$repo_dir" ]] || die "could not locate the skills repo checkout (set SKILLS_REPO_DIR)"
 git -C "$repo_dir" rev-parse --git-dir >/dev/null 2>&1 || die "not a git repository: $repo_dir"
 
+# Do not read or mutate installed copies while a sync is rewriting them.
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$LOCK_FILE"
+  flock -w 30 9 || die "skills-sync holds the lock; retry in a few seconds"
+fi
+
 # --discard: drop the local edits everywhere and reinstall the repo version.
 if [[ -n "$discard" ]]; then
   removed=0
@@ -105,19 +111,24 @@ if [[ -n "$discard" ]]; then
     fi
   done
   ((removed)) || die "no installed copy of $discard found"
+  # Release the lock so the reinstall sync (which takes the same lock with
+  # flock -n) is not suppressed by our own hold on it.
+  if command -v flock >/dev/null 2>&1; then
+    exec 9>&-
+  fi
   if [[ -x "$repo_dir/scripts/sync-skills.sh" ]]; then
     bash "$repo_dir/scripts/sync-skills.sh" >/dev/null 2>&1 || true
+  fi
+  reinstalled=1
+  for dest_root in "${DESTINATIONS[@]}"; do
+    [[ -d "$dest_root/$discard" ]] || reinstalled=0
+  done
+  if ((reinstalled)); then
     log "reinstalled $discard from the repo"
   else
-    log "run the sync (or wait for the timer) to reinstall $discard"
+    log "reinstall did not complete (sync busy or unavailable); the timer will reinstall $discard within minutes"
   fi
   exit 0
-fi
-
-# Do not read installed copies while a sync is rewriting them.
-if command -v flock >/dev/null 2>&1; then
-  exec 9>"$LOCK_FILE"
-  flock -w 30 9 || die "skills-sync holds the lock; retry in a few seconds"
 fi
 
 # Base the PR on what the sync actually deploys: FETCH_HEAD when the fetch

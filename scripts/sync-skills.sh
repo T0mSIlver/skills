@@ -97,13 +97,17 @@ ORIGIN_URL="${ORIGIN_URL:-$REPO_DIR}"
 # and git checkouts legitimately disagree on modes (755 vs 775 dirs), which
 # would otherwise block reconvergence forever.
 STATE_FORMAT="v3"
+# Editor/OS cruft the repo gitignores can never travel through a skills-pr
+# PR, so it must not count as drift either — otherwise one .DS_Store holds a
+# skill forever with no way to reconverge.
+CRUFT_FILTER=(! -name .DS_Store ! -name '*.swp')
 tree_hash() {
   local dir="$1"
   (
     cd "$dir" && {
-      find . -mindepth 1 -printf '%y %p %l\n' | sort
-      find . -type f -perm -u+x -printf 'x %p\n' | sort
-      find . -type f -print0 | sort -z | xargs -0 -r sha256sum
+      find . -mindepth 1 "${CRUFT_FILTER[@]}" -printf '%y %p %l\n' | sort
+      find . -type f -perm -u+x "${CRUFT_FILTER[@]}" -printf 'x %p\n' | sort
+      find . -type f "${CRUFT_FILTER[@]}" -print0 | sort -z | xargs -0 -r sha256sum
     }
   ) | sha256sum | cut -d' ' -f1
 }
@@ -169,16 +173,6 @@ for dest_root in "${DESTINATIONS[@]}"; do
   manifest="$dest_root/.skills-sync-manifest"
   state_file="$dest_root/.skills-sync-state"
 
-  if [[ -f "$manifest" ]]; then
-    while IFS= read -r old_skill; do
-      [[ -n "$old_skill" ]] || continue
-      if ! grep -Fxq -- "$old_skill" "$current_manifest"; then
-        rm -rf -- "$dest_root/$old_skill"
-        log "removed stale synced skill $old_skill from $dest_root"
-      fi
-    done <"$manifest"
-  fi
-
   # Hashes and hold flags recorded by the previous sync. An installed tree
   # that no longer matches its recorded hash was edited in place; local
   # edits WIN — the skill is held (never overwritten) until the edits reach
@@ -193,6 +187,24 @@ for dest_root in "${DESTINATIONS[@]}"; do
       last_flag["$name"]="${flag:-synced}"
       hold_base["$name"]="$base"
     done < <(tail -n +2 "$state_file")
+  fi
+
+  if [[ -f "$manifest" ]]; then
+    while IFS= read -r old_skill; do
+      [[ -n "$old_skill" ]] || continue
+      if ! grep -Fxq -- "$old_skill" "$current_manifest"; then
+        # A held skill carries local edits — preserve them before the
+        # upstream removal wins, like any other upstream change while held.
+        if [[ "${last_flag[$old_skill]:-synced}" == "held" && -d "$dest_root/$old_skill" ]]; then
+          replaced="$(mktemp -d -t skills-sync-replaced-XXXXXX)/$old_skill"
+          mkdir -p "$replaced"
+          rsync -a -- "$dest_root/$old_skill/" "$replaced/"
+          log "NOTICE: upstream removed $old_skill while it was held; the local edits are preserved at $replaced"
+        fi
+        rm -rf -- "$dest_root/$old_skill"
+        log "removed stale synced skill $old_skill from $dest_root"
+      fi
+    done <"$manifest"
   fi
 
   new_state="$(mktemp)"
