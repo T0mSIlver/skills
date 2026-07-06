@@ -83,15 +83,24 @@ fi
 if [[ -z "$SYNC_COMMIT" ]]; then
   SYNC_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)-local"
 fi
-ORIGIN_URL="$(git remote get-url "$REMOTE" 2>/dev/null || echo "$REPO_DIR")"
+# Strip userinfo (user:token@) from the remote URL before it lands in the
+# generated READMEs — HTTPS remotes can embed a PAT.
+ORIGIN_URL="$(git remote get-url "$REMOTE" 2>/dev/null | sed -E 's#^([a-z+]+://)[^@/]+@#\1#' || true)"
+ORIGIN_URL="${ORIGIN_URL:-$REPO_DIR}"
 
-# Content hash of a synced skill directory: detects local edits made to the
-# installed copy between syncs so they can be preserved instead of silently
-# destroyed by rsync --delete.
+# Content+structure hash of a synced skill directory: detects local edits made
+# to the installed copy between syncs so they can be preserved instead of
+# silently destroyed by rsync --delete. Covers what rsync -a manages: file
+# contents, entry types, permissions, and symlink targets (not timestamps).
+STATE_FORMAT="v2"
 tree_hash() {
   local dir="$1"
-  (cd "$dir" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum) |
-    sha256sum | cut -d' ' -f1
+  (
+    cd "$dir" && {
+      find . -mindepth 1 -printf '%y %m %p %l\n' | sort
+      find . -type f -print0 | sort -z | xargs -0 -r sha256sum
+    }
+  ) | sha256sum | cut -d' ' -f1
 }
 
 write_dest_readme() {
@@ -154,15 +163,18 @@ for dest_root in "${DESTINATIONS[@]}"; do
   fi
 
   # Hashes recorded by the previous sync; a mismatch against the current
-  # installed tree means someone edited the installed copy since then.
+  # installed tree means someone edited the installed copy since then. A
+  # state file from an older hash format is ignored (bootstrap semantics)
+  # rather than producing a spurious warning for every skill.
   declare -A last_hash=()
-  if [[ -f "$state_file" ]]; then
+  if [[ -f "$state_file" && "$(head -n1 "$state_file")" == "$STATE_FORMAT" ]]; then
     while read -r name hash; do
       [[ -n "$name" && -n "$hash" ]] && last_hash["$name"]="$hash"
-    done <"$state_file"
+    done < <(tail -n +2 "$state_file")
   fi
 
   new_state="$(mktemp)"
+  printf '%s\n' "$STATE_FORMAT" >>"$new_state"
   for skill_dir in "${skill_dirs[@]}"; do
     skill_name="$(basename "$skill_dir")"
     dest_dir="$dest_root/$skill_name"
