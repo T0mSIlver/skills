@@ -101,8 +101,15 @@ if command -v flock >/dev/null 2>&1; then
   flock -w 30 9 || die "skills-sync holds the lock; retry in a few seconds"
 fi
 
-git -C "$repo_dir" fetch --prune "$REMOTE" "$BRANCH" >/dev/null 2>&1 ||
+# Base the PR on what the sync actually deploys: FETCH_HEAD when the fetch
+# succeeds ($REMOTE/$BRANCH tracking refs can lag or be absent), the local
+# remote-tracking ref only as a fallback.
+base_ref="$REMOTE/$BRANCH"
+if git -C "$repo_dir" fetch --prune "$REMOTE" "$BRANCH" >/dev/null 2>&1; then
+  base_ref="FETCH_HEAD"
+else
   log "warning: git fetch failed; comparing against the local $REMOTE/$BRANCH"
+fi
 
 stamp="$(date +%Y%m%dT%H%M%S)"
 branch_name="skills-pr/${stamp}-$(hostname -s)"
@@ -114,7 +121,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-git -C "$repo_dir" worktree add -q -b "$branch_name" "$wt" "$REMOTE/$BRANCH"
+git -C "$repo_dir" worktree add -q -b "$branch_name" "$wt" "$base_ref"
 
 wanted() {
   ((${#skills[@]} == 0)) && return 0
