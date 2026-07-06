@@ -49,9 +49,16 @@ $worktree/.agent-runs/$slug/prompt.md
 ```
 
 Include context, exact task, constraints, acceptance criteria, verification
-commands, and required final output. Use `--file prompt.md` by itself for long
-briefs, or inline `"$(cat prompt.md)"` only for prompts safely under shell
-argument limits.
+commands, and required final output. The brief reaches opencode as the
+positional message — inline it with `"$(cat prompt.md)"`. `--file` does NOT
+send file contents as the prompt: it only attaches files to a message, and a
+non-empty message is still required. If a brief is too large to inline
+comfortably, keep a short instruction as the positional and attach the brief —
+with the positional BEFORE the flag (see Gotchas for why the order matters):
+
+```bash
+opencode run "Follow the attached prompt file exactly." --file prompt.md ...
+```
 
 ## Step 3 - Model default
 
@@ -106,7 +113,7 @@ timeout --signal=TERM 2700 opencode run \
   --format json \
   --title "$slug-review" \
   --auto \
-  --file "$prompt_file" \
+  "$(cat "$prompt_file")" \
   < /dev/null \
   > "$run_dir/events.jsonl"
 ```
@@ -131,7 +138,7 @@ timeout --signal=TERM 2700 opencode run \
   --format json \
   --title "$slug-edit" \
   --auto \
-  --file "$run_dir/prompt.md" \
+  "$(cat "$run_dir/prompt.md")" \
   < /dev/null \
   > "$run_dir/events.jsonl"
 ```
@@ -219,10 +226,18 @@ Instead of markdown files, declare the agents in `opencode.json`:
   the remote opencode server.
 - opencode has session resume/fork controls but no native worktree creation
   flag. Create and clean up Git worktrees yourself.
-- In opencode 1.17.13, combining `--file prompt.md` with a positional message
-  makes the CLI treat the message as another file path and fail with `File not
-  found: <message text>`. Use `--file` with no positional message, or inline
-  `"$(cat prompt.md)"` for prompts safely under argv limits.
+- `--file` never carries the prompt. It is an attachment flag ("file(s) to
+  attach to message"; `run.ts` declares it `array: true`), and `opencode run`
+  still requires a non-empty positional message — `--file` alone dies with
+  `You must provide a message or a command`. Worse, yargs array flags greedily
+  consume the positionals that follow them, so `--file prompt.md "do X"` —
+  and the `--file=prompt.md` form too — swallow the message into the file
+  list and die with `File not found: do X`. All three failure modes verified
+  on 1.17.13. Safe forms: inline the brief as the positional message
+  (`"$(cat prompt.md)"`), or put the message BEFORE the flag:
+  `opencode run "Follow the attached prompt file exactly." --file prompt.md`.
+  Briefs that could start with a `-` need the inline form quoted as one
+  argument (they already are with `"$(cat ...)"`).
 - Check `~/.local/share/opencode/log/opencode.log` when a run goes quiet. It is
   one shared log with UTC timestamps; grep for `run=` or `agent=` to distinguish
   "never initialized" from "stalled mid-stream".
