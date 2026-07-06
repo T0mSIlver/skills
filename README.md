@@ -77,44 +77,48 @@ only skills managed by this repo and leaves unrelated local skills alone. It
 also installs skill-managed helper commands, such as `claude-rc-spawn` and
 `install-claude-rc-server-service.sh`, into `~/.local/bin`.
 
-The installed copies are managed artifacts — the repo is the source of truth,
-and any direct edit to a synced skill is overwritten by the next timer run.
-Because agents (and humans) kept learning this the hard way, the sync makes
-overwrites loud and recoverable instead of silent:
+The repo is the source of truth, but **local edits win**: the sync hashes each
+installed skill against the state it wrote last time (`.skills-sync-state`),
+and a skill whose installed copy was edited in place is *held* — never
+overwritten — until the edits land on `origin/main` (the sync reconverges
+automatically once they do) or are explicitly discarded:
 
 - Each destination gets a `README.md` saying the directory is managed, where
-  the content comes from (remote, branch, commit), and when it last synced.
-- Before overwriting, the sync hashes each installed skill against the state
-  it wrote last time (`.skills-sync-state`). If the installed copy was edited
-  in between, the pre-sync copy is preserved under `.skills-sync-backups/`
-  (the `BACKUP_KEEP` most recent, default 10) and the journal gets a
-  `WARNING: local edits detected …` line pointing at the backup.
+  the content comes from (remote, branch, commit), when it last synced, and
+  which skills are currently held because of local edits.
+- The first sync that sees a local edit logs one `NOTICE: local edits in …`
+  journal line with the exact next steps, then stays quiet while the hold
+  lasts.
 - "synced" journal lines only appear when a skill's content actually changed,
-  so warnings stand out instead of drowning in no-op noise.
+  so notices stand out instead of drowning in no-op noise.
 
 ## Upstreaming a fix found while using a skill
 
 An in-place edit to an installed copy is almost always an agent that spotted a
-mistake mid-task. The intended path from there to the repo is one command,
-`skills-pr` (installed into `~/.local/bin` by the sync):
+mistake mid-task. The intended flow is: edit the installed copy, open a PR
+with one command, and **ask the repo owner to review it** — the local edit
+stays live (held) in the meantime, and everything reconverges on merge.
+`skills-pr` is installed into `~/.local/bin` by the sync:
 
 ```bash
 # after editing the installed copy in place:
 skills-pr -m "delegate-to-codex: fix resume example"
+# ... then tell the owner to review the PR it prints.
 
 # preview without pushing or opening a PR:
 skills-pr --dry-run
 
-# the sync reverted the edit before you ran it? recover from the backup:
-skills-pr --from-backup delegate-to-codex -m "..."
+# throw the local edits away and reinstall the repo version:
+skills-pr --discard delegate-to-codex
 ```
 
 It diffs the installed copies against `origin/main`, applies the drift in a
 temporary worktree of the repo checkout (found via the `.skills-sync-repo`
 breadcrumb each destination carries), commits, pushes a `skills-pr/...`
-branch, and opens the PR with `gh`. The destination `README.md` and the
-sync's `WARNING` journal line both point at it, so an agent that gets its
-edit reverted is told the recovery command in the same breath.
+branch, opens the PR with `gh`, and prints the review-request next step. The
+destination `README.md` and the sync's `NOTICE` journal line teach the same
+two commands, so an agent whose skill is held is told the path in the same
+breath.
 
 For private GitHub repos, the timer needs noninteractive git credentials. The
 installer imports currently available `GITHUB_TOKEN`, `GH_TOKEN`, and
@@ -126,6 +130,7 @@ Useful commands:
 ```bash
 scripts/sync-skills.sh
 skills-pr --dry-run
+skills-pr --discard <skill>
 install-claude-rc-server-service.sh
 systemctl --user status skills-sync.timer
 systemctl --user status claude-rc-skills.service

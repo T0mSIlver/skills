@@ -5,7 +5,6 @@ REPO_DIR="${REPO_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)}
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-main}"
 LOCK_FILE="${LOCK_FILE:-${XDG_RUNTIME_DIR:-/tmp}/skills-sync.lock}"
-BACKUP_KEEP="${BACKUP_KEEP:-10}"
 export GIT_TERMINAL_PROMPT="${GIT_TERMINAL_PROMPT:-0}"
 SYNC_SOURCE="$REPO_DIR"
 SYNC_COMMIT=""
@@ -90,42 +89,49 @@ ORIGIN_URL="$(git remote get-url "$REMOTE" 2>/dev/null | sed -E 's#^([a-z+]+://)
 ORIGIN_URL="${ORIGIN_URL:-$REPO_DIR}"
 
 # Content+structure hash of a synced skill directory: detects local edits made
-# to the installed copy between syncs so they can be preserved instead of
-# silently destroyed by rsync --delete. Covers what rsync -a manages: file
-# contents, entry types, permissions, and symlink targets (not timestamps).
-STATE_FORMAT="v2"
+# to the installed copy between syncs so the skill can be held (local edits
+# win) instead of overwritten. Covers exactly the git-visible state — file
+# contents, paths and entry types, symlink targets, and the user exec bit —
+# because held edits reconverge through a PR, and anything git cannot record
+# (full mode bits, timestamps) could never round-trip: tar-extracted installs
+# and git checkouts legitimately disagree on modes (755 vs 775 dirs), which
+# would otherwise block reconvergence forever.
+STATE_FORMAT="v3"
 tree_hash() {
   local dir="$1"
   (
     cd "$dir" && {
-      find . -mindepth 1 -printf '%y %m %p %l\n' | sort
+      find . -mindepth 1 -printf '%y %p %l\n' | sort
+      find . -type f -perm -u+x -printf 'x %p\n' | sort
       find . -type f -print0 | sort -z | xargs -0 -r sha256sum
     }
   ) | sha256sum | cut -d' ' -f1
 }
 
 write_dest_readme() {
-  local dest_root="$1"
+  local dest_root="$1" held_list="$2"
   cat >"$dest_root/README.md" <<EOF
 # Managed directory — synced from the skills repo
 
 Every skill directory in here is synced from $ORIGIN_URL
 ($REMOTE/$BRANCH) by the \`skills-sync\` systemd user timer, every few
-minutes. Direct edits never persist: the next sync reverts them (a
-pre-sync copy is kept under \`.skills-sync-backups/\`, the $BACKUP_KEEP
-most recent, with a WARNING in
-\`journalctl --user -u skills-sync.service\`).
+minutes.
 
-Found a mistake in a skill while using it? Fix it here in place, then
-immediately run:
+Edited a skill here after finding a mistake? That is fine — the sync
+detects local edits and HOLDS that skill: your version stays in place
+and is not overwritten. Then:
 
-    skills-pr -m "<skill>: <what you fixed>"
+1. Open a PR carrying your edits (\`--dry-run\` to preview):
 
-It diffs the installed copies against the repo and opens a PR carrying
-your edits (\`--dry-run\` to preview). If the sync reverted your edit
-before you ran it, recover it from the backup:
+       skills-pr -m "<skill>: <what you fixed>"
 
-    skills-pr --from-backup <skill> -m "..."
+2. Tell the repo owner to review and merge that PR. Once it merges
+   as-is, the sync reconverges automatically and resumes managing the
+   skill. To throw the local edits away instead:
+
+       skills-pr --discard <skill>
+
+Currently held (local edits present): ${held_list:-none}
 
 Skills not managed by the repo are left alone.
 
@@ -159,7 +165,6 @@ for dest_root in "${DESTINATIONS[@]}"; do
   mkdir -p "$dest_root"
   manifest="$dest_root/.skills-sync-manifest"
   state_file="$dest_root/.skills-sync-state"
-  backup_root="$dest_root/.skills-sync-backups"
 
   if [[ -f "$manifest" ]]; then
     while IFS= read -r old_skill; do
@@ -171,48 +176,58 @@ for dest_root in "${DESTINATIONS[@]}"; do
     done <"$manifest"
   fi
 
-  # Hashes recorded by the previous sync; a mismatch against the current
-  # installed tree means someone edited the installed copy since then. A
-  # state file from an older hash format is ignored (bootstrap semantics)
-  # rather than producing a spurious warning for every skill.
-  declare -A last_hash=()
+  # Hashes and hold flags recorded by the previous sync. An installed tree
+  # that no longer matches its recorded hash was edited in place; local
+  # edits WIN — the skill is held (never overwritten) until the edits reach
+  # $REMOTE/$BRANCH (reconverges automatically) or are discarded with
+  # 'skills-pr --discard'. A state file from an older hash format is ignored
+  # (bootstrap semantics) rather than holding or warning on every skill.
+  declare -A last_hash=() last_flag=()
   if [[ -f "$state_file" && "$(head -n1 "$state_file")" == "$STATE_FORMAT" ]]; then
-    while read -r name hash; do
-      [[ -n "$name" && -n "$hash" ]] && last_hash["$name"]="$hash"
+    while read -r name hash flag; do
+      [[ -n "$name" && -n "$hash" ]] || continue
+      last_hash["$name"]="$hash"
+      last_flag["$name"]="${flag:-synced}"
     done < <(tail -n +2 "$state_file")
   fi
 
   new_state="$(mktemp)"
   printf '%s\n' "$STATE_FORMAT" >>"$new_state"
+  held_skills=""
   for skill_dir in "${skill_dirs[@]}"; do
     skill_name="$(basename "$skill_dir")"
     dest_dir="$dest_root/$skill_name"
 
-    if [[ -d "$dest_dir" && -n "${last_hash[$skill_name]:-}" ]] \
-      && [[ "$(tree_hash "$dest_dir")" != "${last_hash[$skill_name]}" ]]; then
-      backup_dir="$backup_root/$(date +%Y%m%dT%H%M%S)-$skill_name"
-      mkdir -p "$backup_dir"
-      rsync -a -- "$dest_dir/" "$backup_dir/"
-      log "WARNING: local edits detected in $dest_dir — installed copies are always overwritten; pre-sync copy preserved at $backup_dir; run 'skills-pr --from-backup $skill_name' to open a PR with them"
+    if [[ -d "$dest_dir" && -n "${last_hash[$skill_name]:-}" ]]; then
+      installed_hash="$(tree_hash "$dest_dir")"
+      if [[ "$installed_hash" != "${last_hash[$skill_name]}" ]]; then
+        # Local edits. Installed copies are rsync -a copies of the source,
+        # so equal tree hashes mean the edits are now on $REMOTE/$BRANCH.
+        if [[ "$installed_hash" == "$(tree_hash "$skill_dir")" ]]; then
+          log "local edits to $skill_name are now on $REMOTE/$BRANCH; resuming sync in $dest_root"
+          rsync -a --delete -- "$skill_dir/" "$dest_dir/"
+          printf '%s %s synced\n' "$skill_name" "$installed_hash" >>"$new_state"
+        else
+          if [[ "${last_flag[$skill_name]:-synced}" != "held" ]]; then
+            log "NOTICE: local edits in $dest_dir — leaving them in place (sync held for this skill). Open a PR with: skills-pr -m '$skill_name: <what you fixed>' — then ask the repo owner to review and merge it. Discard the local edits instead with: skills-pr --discard $skill_name"
+          fi
+          held_skills="${held_skills:+$held_skills, }$skill_name"
+          printf '%s %s held\n' "$skill_name" "${last_hash[$skill_name]}" >>"$new_state"
+        fi
+        continue
+      fi
     fi
 
     changes="$(rsync -ai --delete -- "$skill_dir/" "$dest_dir/")"
     if [[ -n "$changes" ]]; then
       log "synced $skill_name to $dest_root (content updated)"
     fi
-    printf '%s %s\n' "$skill_name" "$(tree_hash "$dest_dir")" >>"$new_state"
+    printf '%s %s synced\n' "$skill_name" "$(tree_hash "$dest_dir")" >>"$new_state"
   done
   install -m 0644 "$new_state" "$state_file"
   rm -f "$new_state"
 
-  if [[ -d "$backup_root" ]]; then
-    mapfile -t stale_backups < <(ls -1t -- "$backup_root" | tail -n +$((BACKUP_KEEP + 1)))
-    for stale in "${stale_backups[@]}"; do
-      [[ -n "$stale" ]] && rm -rf -- "$backup_root/$stale"
-    done
-  fi
-
-  write_dest_readme "$dest_root"
+  write_dest_readme "$dest_root" "$held_skills"
   # Breadcrumb for skills-pr: where the repo checkout lives.
   printf '%s\n' "$REPO_DIR" >"$dest_root/.skills-sync-repo"
   install -m 0644 "$current_manifest" "$manifest"

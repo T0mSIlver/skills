@@ -8,12 +8,11 @@ shopt -s nullglob
 #
 # Typical use, right after fixing a mistake in an installed skill:
 #   skills-pr -m "delegate-to-codex: fix resume example"
-# If the sync already reverted the edit (it runs every ~2 minutes):
-#   skills-pr --from-backup delegate-to-codex -m "..."
 #
-# Installed copies are managed by skills-sync and never keep direct edits.
-# This tool is the intended path from "I fixed the installed copy" to
-# "the fix is on the repo's main".
+# The sync HOLDS locally edited skills (it never overwrites them), so the
+# edits stay live while the PR is reviewed; once it merges as-is the sync
+# reconverges and resumes managing the skill. This tool is the intended
+# path from "I fixed the installed copy" to "the fix is on the repo's main".
 
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-main}"
@@ -28,13 +27,13 @@ DESTINATIONS=(
 usage() {
   cat <<'EOF'
 usage: skills-pr [-m "PR title"] [--dry-run] [skill ...]
-       skills-pr --from-backup <skill> [-m "PR title"] [--dry-run]
+       skills-pr --discard <skill>
 
 Turns edits made in place to installed skill copies into a pull request on
 the skills repo. With no skill arguments, every installed skill that differs
-from the repo's main branch is included. --from-backup uses the most recent
-pre-sync backup of <skill> instead of the (already reverted) installed copy.
---dry-run prints the diff and stops before pushing or opening a PR.
+from the repo's main branch is included. --dry-run prints the diff and stops
+before pushing or opening a PR. --discard throws away the local edits of
+<skill> in every destination and reinstalls the repo version.
 EOF
 }
 
@@ -46,7 +45,7 @@ die() {
 
 title=""
 dry_run=0
-from_backup=""
+discard=""
 skills=()
 while (($#)); do
   case "$1" in
@@ -54,8 +53,8 @@ while (($#)); do
       title="${2:?-m needs a value}"
       shift 2
       ;;
-    --from-backup)
-      from_backup="${2:?--from-backup needs a skill name}"
+    --discard)
+      discard="${2:?--discard needs a skill name}"
       shift 2
       ;;
     --dry-run)
@@ -79,7 +78,7 @@ done
 
 command -v git >/dev/null 2>&1 || die "git is required"
 command -v rsync >/dev/null 2>&1 || die "rsync is required"
-if ((!dry_run)); then
+if ((!dry_run)) && [[ -z "$discard" ]]; then
   command -v gh >/dev/null 2>&1 || die "gh is required (or use --dry-run)"
 fi
 
@@ -94,6 +93,26 @@ if [[ -z "$repo_dir" ]]; then
 fi
 [[ -n "$repo_dir" ]] || die "could not locate the skills repo checkout (set SKILLS_REPO_DIR)"
 git -C "$repo_dir" rev-parse --git-dir >/dev/null 2>&1 || die "not a git repository: $repo_dir"
+
+# --discard: drop the local edits everywhere and reinstall the repo version.
+if [[ -n "$discard" ]]; then
+  removed=0
+  for dest_root in "${DESTINATIONS[@]}"; do
+    if [[ -d "$dest_root/$discard" ]]; then
+      rm -rf -- "${dest_root:?}/$discard"
+      log "discarded local copy $dest_root/$discard"
+      removed=1
+    fi
+  done
+  ((removed)) || die "no installed copy of $discard found"
+  if [[ -x "$repo_dir/scripts/sync-skills.sh" ]]; then
+    bash "$repo_dir/scripts/sync-skills.sh" >/dev/null 2>&1 || true
+    log "reinstalled $discard from the repo"
+  else
+    log "run the sync (or wait for the timer) to reinstall $discard"
+  fi
+  exit 0
+fi
 
 # Do not read installed copies while a sync is rewriting them.
 if command -v flock >/dev/null 2>&1; then
@@ -153,36 +172,21 @@ import_dir() {
   fi
 }
 
-if [[ -n "$from_backup" ]]; then
-  latest=""
-  for dest_root in "${DESTINATIONS[@]}"; do
-    for backup in "$dest_root"/.skills-sync-backups/*"-$from_backup"; do
-      [[ -d "$backup" ]] || continue
-      if [[ -z "$latest" || "$(basename "$backup")" > "$(basename "$latest")" ]]; then
-        latest="$backup"
-      fi
-    done
-  done
-  [[ -n "$latest" ]] || die "no pre-sync backup found for $from_backup"
-  import_dir "$latest" "$from_backup" "$latest"
-else
-  for dest_root in "${DESTINATIONS[@]}"; do
-    manifest="$dest_root/.skills-sync-manifest"
-    [[ -f "$manifest" ]] || continue
-    while IFS= read -r skill; do
-      [[ -n "$skill" ]] || continue
-      wanted "$skill" || continue
-      [[ -n "${claimed[$skill]:-}" ]] && continue
-      [[ -d "$dest_root/$skill" ]] || continue
-      import_dir "$dest_root/$skill" "$skill" "$dest_root/$skill"
-    done <"$manifest"
-  done
-fi
+for dest_root in "${DESTINATIONS[@]}"; do
+  manifest="$dest_root/.skills-sync-manifest"
+  [[ -f "$manifest" ]] || continue
+  while IFS= read -r skill; do
+    [[ -n "$skill" ]] || continue
+    wanted "$skill" || continue
+    [[ -n "${claimed[$skill]:-}" ]] && continue
+    [[ -d "$dest_root/$skill" ]] || continue
+    import_dir "$dest_root/$skill" "$skill" "$dest_root/$skill"
+  done <"$manifest"
+done
 
 git -C "$wt" add -A
 if ((${#included[@]} == 0)) || git -C "$wt" diff --cached --quiet; then
-  die "no in-place edits found (installed copies match $REMOTE/$BRANCH). \
-If the sync already reverted your edit, use --from-backup <skill>."
+  die "no in-place edits found (installed copies match $REMOTE/$BRANCH)."
 fi
 git -C "$wt" --no-pager diff --cached --stat >&2
 
@@ -200,4 +204,10 @@ fi
 
 git -C "$wt" commit -q -m "$title" -m "$body"
 git -C "$wt" push -q -u "$REMOTE" "$branch_name"
-(cd "$wt" && gh pr create --base "$BRANCH" --head "$branch_name" --title "$title" --body "$body")
+pr_url="$(cd "$wt" && gh pr create --base "$BRANCH" --head "$branch_name" --title "$title" --body "$body")"
+printf '%s\n' "$pr_url"
+log ""
+log "PR opened: $pr_url"
+log "Next step: tell the repo owner to review and merge it."
+log "Until it merges, the sync holds your local edits in place (no revert)."
+log "If the merged result ends up differing from your local edits, refresh with: skills-pr --discard <skill>"
