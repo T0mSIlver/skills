@@ -77,6 +77,21 @@ only skills managed by this repo and leaves unrelated local skills alone. It
 also installs skill-managed helper commands, such as `claude-rc-spawn` and
 `install-claude-rc-server-service.sh`, into `~/.local/bin`.
 
+The installed copies are managed artifacts — the repo is the source of truth,
+and any direct edit to a synced skill is overwritten by the next timer run.
+Because agents (and humans) kept learning this the hard way, the sync makes
+overwrites loud and recoverable instead of silent:
+
+- Each destination gets a `README.md` saying the directory is managed, where
+  the content comes from (remote, branch, commit), and when it last synced.
+- Before overwriting, the sync hashes each installed skill against the state
+  it wrote last time (`.skills-sync-state`). If the installed copy was edited
+  in between, the pre-sync copy is preserved under `.skills-sync-backups/`
+  (the `BACKUP_KEEP` most recent, default 10) and the journal gets a
+  `WARNING: local edits detected …` line pointing at the backup.
+- "synced" journal lines only appear when a skill's content actually changed,
+  so warnings stand out instead of drowning in no-op noise.
+
 For private GitHub repos, the timer needs noninteractive git credentials. The
 installer imports currently available `GITHUB_TOKEN`, `GH_TOKEN`, and
 `SSH_AUTH_SOCK` values into the user systemd manager without writing them to the

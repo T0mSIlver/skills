@@ -5,8 +5,10 @@ REPO_DIR="${REPO_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)}
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-main}"
 LOCK_FILE="${LOCK_FILE:-${XDG_RUNTIME_DIR:-/tmp}/skills-sync.lock}"
+BACKUP_KEEP="${BACKUP_KEEP:-10}"
 export GIT_TERMINAL_PROMPT="${GIT_TERMINAL_PROMPT:-0}"
 SYNC_SOURCE="$REPO_DIR"
+SYNC_COMMIT=""
 ARCHIVE_DIR=""
 current_manifest=""
 
@@ -70,6 +72,7 @@ if git fetch --prune "$REMOTE" "$BRANCH"; then
   ARCHIVE_DIR="$(mktemp -d)"
   if git archive FETCH_HEAD | tar -x -C "$ARCHIVE_DIR"; then
     SYNC_SOURCE="$ARCHIVE_DIR"
+    SYNC_COMMIT="$(git rev-parse --short FETCH_HEAD 2>/dev/null || true)"
     log "using fetched $REMOTE/$BRANCH"
   else
     log "git archive failed; continuing with local checkout"
@@ -77,6 +80,40 @@ if git fetch --prune "$REMOTE" "$BRANCH"; then
 else
   log "git fetch failed; continuing with local checkout"
 fi
+if [[ -z "$SYNC_COMMIT" ]]; then
+  SYNC_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)-local"
+fi
+ORIGIN_URL="$(git remote get-url "$REMOTE" 2>/dev/null || echo "$REPO_DIR")"
+
+# Content hash of a synced skill directory: detects local edits made to the
+# installed copy between syncs so they can be preserved instead of silently
+# destroyed by rsync --delete.
+tree_hash() {
+  local dir="$1"
+  (cd "$dir" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum) |
+    sha256sum | cut -d' ' -f1
+}
+
+write_dest_readme() {
+  local dest_root="$1"
+  cat >"$dest_root/README.md" <<EOF
+# Managed directory — do not edit skills here
+
+Every skill directory in here is synced from $ORIGIN_URL
+($REMOTE/$BRANCH) by the \`skills-sync\` systemd user timer, every few
+minutes. Any edit made directly to a synced skill is OVERWRITTEN on the
+next sync — edit the repo checkout and merge to $BRANCH instead.
+
+If an edit of yours disappeared: the pre-sync copy was preserved under
+\`.skills-sync-backups/\` in this directory (the $BACKUP_KEEP most recent
+are kept), and the sync journal has a WARNING line for it
+(\`journalctl --user -u skills-sync.service\`).
+
+Skills not managed by the repo are left alone.
+
+Last sync: $(date -Is) from commit $SYNC_COMMIT
+EOF
+}
 
 mapfile -d '' skill_dirs < <(
   find "$SYNC_SOURCE" \
@@ -103,6 +140,8 @@ done >"$current_manifest"
 for dest_root in "${DESTINATIONS[@]}"; do
   mkdir -p "$dest_root"
   manifest="$dest_root/.skills-sync-manifest"
+  state_file="$dest_root/.skills-sync-state"
+  backup_root="$dest_root/.skills-sync-backups"
 
   if [[ -f "$manifest" ]]; then
     while IFS= read -r old_skill; do
@@ -114,12 +153,45 @@ for dest_root in "${DESTINATIONS[@]}"; do
     done <"$manifest"
   fi
 
+  # Hashes recorded by the previous sync; a mismatch against the current
+  # installed tree means someone edited the installed copy since then.
+  declare -A last_hash=()
+  if [[ -f "$state_file" ]]; then
+    while read -r name hash; do
+      [[ -n "$name" && -n "$hash" ]] && last_hash["$name"]="$hash"
+    done <"$state_file"
+  fi
+
+  new_state="$(mktemp)"
   for skill_dir in "${skill_dirs[@]}"; do
     skill_name="$(basename "$skill_dir")"
-    rsync -a --delete -- "$skill_dir/" "$dest_root/$skill_name/"
-    log "synced $skill_name to $dest_root"
-  done
+    dest_dir="$dest_root/$skill_name"
 
+    if [[ -d "$dest_dir" && -n "${last_hash[$skill_name]:-}" ]] \
+      && [[ "$(tree_hash "$dest_dir")" != "${last_hash[$skill_name]}" ]]; then
+      backup_dir="$backup_root/$(date +%Y%m%dT%H%M%S)-$skill_name"
+      mkdir -p "$backup_dir"
+      rsync -a -- "$dest_dir/" "$backup_dir/"
+      log "WARNING: local edits detected in $dest_dir — installed copies are always overwritten, edit the repo instead; pre-sync copy preserved at $backup_dir"
+    fi
+
+    changes="$(rsync -ai --delete -- "$skill_dir/" "$dest_dir/")"
+    if [[ -n "$changes" ]]; then
+      log "synced $skill_name to $dest_root (content updated)"
+    fi
+    printf '%s %s\n' "$skill_name" "$(tree_hash "$dest_dir")" >>"$new_state"
+  done
+  install -m 0644 "$new_state" "$state_file"
+  rm -f "$new_state"
+
+  if [[ -d "$backup_root" ]]; then
+    mapfile -t stale_backups < <(ls -1t -- "$backup_root" | tail -n +$((BACKUP_KEEP + 1)))
+    for stale in "${stale_backups[@]}"; do
+      [[ -n "$stale" ]] && rm -rf -- "$backup_root/$stale"
+    done
+  fi
+
+  write_dest_readme "$dest_root"
   install -m 0644 "$current_manifest" "$manifest"
 done
 
