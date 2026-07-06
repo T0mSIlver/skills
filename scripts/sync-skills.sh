@@ -127,7 +127,10 @@ and is not overwritten. Then:
 
 2. Tell the repo owner to review and merge that PR. Once it merges
    as-is, the sync reconverges automatically and resumes managing the
-   skill. To throw the local edits away instead:
+   skill. If the owner merges it with modifications (or upstream
+   otherwise changes the skill while held), the upstream version wins
+   and replaces the local edits automatically. To throw the local
+   edits away yourself:
 
        skills-pr --discard <skill>
 
@@ -182,12 +185,13 @@ for dest_root in "${DESTINATIONS[@]}"; do
   # $REMOTE/$BRANCH (reconverges automatically) or are discarded with
   # 'skills-pr --discard'. A state file from an older hash format is ignored
   # (bootstrap semantics) rather than holding or warning on every skill.
-  declare -A last_hash=() last_flag=()
+  declare -A last_hash=() last_flag=() hold_base=()
   if [[ -f "$state_file" && "$(head -n1 "$state_file")" == "$STATE_FORMAT" ]]; then
-    while read -r name hash flag; do
+    while read -r name hash flag base; do
       [[ -n "$name" && -n "$hash" ]] || continue
       last_hash["$name"]="$hash"
       last_flag["$name"]="${flag:-synced}"
+      hold_base["$name"]="$base"
     done < <(tail -n +2 "$state_file")
   fi
 
@@ -203,16 +207,34 @@ for dest_root in "${DESTINATIONS[@]}"; do
       if [[ "$installed_hash" != "${last_hash[$skill_name]}" ]]; then
         # Local edits. Installed copies are rsync -a copies of the source,
         # so equal tree hashes mean the edits are now on $REMOTE/$BRANCH.
-        if [[ "$installed_hash" == "$(tree_hash "$skill_dir")" ]]; then
+        src_hash="$(tree_hash "$skill_dir")"
+        base="${hold_base[$skill_name]:-}"
+        if [[ "$installed_hash" == "$src_hash" ]]; then
           log "local edits to $skill_name are now on $REMOTE/$BRANCH; resuming sync in $dest_root"
           rsync -a --delete -- "$skill_dir/" "$dest_dir/"
           printf '%s %s synced\n' "$skill_name" "$installed_hash" >>"$new_state"
+        elif [[ -n "$base" && "$src_hash" != "$base" ]]; then
+          # Upstream changed the skill while it was held — the reviewed,
+          # merged version is the owner's verdict, so upstream wins. Keep a
+          # one-shot copy of the replaced local edits in case no PR carried
+          # them.
+          replaced="$(mktemp -d -t skills-sync-replaced-XXXXXX)/$skill_name"
+          mkdir -p "$replaced"
+          rsync -a -- "$dest_dir/" "$replaced/"
+          rsync -a --delete -- "$skill_dir/" "$dest_dir/"
+          log "NOTICE: $REMOTE/$BRANCH changed $skill_name while it was held (PR merged with modifications?); adopted the upstream version in $dest_dir. The replaced local edits are at $replaced if they were never PR'd."
+          printf '%s %s synced\n' "$skill_name" "$(tree_hash "$dest_dir")" >>"$new_state"
         else
           if [[ "${last_flag[$skill_name]:-synced}" != "held" ]]; then
             log "NOTICE: local edits in $dest_dir — leaving them in place (sync held for this skill). Open a PR with: skills-pr -m '$skill_name: <what you fixed>' — then ask the repo owner to review and merge it. Discard the local edits instead with: skills-pr --discard $skill_name"
           fi
           held_skills="${held_skills:+$held_skills, }$skill_name"
-          printf '%s %s held\n' "$skill_name" "${last_hash[$skill_name]}" >>"$new_state"
+          # The hold baseline is the last-synced state (the fork point):
+          # installed == source whenever a skill is in sync, so last_hash is
+          # the source hash the local edits were made against. An upstream
+          # change landing in the same window as the local edit then still
+          # triggers adoption on the next run.
+          printf '%s %s held %s\n' "$skill_name" "${last_hash[$skill_name]}" "${base:-${last_hash[$skill_name]}}" >>"$new_state"
         fi
         continue
       fi

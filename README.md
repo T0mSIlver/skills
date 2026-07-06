@@ -80,8 +80,12 @@ also installs skill-managed helper commands, such as `claude-rc-spawn` and
 The repo is the source of truth, but **local edits win**: the sync hashes each
 installed skill against the state it wrote last time (`.skills-sync-state`),
 and a skill whose installed copy was edited in place is *held* — never
-overwritten — until the edits land on `origin/main` (the sync reconverges
-automatically once they do) or are explicitly discarded:
+overwritten — until the hold resolves: the edits land on `origin/main` merged
+as-is (the sync reconverges quietly), upstream changes the skill while it is
+held — e.g. the PR was merged with modifications — in which case the
+reviewed upstream version wins and replaces the local edits (a one-shot copy
+of them is kept in `/tmp` and named in the journal), or they are explicitly
+discarded:
 
 - Each destination gets a `README.md` saying the directory is managed, where
   the content comes from (remote, branch, commit), when it last synced, and
