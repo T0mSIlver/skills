@@ -1,0 +1,273 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+shopt -s nullglob
+
+# skills-pr — open a PR on the skills repo from in-place edits made to the
+# installed skill copies (~/.claude/skills, ~/.codex/skills,
+# ~/.config/opencode/skills).
+#
+# Typical use, right after fixing a mistake in an installed skill:
+#   skills-pr -m "delegate-to-codex: fix resume example"
+#
+# The sync HOLDS locally edited skills (it never overwrites them), so the
+# edits stay live while the PR is reviewed; once it merges as-is the sync
+# reconverges and resumes managing the skill. This tool is the intended
+# path from "I fixed the installed copy" to "the fix is on the repo's main".
+
+REMOTE="${REMOTE:-origin}"
+BRANCH="${BRANCH:-main}"
+LOCK_FILE="${LOCK_FILE:-${XDG_RUNTIME_DIR:-/tmp}/skills-sync.lock}"
+
+DESTINATIONS=(
+  "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+  "${CODEX_SKILLS_DIR:-$HOME/.codex/skills}"
+  "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
+)
+
+usage() {
+  cat <<'EOF'
+usage: skills-pr [-m "PR title"] [--dry-run] [skill ...]
+       skills-pr --discard <skill>
+
+Turns edits made in place to installed skill copies into a pull request on
+the skills repo. With no skill arguments, every installed skill that differs
+from the repo's main branch is included. --dry-run prints the diff and stops
+before pushing or opening a PR. --discard throws away the local edits of
+<skill> in every destination and reinstalls the repo version.
+EOF
+}
+
+log() { printf '%s\n' "$*" >&2; }
+die() {
+  log "skills-pr: $*"
+  exit 1
+}
+
+title=""
+dry_run=0
+discard=""
+skills=()
+while (($#)); do
+  case "$1" in
+    -m | --message)
+      title="${2:?-m needs a value}"
+      shift 2
+      ;;
+    --discard)
+      discard="${2:?--discard needs a skill name}"
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -*)
+      usage >&2
+      die "unknown option: $1"
+      ;;
+    *)
+      skills+=("$1")
+      shift
+      ;;
+  esac
+done
+
+command -v git >/dev/null 2>&1 || die "git is required"
+command -v rsync >/dev/null 2>&1 || die "rsync is required"
+if ((!dry_run)) && [[ -z "$discard" ]]; then
+  command -v gh >/dev/null 2>&1 || die "gh is required (or use --dry-run)"
+fi
+
+repo_dir="${SKILLS_REPO_DIR:-}"
+if [[ -z "$repo_dir" ]]; then
+  for dest_root in "${DESTINATIONS[@]}"; do
+    if [[ -f "$dest_root/.skills-sync-repo" ]]; then
+      repo_dir="$(<"$dest_root/.skills-sync-repo")"
+      break
+    fi
+  done
+fi
+[[ -n "$repo_dir" ]] || die "could not locate the skills repo checkout (set SKILLS_REPO_DIR)"
+git -C "$repo_dir" rev-parse --git-dir >/dev/null 2>&1 || die "not a git repository: $repo_dir"
+
+# Do not read or mutate installed copies while a sync is rewriting them.
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$LOCK_FILE"
+  flock -w 30 9 || die "skills-sync holds the lock; retry in a few seconds"
+fi
+
+# --discard: drop the local edits everywhere and reinstall the repo version.
+if [[ -n "$discard" ]]; then
+  if ((dry_run)); then
+    log "dry run: would remove $discard from: ${DESTINATIONS[*]} and reinstall it from the repo"
+    exit 0
+  fi
+  removed=0
+  for dest_root in "${DESTINATIONS[@]}"; do
+    if [[ -d "$dest_root/$discard" ]]; then
+      rm -rf -- "${dest_root:?}/$discard"
+      log "discarded local copy $dest_root/$discard"
+      removed=1
+    fi
+  done
+  ((removed)) || die "no installed copy of $discard found"
+  # Release the lock so the reinstall sync (which takes the same lock with
+  # flock -n) is not suppressed by our own hold on it.
+  if command -v flock >/dev/null 2>&1; then
+    exec 9>&-
+  fi
+  if [[ -x "$repo_dir/scripts/sync-skills.sh" ]]; then
+    bash "$repo_dir/scripts/sync-skills.sh" >/dev/null 2>&1 || true
+  fi
+  reinstalled=1
+  for dest_root in "${DESTINATIONS[@]}"; do
+    [[ -d "$dest_root/$discard" ]] || reinstalled=0
+  done
+  if ((reinstalled)); then
+    log "reinstalled $discard from the repo"
+  elif [[ ! -d "$repo_dir/$discard" ]]; then
+    log "$discard is no longer in the repo (removed upstream); nothing will reinstall it"
+  else
+    log "reinstall did not complete (sync busy or unavailable); the timer will reinstall $discard within minutes"
+  fi
+  exit 0
+fi
+
+# Base the PR on the commit the sync actually deployed (the
+# .skills-sync-commit breadcrumb): the installed copies were made from that
+# tree, so a newer base would fold reverts of fresh upstream work into the
+# diff. Fallbacks: FETCH_HEAD after a successful fetch, then the local
+# remote-tracking ref.
+base_ref="$REMOTE/$BRANCH"
+if git -C "$repo_dir" fetch --prune "$REMOTE" "$BRANCH" >/dev/null 2>&1; then
+  base_ref="FETCH_HEAD"
+else
+  log "warning: git fetch failed; comparing against the local $REMOTE/$BRANCH"
+fi
+for dest_root in "${DESTINATIONS[@]}"; do
+  if [[ -f "$dest_root/.skills-sync-commit" ]]; then
+    deployed_commit="$(<"$dest_root/.skills-sync-commit")"
+    if [[ -n "$deployed_commit" ]] &&
+      git -C "$repo_dir" cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
+      base_ref="$deployed_commit"
+    fi
+    break
+  fi
+done
+log "PR base: $base_ref"
+
+stamp="$(date +%Y%m%dT%H%M%S)"
+branch_name="skills-pr/${stamp}-$(hostname -s)"
+tmp_root="$(mktemp -d)"
+wt="$tmp_root/wt"
+cleanup() {
+  git -C "$repo_dir" worktree remove --force "$wt" >/dev/null 2>&1 || true
+  git -C "$repo_dir" branch -D "$branch_name" >/dev/null 2>&1 || true
+  rm -rf "$tmp_root"
+}
+trap cleanup EXIT
+
+git -C "$repo_dir" worktree add -q -b "$branch_name" "$wt" "$base_ref"
+
+wanted() {
+  ((${#skills[@]} == 0)) && return 0
+  local s
+  for s in "${skills[@]}"; do
+    [[ "$s" == "$1" ]] && return 0
+  done
+  return 1
+}
+
+declare -A claimed=()
+included=()
+
+# Pristine copy of a skill at $base_ref, extracted once on demand — used to
+# tell "this destination has its own edits" from "it merely differs from the
+# already-imported copy of another destination".
+base_scratch="$tmp_root/base"
+pristine_skill() {
+  local skill="$1"
+  [[ -d "$base_scratch/$skill" ]] && return 0
+  mkdir -p "$base_scratch"
+  git -C "$repo_dir" archive "$base_ref" "$skill" 2>/dev/null | tar -x -C "$base_scratch"
+}
+
+# import_dir <source-dir> <skill-name> <origin-desc>: copy the source into
+# the worktree, then let git decide whether it actually differs — mtimes
+# differ between tar-extracted installed copies and git checkouts, so an
+# rsync-level comparison would flag every skill as drifted.
+import_dir() {
+  local src="$1" skill="$2" origin_desc="$3"
+  if [[ ! -d "$wt/$skill" ]]; then
+    log "skipping $skill ($origin_desc): not a skill in the repo"
+    return
+  fi
+  rsync -a --delete -- "$src/" "$wt/$skill/"
+  if [[ -n "$(git -C "$wt" status --porcelain -- "$skill")" ]]; then
+    claimed["$skill"]="$origin_desc"
+    included+=("$skill <- $origin_desc")
+    log "including $skill from $origin_desc"
+  fi
+}
+
+for dest_root in "${DESTINATIONS[@]}"; do
+  manifest="$dest_root/.skills-sync-manifest"
+  [[ -f "$manifest" ]] || continue
+  while IFS= read -r skill; do
+    [[ -n "$skill" ]] || continue
+    wanted "$skill" || continue
+    [[ -d "$dest_root/$skill" ]] || continue
+    if [[ -n "${claimed[$skill]:-}" ]]; then
+      # Another destination already claimed this skill. Warn only when this
+      # copy has its OWN edits (differs from the base) that also differ from
+      # the claimed copy — a pristine copy trivially differs from the
+      # imported one and needs no warning.
+      if pristine_skill "$skill" &&
+        ! diff -rq -x .DS_Store -x '*.swp' -- "$dest_root/$skill" "$base_scratch/$skill" >/dev/null 2>&1 &&
+        ! diff -rq -x .DS_Store -x '*.swp' -- "$dest_root/$skill" "$wt/$skill" >/dev/null 2>&1; then
+        log "warning: $skill also has different local edits in $dest_root — NOT included (using ${claimed[$skill]}). PR them separately after this one merges, or drop them: skills-pr --discard $skill"
+      fi
+      continue
+    fi
+    import_dir "$dest_root/$skill" "$skill" "$dest_root/$skill"
+  done <"$manifest"
+done
+
+git -C "$wt" add -A
+if ((${#included[@]} == 0)) || git -C "$wt" diff --cached --quiet; then
+  die "no in-place edits found (installed copies match $REMOTE/$BRANCH)."
+fi
+git -C "$wt" --no-pager diff --cached --stat >&2
+
+title="${title:-skills: in-place edits from $(hostname -s) ($stamp)}"
+body="$(
+  printf 'Upstreamed with skills-pr from in-place edits to installed skill copies on %s.\n\nSources:\n' "$(hostname)"
+  printf -- '- %s\n' "${included[@]}"
+)"
+
+if ((dry_run)); then
+  log "dry run: would commit on $branch_name, push, and open a PR titled: $title"
+  git -C "$wt" --no-pager diff --cached
+  exit 0
+fi
+
+git -C "$wt" commit -q -m "$title" -m "$body"
+git -C "$wt" push -q -u "$REMOTE" "$branch_name"
+if ! pr_url="$(cd "$wt" && gh pr create --base "$BRANCH" --head "$branch_name" --title "$title" --body "$body")"; then
+  # Do not leave an orphan remote branch behind on gh failure; the local
+  # edits are still installed (held), so nothing is lost by deleting it.
+  if git -C "$wt" push -q -d "$REMOTE" "$branch_name" 2>/dev/null; then
+    die "gh pr create failed; the pushed branch was removed — fix gh (auth? network?) and re-run skills-pr"
+  fi
+  die "gh pr create failed and the pushed branch could not be removed — open a PR manually from $REMOTE/$branch_name"
+fi
+printf '%s\n' "$pr_url"
+log ""
+log "PR opened: $pr_url"
+log "Next step: tell the repo owner to review and merge it."
+log "Until it merges, the sync holds your local edits in place (no revert)."
+log "If the owner merges with modifications, the sync adopts the merged version automatically."

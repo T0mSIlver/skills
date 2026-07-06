@@ -77,6 +77,53 @@ only skills managed by this repo and leaves unrelated local skills alone. It
 also installs skill-managed helper commands, such as `claude-rc-spawn` and
 `install-claude-rc-server-service.sh`, into `~/.local/bin`.
 
+The repo is the source of truth, but **local edits win**: the sync hashes each
+installed skill against the state it wrote last time (`.skills-sync-state`),
+and a skill whose installed copy was edited in place is *held* — never
+overwritten — until the hold resolves: the edits land on `origin/main` merged
+as-is (the sync reconverges quietly), upstream changes the skill while it is
+held — e.g. the PR was merged with modifications — in which case the
+reviewed upstream version wins and replaces the local edits (a one-shot copy
+of them is kept in `/tmp` and named in the journal), or they are explicitly
+discarded:
+
+- Each destination gets a `README.md` saying the directory is managed, where
+  the content comes from (remote, branch, commit), when it last synced, and
+  which skills are currently held because of local edits.
+- The first sync that sees a local edit logs one `NOTICE: local edits in …`
+  journal line with the exact next steps, then stays quiet while the hold
+  lasts.
+- "synced" journal lines only appear when a skill's content actually changed,
+  so notices stand out instead of drowning in no-op noise.
+
+## Upstreaming a fix found while using a skill
+
+An in-place edit to an installed copy is almost always an agent that spotted a
+mistake mid-task. The intended flow is: edit the installed copy, open a PR
+with one command, and **ask the repo owner to review it** — the local edit
+stays live (held) in the meantime, and everything reconverges on merge.
+`skills-pr` is installed into `~/.local/bin` by the sync:
+
+```bash
+# after editing the installed copy in place:
+skills-pr -m "delegate-to-codex: fix resume example"
+# ... then tell the owner to review the PR it prints.
+
+# preview without pushing or opening a PR:
+skills-pr --dry-run
+
+# throw the local edits away and reinstall the repo version:
+skills-pr --discard delegate-to-codex
+```
+
+It diffs the installed copies against `origin/main`, applies the drift in a
+temporary worktree of the repo checkout (found via the `.skills-sync-repo`
+breadcrumb each destination carries), commits, pushes a `skills-pr/...`
+branch, opens the PR with `gh`, and prints the review-request next step. The
+destination `README.md` and the sync's `NOTICE` journal line teach the same
+two commands, so an agent whose skill is held is told the path in the same
+breath.
+
 For private GitHub repos, the timer needs noninteractive git credentials. The
 installer imports currently available `GITHUB_TOKEN`, `GH_TOKEN`, and
 `SSH_AUTH_SOCK` values into the user systemd manager without writing them to the
@@ -86,6 +133,8 @@ Useful commands:
 
 ```bash
 scripts/sync-skills.sh
+skills-pr --dry-run
+skills-pr --discard <skill>
 install-claude-rc-server-service.sh
 systemctl --user status skills-sync.timer
 systemctl --user status claude-rc-skills.service
