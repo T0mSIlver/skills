@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+shopt -s nullglob
+
+# skills-pr — open a PR on the skills repo from in-place edits made to the
+# installed skill copies (~/.claude/skills, ~/.codex/skills,
+# ~/.config/opencode/skills).
+#
+# Typical use, right after fixing a mistake in an installed skill:
+#   skills-pr -m "delegate-to-codex: fix resume example"
+# If the sync already reverted the edit (it runs every ~2 minutes):
+#   skills-pr --from-backup delegate-to-codex -m "..."
+#
+# Installed copies are managed by skills-sync and never keep direct edits.
+# This tool is the intended path from "I fixed the installed copy" to
+# "the fix is on the repo's main".
+
+REMOTE="${REMOTE:-origin}"
+BRANCH="${BRANCH:-main}"
+LOCK_FILE="${LOCK_FILE:-${XDG_RUNTIME_DIR:-/tmp}/skills-sync.lock}"
+
+DESTINATIONS=(
+  "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+  "${CODEX_SKILLS_DIR:-$HOME/.codex/skills}"
+  "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
+)
+
+usage() {
+  cat <<'EOF'
+usage: skills-pr [-m "PR title"] [--dry-run] [skill ...]
+       skills-pr --from-backup <skill> [-m "PR title"] [--dry-run]
+
+Turns edits made in place to installed skill copies into a pull request on
+the skills repo. With no skill arguments, every installed skill that differs
+from the repo's main branch is included. --from-backup uses the most recent
+pre-sync backup of <skill> instead of the (already reverted) installed copy.
+--dry-run prints the diff and stops before pushing or opening a PR.
+EOF
+}
+
+log() { printf '%s\n' "$*" >&2; }
+die() {
+  log "skills-pr: $*"
+  exit 1
+}
+
+title=""
+dry_run=0
+from_backup=""
+skills=()
+while (($#)); do
+  case "$1" in
+    -m | --message)
+      title="${2:?-m needs a value}"
+      shift 2
+      ;;
+    --from-backup)
+      from_backup="${2:?--from-backup needs a skill name}"
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -*)
+      usage >&2
+      die "unknown option: $1"
+      ;;
+    *)
+      skills+=("$1")
+      shift
+      ;;
+  esac
+done
+
+command -v git >/dev/null 2>&1 || die "git is required"
+command -v rsync >/dev/null 2>&1 || die "rsync is required"
+if ((!dry_run)); then
+  command -v gh >/dev/null 2>&1 || die "gh is required (or use --dry-run)"
+fi
+
+repo_dir="${SKILLS_REPO_DIR:-}"
+if [[ -z "$repo_dir" ]]; then
+  for dest_root in "${DESTINATIONS[@]}"; do
+    if [[ -f "$dest_root/.skills-sync-repo" ]]; then
+      repo_dir="$(<"$dest_root/.skills-sync-repo")"
+      break
+    fi
+  done
+fi
+[[ -n "$repo_dir" ]] || die "could not locate the skills repo checkout (set SKILLS_REPO_DIR)"
+git -C "$repo_dir" rev-parse --git-dir >/dev/null 2>&1 || die "not a git repository: $repo_dir"
+
+# Do not read installed copies while a sync is rewriting them.
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$LOCK_FILE"
+  flock -w 30 9 || die "skills-sync holds the lock; retry in a few seconds"
+fi
+
+git -C "$repo_dir" fetch --prune "$REMOTE" "$BRANCH" >/dev/null 2>&1 ||
+  log "warning: git fetch failed; comparing against the local $REMOTE/$BRANCH"
+
+stamp="$(date +%Y%m%dT%H%M%S)"
+branch_name="skills-pr/${stamp}-$(hostname -s)"
+tmp_root="$(mktemp -d)"
+wt="$tmp_root/wt"
+cleanup() {
+  git -C "$repo_dir" worktree remove --force "$wt" >/dev/null 2>&1 || true
+  rm -rf "$tmp_root"
+}
+trap cleanup EXIT
+
+git -C "$repo_dir" worktree add -q -b "$branch_name" "$wt" "$REMOTE/$BRANCH"
+
+wanted() {
+  ((${#skills[@]} == 0)) && return 0
+  local s
+  for s in "${skills[@]}"; do
+    [[ "$s" == "$1" ]] && return 0
+  done
+  return 1
+}
+
+declare -A claimed=()
+included=()
+
+# import_dir <source-dir> <skill-name> <origin-desc>: copy the source into
+# the worktree, then let git decide whether it actually differs — mtimes
+# differ between tar-extracted installed copies and git checkouts, so an
+# rsync-level comparison would flag every skill as drifted.
+import_dir() {
+  local src="$1" skill="$2" origin_desc="$3"
+  if [[ ! -d "$wt/$skill" ]]; then
+    log "skipping $skill ($origin_desc): not a skill in the repo"
+    return
+  fi
+  rsync -a --delete -- "$src/" "$wt/$skill/"
+  if [[ -n "$(git -C "$wt" status --porcelain -- "$skill")" ]]; then
+    claimed["$skill"]="$origin_desc"
+    included+=("$skill <- $origin_desc")
+    log "including $skill from $origin_desc"
+  fi
+}
+
+if [[ -n "$from_backup" ]]; then
+  latest=""
+  for dest_root in "${DESTINATIONS[@]}"; do
+    for backup in "$dest_root"/.skills-sync-backups/*"-$from_backup"; do
+      [[ -d "$backup" ]] || continue
+      if [[ -z "$latest" || "$(basename "$backup")" > "$(basename "$latest")" ]]; then
+        latest="$backup"
+      fi
+    done
+  done
+  [[ -n "$latest" ]] || die "no pre-sync backup found for $from_backup"
+  import_dir "$latest" "$from_backup" "$latest"
+else
+  for dest_root in "${DESTINATIONS[@]}"; do
+    manifest="$dest_root/.skills-sync-manifest"
+    [[ -f "$manifest" ]] || continue
+    while IFS= read -r skill; do
+      [[ -n "$skill" ]] || continue
+      wanted "$skill" || continue
+      [[ -n "${claimed[$skill]:-}" ]] && continue
+      [[ -d "$dest_root/$skill" ]] || continue
+      import_dir "$dest_root/$skill" "$skill" "$dest_root/$skill"
+    done <"$manifest"
+  done
+fi
+
+git -C "$wt" add -A
+if ((${#included[@]} == 0)) || git -C "$wt" diff --cached --quiet; then
+  die "no in-place edits found (installed copies match $REMOTE/$BRANCH). \
+If the sync already reverted your edit, use --from-backup <skill>."
+fi
+git -C "$wt" --no-pager diff --cached --stat >&2
+
+title="${title:-skills: in-place edits from $(hostname -s) ($stamp)}"
+body="$(
+  printf 'Upstreamed with skills-pr from in-place edits to installed skill copies on %s.\n\nSources:\n' "$(hostname)"
+  printf -- '- %s\n' "${included[@]}"
+)"
+
+if ((dry_run)); then
+  log "dry run: would commit on $branch_name, push, and open a PR titled: $title"
+  git -C "$wt" --no-pager diff --cached
+  exit 0
+fi
+
+git -C "$wt" commit -q -m "$title" -m "$body"
+git -C "$wt" push -q -u "$REMOTE" "$branch_name"
+(cd "$wt" && gh pr create --base "$BRANCH" --head "$branch_name" --title "$title" --body "$body")

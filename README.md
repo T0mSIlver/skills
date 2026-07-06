@@ -92,6 +92,30 @@ overwrites loud and recoverable instead of silent:
 - "synced" journal lines only appear when a skill's content actually changed,
   so warnings stand out instead of drowning in no-op noise.
 
+## Upstreaming a fix found while using a skill
+
+An in-place edit to an installed copy is almost always an agent that spotted a
+mistake mid-task. The intended path from there to the repo is one command,
+`skills-pr` (installed into `~/.local/bin` by the sync):
+
+```bash
+# after editing the installed copy in place:
+skills-pr -m "delegate-to-codex: fix resume example"
+
+# preview without pushing or opening a PR:
+skills-pr --dry-run
+
+# the sync reverted the edit before you ran it? recover from the backup:
+skills-pr --from-backup delegate-to-codex -m "..."
+```
+
+It diffs the installed copies against `origin/main`, applies the drift in a
+temporary worktree of the repo checkout (found via the `.skills-sync-repo`
+breadcrumb each destination carries), commits, pushes a `skills-pr/...`
+branch, and opens the PR with `gh`. The destination `README.md` and the
+sync's `WARNING` journal line both point at it, so an agent that gets its
+edit reverted is told the recovery command in the same breath.
+
 For private GitHub repos, the timer needs noninteractive git credentials. The
 installer imports currently available `GITHUB_TOKEN`, `GH_TOKEN`, and
 `SSH_AUTH_SOCK` values into the user systemd manager without writing them to the
@@ -101,6 +125,7 @@ Useful commands:
 
 ```bash
 scripts/sync-skills.sh
+skills-pr --dry-run
 install-claude-rc-server-service.sh
 systemctl --user status skills-sync.timer
 systemctl --user status claude-rc-skills.service

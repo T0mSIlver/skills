@@ -21,6 +21,7 @@ DESTINATIONS=(
 HELPER_SPECS=(
   "delegate-to-claude-code/scripts/claude-rc-spawn:claude-rc-spawn"
   "claude-remote-control-server/scripts/install-claude-rc-server-service.sh:install-claude-rc-server-service.sh"
+  "scripts/skills-pr:skills-pr"
 )
 
 log() {
@@ -106,17 +107,25 @@ tree_hash() {
 write_dest_readme() {
   local dest_root="$1"
   cat >"$dest_root/README.md" <<EOF
-# Managed directory — do not edit skills here
+# Managed directory — synced from the skills repo
 
 Every skill directory in here is synced from $ORIGIN_URL
 ($REMOTE/$BRANCH) by the \`skills-sync\` systemd user timer, every few
-minutes. Any edit made directly to a synced skill is OVERWRITTEN on the
-next sync — edit the repo checkout and merge to $BRANCH instead.
+minutes. Direct edits never persist: the next sync reverts them (a
+pre-sync copy is kept under \`.skills-sync-backups/\`, the $BACKUP_KEEP
+most recent, with a WARNING in
+\`journalctl --user -u skills-sync.service\`).
 
-If an edit of yours disappeared: the pre-sync copy was preserved under
-\`.skills-sync-backups/\` in this directory (the $BACKUP_KEEP most recent
-are kept), and the sync journal has a WARNING line for it
-(\`journalctl --user -u skills-sync.service\`).
+Found a mistake in a skill while using it? Fix it here in place, then
+immediately run:
+
+    skills-pr -m "<skill>: <what you fixed>"
+
+It diffs the installed copies against the repo and opens a PR carrying
+your edits (\`--dry-run\` to preview). If the sync reverted your edit
+before you ran it, recover it from the backup:
+
+    skills-pr --from-backup <skill> -m "..."
 
 Skills not managed by the repo are left alone.
 
@@ -184,7 +193,7 @@ for dest_root in "${DESTINATIONS[@]}"; do
       backup_dir="$backup_root/$(date +%Y%m%dT%H%M%S)-$skill_name"
       mkdir -p "$backup_dir"
       rsync -a -- "$dest_dir/" "$backup_dir/"
-      log "WARNING: local edits detected in $dest_dir — installed copies are always overwritten, edit the repo instead; pre-sync copy preserved at $backup_dir"
+      log "WARNING: local edits detected in $dest_dir — installed copies are always overwritten; pre-sync copy preserved at $backup_dir; run 'skills-pr --from-backup $skill_name' to open a PR with them"
     fi
 
     changes="$(rsync -ai --delete -- "$skill_dir/" "$dest_dir/")"
@@ -204,6 +213,8 @@ for dest_root in "${DESTINATIONS[@]}"; do
   fi
 
   write_dest_readme "$dest_root"
+  # Breadcrumb for skills-pr: where the repo checkout lives.
+  printf '%s\n' "$REPO_DIR" >"$dest_root/.skills-sync-repo"
   install -m 0644 "$current_manifest" "$manifest"
 done
 
