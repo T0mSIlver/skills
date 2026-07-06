@@ -177,3 +177,5 @@ codex exec -C "$worktree" -p editor   - < "$run_dir/prompt.md"
   prerequisites such as `.env.local`, and never copy broad secret directories.
 - `codex apply` applies the latest diff produced by a Codex agent to the current
   tree. Check `pwd`, branch, and `git status` before using it.
+
+TEST-SKILLS-PR-MARKER: this line tests the skills-pr flow.
