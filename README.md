@@ -14,6 +14,7 @@ machine-readable output, and explicit run state.
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | `claude remote-control` | Run persistent per-repo Remote Control servers under systemd |
 | [`delegate-to-codex`](delegate-to-codex/SKILL.md) | `codex exec` | Delegate reviewer/editor runs; `-s read-only` vs `workspace-write` |
 | [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | `opencode run` | Delegate reviewer/editor runs; primary/all agents with `edit: deny` vs `edit: allow` |
+| [`delegate-to-pi`](delegate-to-pi/SKILL.md) | `pi` | Delegate reviewer/editor runs; no permission system, so `--tools read,grep,find,ls` vs full tools |
 
 ## Shared conventions
 
