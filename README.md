@@ -47,7 +47,9 @@ machine-readable output, and explicit run state.
 - Stdin wedges non-interactive runs. Under a harness the inherited stdin is an
   open pipe that never closes, and `codex exec` reads stdin whenever you pass a
   prompt argument alongside it — so it blocks until EOF at 0% CPU, before it ever
-  contacts the model. Redirect `< /dev/null` on every launch.
+  contacts the model. Always give stdin a source that reaches EOF: `< /dev/null`
+  when the prompt is an argument, or `- < prompt.md` when the brief itself is the
+  stdin.
 - Pass the brief as an argument, not on stdin: inline the prompt file with
   `"$(cat prompt.md)"`. If a brief is too large to inline comfortably, opencode
   can attach it — but `--file` never carries the prompt. It still requires a
