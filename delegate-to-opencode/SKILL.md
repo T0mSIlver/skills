@@ -77,6 +77,36 @@ opencode models | grep glm-5.2
 Do not hard-code `temperature` for GLM unless a project has measured a better
 setting. Let opencode and the provider apply model-specific defaults.
 
+## Step 3b - Raise the output token cap
+
+opencode clamps every request to 32,000 output tokens regardless of what the
+model supports. Set the cap to the model's real output limit on every delegated
+run:
+
+```bash
+OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072   # glm-5.2; see below for others
+```
+
+Reasoning tokens are billed against this same budget, so a thinking-heavy brief
+on a reasoning model can spend the entire 32k on hidden reasoning and emit no
+visible answer at all. That failure is silent — see Gotchas.
+
+The value must be a positive integer or it is ignored without warning. It does
+not require `OPENCODE_EXPERIMENTAL=1`. opencode takes `min(model.limit.output,
+$OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX)`, so the variable can only ever raise
+the cap toward the model's own ceiling, never past it — an oversized value is
+harmless but pointless. Look the ceiling up under `limit.output` at
+`https://models.dev/api.json`; `opencode models` does not print it.
+
+One trade-off: for any model whose `limit.output` exists but `limit.input` does
+not — glm-5.2 included — opencode computes usable context as `context -
+maxOutputTokens`, so raising the cap shrinks usable context one-for-one, and
+`compaction.reserved` does not override that branch. At glm-5.2's 1M context the
+loss is noise (968,000 usable becomes 868,928). On a 200k-context model the same
+131,072 setting would cut usable context to ~69k and trigger compaction far
+earlier. Match the value to the model rather than setting one large number
+globally.
+
 ## Step 4 - Install direct-run agents
 
 The supplied agents are `mode: all` so they can be launched directly with
@@ -106,6 +136,7 @@ run_dir="/tmp/opencode-$slug"
 prompt_file="$run_dir/prompt.md"
 mkdir -p "$run_dir"
 
+OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072 \
 timeout --signal=TERM 2700 opencode run \
   --dir "$PWD" \
   --agent reviewer \
@@ -131,6 +162,7 @@ model — the exact "stalls, nothing in events.jsonl" symptom. Redirecting from
 ```bash
 run_dir="$worktree/.agent-runs/$slug"
 
+OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072 \
 timeout --signal=TERM 2700 opencode run \
   --dir "$worktree" \
   --agent editor \
@@ -159,6 +191,17 @@ SQLite/WAL state under `~/.local/share/opencode/opencode.db`.
 
 - `--format json` emits raw JSON events. Parse the final text event and capture
   the `sessionID`.
+- Exit code 0 does not mean the run produced an answer. Always check the finish
+  reason before trusting the output:
+
+  ```bash
+  jq -r 'select(.type=="step_finish") | .part.reason' "$run_dir/events.jsonl" \
+    | grep -qx length && echo "TRUNCATED - raise OUTPUT_TOKEN_MAX or shorten the brief"
+  ```
+
+  A `reason` of `length` means the model was cut off at the output cap. opencode
+  exits 0 and prints no error, so an orchestrator that only checks exit codes
+  records a truncated or empty run as a success. `stop` is the healthy value.
 - During a healthy `--format json` run, `events.jsonl` streams continuously. If
   it is still 0 bytes after about 5 minutes, or its mtime is stale for more
   than 10 minutes, assume the run is hung; kill and relaunch instead of waiting.
@@ -214,6 +257,21 @@ Instead of markdown files, declare the agents in `opencode.json`:
   `opencode run` launched from the Claude Code Bash tool, cron, or any
   orchestrator. Confirmed by A/B: identical command hangs without the redirect,
   completes with it.
+- A run that reads the files and then emits nothing has usually hit the output
+  token cap, not a model failure. opencode hardcodes `OUTPUT_TOKEN_MAX = 32_000`
+  and applies `Math.min(model.limit.output, OUTPUT_TOKEN_MAX)`, so glm-5.2's real
+  131,072-token output limit is clamped to 32,000. Reasoning tokens count against
+  that budget, so a large brief on a reasoning model can burn the whole 32k
+  thinking and return an empty answer. The provider reports `finish_reason:
+  "length"`; opencode surfaces it as `reason: "length"` on a `step_finish` part,
+  does **not** raise an error, and exits 0 — `MessageOutputLengthError` exists in
+  the schema but is never constructed anywhere in current source, and `"length"`
+  is missing from the `modelFinished` exclusion list, so the session loop just
+  ends. Fix by exporting `OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX` (Step 3b);
+  there is no `opencode.json` key for it. Confirmed by A/B on 1.17.12: with the
+  variable set to `1` the run emits `reason: "length"`, no text, exit 0; the same
+  command unset emits the answer with `reason: "stop"`. Shortening the brief only
+  helps indirectly, by giving the model less to think about.
 - `mode: subagent` plus `opencode run --agent <name>` is a trap: opencode falls
   back to the default primary agent, so your read-only/edit permissions may not
   be active. Use `mode: all` or `mode: primary` for direct-run agents.
