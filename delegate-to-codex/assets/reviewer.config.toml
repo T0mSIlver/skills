@@ -12,3 +12,8 @@ sandbox_mode = "read-only"
 
 # Non-interactive: never pause for approvals.
 approval_policy = "never"
+
+# Live web search is off by default. Uncomment for research / second-opinion
+# runs that need current information (equivalent to -c tools.web_search=true).
+# [tools]
+# web_search = true

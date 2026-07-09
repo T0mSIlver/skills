@@ -116,6 +116,39 @@ Use `--dangerously-bypass-approvals-and-sandbox` only inside a separate
 container/VM/CI runner whose filesystem, network, and secrets are already
 bounded. A worktree alone is not a security sandbox.
 
+### Enabling live web search (research delegations)
+
+`codex exec` has no `--search` flag. Enable the native Responses `web_search`
+tool with a config override:
+
+```bash
+-c tools.web_search=true
+```
+
+Add it to any launch that needs current information — research briefs and
+second-opinion prompts about fast-moving topics. With this flag, the `--json`
+event stream shows `web_search` items running multi-query searches. Leave it off
+for pure code review or edit work, which should reason over the checkout, not the
+web.
+
+```bash
+codex exec \
+  -C "$PWD" \
+  -m gpt-5.5 -c model_reasoning_effort='"high"' \
+  -s read-only \
+  -c tools.web_search=true \
+  --json \
+  -o "$run_dir/final.md" \
+  - < "$prompt_file" \
+  > "$run_dir/events.jsonl"
+```
+
+The persistent equivalent is `[tools]\nweb_search = true` in a profile config
+(see `assets/`). The top-level interactive flag also works when placed *before*
+the subcommand — `codex --search exec "..." < /dev/null` — but the
+`-c tools.web_search=true` override is the form to reach for on `codex exec`; see
+Gotchas.
+
 ## Step 5 - Harvest and review
 
 - Parse `thread.started` in `events.jsonl` for the session id.
@@ -188,6 +221,13 @@ codex exec -C "$worktree" -p editor   - < "$run_dir/prompt.md"
   context, not substituted for the argument.
 - `-p` selects a Codex config profile, not a custom subagent. Custom Codex
   subagents are TOML files under `.codex/agents/` or `~/.codex/agents/`.
+- `--search` is a top-level `codex` (interactive TUI) flag only. On codex-cli
+  0.142.5, `codex exec --search ...` errors with `unexpected argument '--search'
+  found`. Enable web search on `codex exec` with `-c tools.web_search=true`. The
+  top-level flag does work when placed before the subcommand
+  (`codex --search exec "..." < /dev/null`), but the config override is the
+  reliable form for `exec` launches and matches the `-c` style used elsewhere
+  here.
 - `--json` writes JSONL events to stdout. If you also want the final answer as a
   simple file, pass `-o <file>`.
 - `-s read-only` is a hard filesystem boundary; commands that write caches,
