@@ -57,7 +57,7 @@ comfortably, keep a short instruction as the positional and attach the brief —
 with the positional BEFORE the flag (see Gotchas for why the order matters):
 
 ```bash
-opencode run "Follow the attached prompt file exactly." --file prompt.md ...
+opencode run "Follow the attached prompt file exactly." --file prompt.md ... < /dev/null
 ```
 
 ## Step 3 - Model default
@@ -167,10 +167,13 @@ SQLite/WAL state under `~/.local/share/opencode/opencode.db`.
   redirect, not a provider or DB problem — confirm the launch has it before
   investigating anything else.
 - `opencode session list` shows saved sessions.
-- Continue the last session with `opencode run --continue "..."`.
-- Continue a specific session with `opencode run --session <id> "..."`.
+- Continue the last session with `opencode run --continue "..." < /dev/null`.
+- Continue a specific session with `opencode run --session <id> "..." < /dev/null`.
 - Add `--fork` with `--continue` or `--session` to branch the conversation
   without mutating the original session.
+- These resume forms are still `opencode run`, so they read stdin at startup
+  exactly like a fresh launch — the `< /dev/null` redirect is just as mandatory
+  here as in Step 5, or they wedge at `init`.
 - Export a transcript with `opencode export <sessionID>`.
 
 ## Inline config alternative

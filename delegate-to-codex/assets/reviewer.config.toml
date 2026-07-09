@@ -1,6 +1,8 @@
 # Codex profile: read-only second-opinion reviewer.
 # Install as $CODEX_HOME/reviewer.config.toml (default ~/.codex/reviewer.config.toml),
-# then run:  codex exec -p reviewer "Review this branch; report findings only."
+# then run:  codex exec -p reviewer "Review this branch; report findings only." < /dev/null
+# The < /dev/null is required: with a prompt argument and piped stdin, codex exec
+# reads stdin and wedges forever under a non-interactive harness. See SKILL.md.
 
 model = "gpt-5.5"
 model_reasoning_effort = "high"

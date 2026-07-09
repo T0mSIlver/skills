@@ -70,6 +70,13 @@ when the user explicitly asks for a different model or cost/latency profile.
 
 ## Step 4 - Launch the run
 
+Every launch below either feeds the prompt from a file with `- < prompt.md` or
+redirects `< /dev/null`. This is mandatory, not decoration: under a
+non-interactive harness (the Claude Code Bash tool, cron, most orchestrators)
+stdin is an open pipe that never closes, and `codex exec` reads stdin at startup
+whenever you pass `-` or pass a prompt *argument* alongside piped stdin — so
+without a redirect it wedges forever waiting for EOF. See Gotchas.
+
 ### Read-only reviewer / second opinion
 
 ```bash
@@ -122,9 +129,14 @@ bounded. A worktree alone is not a security sandbox.
 Continue a non-ephemeral session:
 
 ```bash
-codex exec resume --last "Continue from the previous result and address only the remaining gaps."
-codex exec resume <session-id> "Address the reviewer findings and rerun verification."
+codex exec resume --last "Continue from the previous result and address only the remaining gaps." < /dev/null
+codex exec resume <session-id> "Address the reviewer findings and rerun verification." < /dev/null
 ```
+
+The `< /dev/null` keeps these safe under a harness. `resume` and `review` take
+the prompt as an argument and, in codex-cli 0.142.5, do not append piped stdin
+the way top-level `codex exec` does — but redirecting is harmless and guarantees
+every invocation stays wedge-proof if that behavior changes.
 
 Do not use `--ephemeral` for a run you may need to resume; it avoids persisting
 session rollout files.
@@ -134,9 +146,9 @@ session rollout files.
 For pure review, prefer the first-class review command:
 
 ```bash
-codex exec review --base main -m gpt-5.5 -c model_reasoning_effort='"high"'
-codex exec review --uncommitted
-codex exec review --commit <sha>
+codex exec review --base main -m gpt-5.5 -c model_reasoning_effort='"high"' < /dev/null
+codex exec review --uncommitted < /dev/null
+codex exec review --commit <sha> < /dev/null
 ```
 
 ## Reusable named profiles
@@ -158,9 +170,22 @@ codex exec -C "$worktree" -p editor   - < "$run_dir/prompt.md"
 
 ## Gotchas
 
-- `codex exec` reads the full prompt from stdin when you pass `-`. If you also
-  pass a prompt argument, piped stdin becomes extra context instead of the
-  instruction.
+- Stdin handling is the top source of silent hangs — the same failure class as
+  opencode's missing `< /dev/null`. `codex exec` reads the prompt from stdin
+  when you pass `-` (or pass no prompt at all). It ALSO reads stdin when you pass
+  a prompt *argument* while stdin is piped: it appends that stdin as a `<stdin>`
+  block and prints `Reading additional input from stdin...`. Under a
+  non-interactive harness (the Claude Code Bash tool, cron, most orchestrators)
+  stdin is an open pipe that never closes, so codex blocks reading it until EOF
+  and wedges at startup — 0% CPU, empty output, before it ever contacts the
+  model. Two safe forms: feed the prompt from a file with `- < prompt.md` (the
+  Step 4 examples do this; the file supplies EOF), or, if you pass the prompt as
+  an argument, redirect `< /dev/null`. Never write the bare `codex exec
+  "$(cat prompt.md)"` argument form under a harness — it hangs. Verified on
+  0.142.5: `codex exec "hi" < <(sleep 60)` wedges at "Reading additional input
+  from stdin"; `codex exec "hi" < /dev/null` proceeds. When a prompt argument is
+  intended as the instruction, note that any piped stdin is appended as extra
+  context, not substituted for the argument.
 - `-p` selects a Codex config profile, not a custom subagent. Custom Codex
   subagents are TOML files under `.codex/agents/` or `~/.codex/agents/`.
 - `--json` writes JSONL events to stdout. If you also want the final answer as a
