@@ -236,7 +236,7 @@ Instead of markdown files, declare the agents in `opencode.json`:
   consume the positionals that follow them, so `--file prompt.md "do X"` —
   and the `--file=prompt.md` form too — swallow the message into the file
   list and die with `File not found: do X`. All three failure modes verified
-  on 1.17.13. Safe forms: inline the brief as the positional message
+  on 1.17.12 and 1.17.13. Safe forms: inline the brief as the positional message
   (`"$(cat prompt.md)"`), or put the message BEFORE the flag:
   `opencode run "Follow the attached prompt file exactly." --file prompt.md`.
   Briefs that could start with a `-` need the inline form quoted as one
