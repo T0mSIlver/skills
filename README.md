@@ -1,8 +1,8 @@
 # CLI subagent skills
 
 Skills that let an agent drive another coding CLI programmatically for a second
-opinion, a code review, or a delegated worker run. Each skill ships a
-read-only reviewer and an edit-capable worker/profile.
+opinion, a code review, or a delegated worker run. Each `delegate-to-*` skill
+ships a read-only reviewer and an edit-capable worker/profile.
 
 The important trick is not just "how to launch the CLI"; it is how to launch it
 without losing control of the main checkout. Prefer isolated branches/worktrees,
@@ -25,8 +25,9 @@ machine-readable output, and explicit run state.
   Control enabled, injects the prompt, and leaves a session the user can inspect
   from claude.ai/code.
 - **Prompt as a file.** Write the brief to a markdown file with context, task,
-  constraints, acceptance criteria, and required output shape. Feed or attach
-  that file instead of hand-writing a large inline string.
+  constraints, acceptance criteria, and required output shape. Pass its contents
+  as the prompt argument, or attach it, instead of hand-writing a large inline
+  string.
 - **Capture run state.** Save the harness output, session id, branch, worktree,
   and prompt path. Long runs need a handle for polling, resume, cleanup, and
   review.
@@ -43,13 +44,21 @@ machine-readable output, and explicit run state.
   `.worktreeinclude`-style allowlist.
 - Full-bypass flags remove the harness safety boundary. A worktree prevents file
   collisions, but it is not a secret, network, or machine sandbox.
-- Long prompt files are great, but command-line argument length still exists.
-  Prefer stdin where supported; for opencode, use `--file` for very large briefs.
+- Stdin wedges non-interactive runs. Under a harness the inherited stdin is an
+  open pipe that never closes, and `codex exec` reads stdin whenever you pass a
+  prompt argument alongside it — so it blocks until EOF at 0% CPU, before it ever
+  contacts the model. Redirect `< /dev/null` on every launch.
+- Pass the brief as an argument, not on stdin: inline the prompt file with
+  `"$(cat prompt.md)"`. If a brief is too large to inline comfortably, opencode
+  can attach it — but `--file` never carries the prompt. It still requires a
+  non-empty positional message, and it must come *after* that message, or yargs
+  swallows the message into the file list.
 
-Each skill directory contains a `SKILL.md` with concrete commands and an
-`assets/` folder with drop-in agent/profile configs. Skill-specific executable
-helpers live in that skill's `scripts/` folder. The root `scripts/` directory is
-reserved for repo maintenance scripts.
+Each skill directory contains a `SKILL.md` with concrete commands. Drop-in
+agent and profile configs live in that skill's `assets/` folder — `agents/` for
+`claude-remote-control-server` — and skill-specific executable helpers in its
+`scripts/` folder. The root `scripts/` directory is reserved for repo
+maintenance scripts.
 
 ## Keep local native skill folders current
 
@@ -77,15 +86,18 @@ only skills managed by this repo and leaves unrelated local skills alone. It
 also installs skill-managed helper commands, such as `claude-rc-spawn` and
 `install-claude-rc-server-service.sh`, into `~/.local/bin`.
 
-The repo is the source of truth, but **local edits win**: the sync hashes each
-installed skill against the state it wrote last time (`.skills-sync-state`),
-and a skill whose installed copy was edited in place is *held* — never
-overwritten — until the hold resolves: the edits land on `origin/main` merged
-as-is (the sync reconverges quietly), upstream changes the skill while it is
-held — e.g. the PR was merged with modifications — in which case the
-reviewed upstream version wins and replaces the local edits (a one-shot copy
-of them is kept in `/tmp` and named in the journal), or they are explicitly
-discarded:
+The repo is the source of truth, but **local edits win**. The sync hashes each
+installed skill against the state it wrote last time (`.skills-sync-state`), and
+a skill whose installed copy was edited in place is *held* — never overwritten.
+A hold ends in one of three ways:
+
+- The edits land on `origin/main` merged as-is, and the sync reconverges quietly.
+- Upstream changes the skill while it is held — the PR was merged with
+  modifications, say. The reviewed upstream version wins and replaces the local
+  edits, and a one-shot copy of them is kept in `/tmp` and named in the journal.
+- The edits are discarded explicitly with `skills-pr --discard`.
+
+While a hold lasts, the sync stays quiet rather than noisy:
 
 - Each destination gets a `README.md` saying the directory is managed, where
   the content comes from (remote, branch, commit), when it last synced, and
