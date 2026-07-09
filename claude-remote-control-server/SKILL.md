@@ -20,23 +20,24 @@ install-claude-rc-server-service.sh
 Install another repo with explicit names:
 
 ```bash
-REPO_DIR=/home/dev/work/localvoxtral \
-SERVICE_NAME=claude-rc-localvoxtral \
-SESSION_NAME=localvoxtral@devbox \
-SESSION_PREFIX=devbox-localvoxtral \
+REPO_DIR="$HOME/work/myapp" \
+SERVICE_NAME=claude-rc-myapp \
+SESSION_NAME="myapp@$(hostname -s)" \
+SESSION_PREFIX="$(hostname -s)-myapp" \
 CAPACITY=8 \
 install-claude-rc-server-service.sh
 ```
 
-Use one user systemd service per repo. Pick distinct `SERVICE_NAME`,
-`SESSION_NAME`, and `SESSION_PREFIX` values so sessions are easy to identify in
-claude.ai/code.
+Defaults are derived from the repo directory name and the short hostname, so the
+explicit form above is only needed to override them. Use one user systemd service
+per repo, and pick distinct `SERVICE_NAME`, `SESSION_NAME`, and `SESSION_PREFIX`
+values so sessions are easy to identify in claude.ai/code.
 
 ## Verify
 
 ```bash
-systemctl --user status claude-rc-localvoxtral.service
-journalctl --user -u claude-rc-localvoxtral.service -n 80 --no-pager
+systemctl --user status claude-rc-myapp.service
+journalctl --user -u claude-rc-myapp.service -n 80 --no-pager
 loginctl show-user "$USER" -p Linger
 ```
 
@@ -46,10 +47,10 @@ show the current claude.ai/code environment URL.
 ## Operate
 
 ```bash
-systemctl --user restart claude-rc-localvoxtral.service
-systemctl --user stop claude-rc-localvoxtral.service
-systemctl --user disable --now claude-rc-localvoxtral.service
-journalctl --user -u claude-rc-localvoxtral.service -f
+systemctl --user restart claude-rc-myapp.service
+systemctl --user stop claude-rc-myapp.service
+systemctl --user disable --now claude-rc-myapp.service
+journalctl --user -u claude-rc-myapp.service -f
 ```
 
 ## Rules
