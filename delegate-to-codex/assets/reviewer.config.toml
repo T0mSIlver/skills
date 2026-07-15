@@ -4,7 +4,9 @@
 # The < /dev/null is required: with a prompt argument and piped stdin, codex exec
 # reads stdin and wedges forever under a non-interactive harness. See SKILL.md.
 
-model = "gpt-5.5"
+# GPT-5.6 Sol is exploratory by default: give the reviewer a precise, bounded
+# task and completion criterion in the prompt, or it will keep widening scope.
+model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 
 # Read-only: can read files and run read-only commands, cannot modify the filesystem.
