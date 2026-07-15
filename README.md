@@ -16,6 +16,10 @@ machine-readable output, and explicit run state.
 | [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | `opencode run` | Delegate reviewer/editor runs; primary/all agents with `edit: deny` vs `edit: allow` |
 | [`fastcontext`](fastcontext/SKILL.md) | `fastcontext` | Delegate read-only repository exploration; returns `file:line` citations without spending your context |
 
+The `fastcontext` CLI is a separate tool — install and configure it from
+[**T0mSIlver/fastcontext**](https://github.com/T0mSIlver/fastcontext#installation) before using that
+skill. The skill checks for it on `PATH` at load and points you there if it's missing.
+
 ## Shared conventions
 
 - **Worktree first for edits.** Launch edit workers in a new branch/worktree so
