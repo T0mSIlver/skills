@@ -1,23 +1,14 @@
 ---
 name: fastcontext
 description: fastcontext is your default code-exploration subagent — it greps, globs, and reads a repository for you and returns file:line citations, keeping that exploration out of your own context. Invoke it via bash before answering, editing, reviewing, or debugging code you are not already certain about, and whenever the answer needs more than one file or tracing logic across modules. When in doubt, run fastcontext first.
-allowed-tools: Bash(fastcontext *)
+allowed-tools: Bash(fastcontext *), Bash(command -v fastcontext:*), Bash(echo:*)
 ---
 
 # fastcontext
 
+!`command -v fastcontext >/dev/null 2>&1 || echo '> ⚠️ **fastcontext CLI not found on PATH.** Install and configure it before using this skill: https://github.com/T0mSIlver/fastcontext#installation'`
+
 A read-only repository-exploration subagent. It searches and reads files in a **separate process**, then returns a compact `<final_answer>` block of `path:line` citations. Delegating to it keeps broad exploration out of your context window — you get the evidence, not the file dumps. It never edits; you act on what it finds.
-
-## Prerequisites
-
-The `fastcontext` CLI on `PATH`, configured to point at an OpenAI-compatible model endpoint. One-time setup:
-
-```bash
-uv tool install .                                                  # from a clone of the FastContext repo
-FC_BASE_URL="<endpoint>/v1" FC_MODEL="<model>" fastcontext init     # writes ~/.config/fastcontext/config.toml
-```
-
-After that no env vars are needed per call. Full setup lives in the FastContext project README.
 
 ## When to use
 
