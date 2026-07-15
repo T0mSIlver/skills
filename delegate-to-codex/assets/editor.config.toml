@@ -4,7 +4,9 @@
 # Feed the prompt from a file (or redirect < /dev/null when passing the prompt as
 # an argument): codex exec reads stdin and wedges on a harness's open pipe.
 
-model = "gpt-5.5"
+# GPT-5.6 Sol is exploratory by default: give the worker a precise, bounded task
+# and completion criterion in the prompt, or it will keep widening scope.
+model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 
 # Bounded autonomy: edit files and run commands inside the workspace without

@@ -54,19 +54,32 @@ Include:
 - Context: relevant files, commands, docs, and current branch/base.
 - Task: exactly what to do or review, plus what is out of scope.
 - Constraints: style, libraries, files not to touch, branch/worktree rules.
-- Acceptance criteria: tests/builds to run and what "done" means.
+- Acceptance criteria: tests/builds to run and a precise definition of what
+  "done" means. State this concretely — GPT-5.6 Sol (Step 3) is exploratory and
+  will keep widening scope without a hard completion criterion to stop against.
 - Output contract: summary, changed files, verification evidence, open risks.
 
 ## Step 3 - Pick model and effort
 
-Use GPT-5.5 high for demanding work:
+Default to GPT-5.6 Sol. Pick a reasoning variant with `model_reasoning_effort` —
+`high` for demanding work, `medium` or `low` only for small scans or mechanical
+tasks:
 
 ```bash
--m gpt-5.5 -c model_reasoning_effort='"high"'
+-m gpt-5.6-sol -c model_reasoning_effort='"high"'    # demanding
+-m gpt-5.6-sol -c model_reasoning_effort='"medium"'  # moderate
+-m gpt-5.6-sol -c model_reasoning_effort='"low"'     # small scans / mechanical
 ```
 
-Use medium or low only for small scans or mechanical tasks. Do not hard-code this
-when the user explicitly asks for a different model or cost/latency profile.
+Do not hard-code this when the user explicitly asks for a different model or
+cost/latency profile.
+
+GPT-5.6 Sol is exploratory by default: without a precise definition of when the
+work is complete, it keeps investigating, widening scope, and second-guessing
+instead of stopping. Pin the completion criterion in the prompt (Step 2) — state
+the exact acceptance test, the concrete deliverable, and what is explicitly out
+of scope, so "done" is unambiguous. This matters more the lower the reasoning
+effort, but applies at every variant.
 
 ## Step 4 - Launch the run
 
@@ -86,7 +99,7 @@ mkdir -p "$run_dir"
 
 codex exec \
   -C "$PWD" \
-  -m gpt-5.5 -c model_reasoning_effort='"high"' \
+  -m gpt-5.6-sol -c model_reasoning_effort='"high"' \
   -s read-only \
   --json \
   -o "$run_dir/final.md" \
@@ -104,7 +117,7 @@ run_dir="$worktree/.agent-runs/$slug"
 
 codex exec \
   -C "$worktree" \
-  -m gpt-5.5 -c model_reasoning_effort='"high"' \
+  -m gpt-5.6-sol -c model_reasoning_effort='"high"' \
   --sandbox workspace-write \
   --json \
   -o "$run_dir/final.md" \
@@ -134,7 +147,7 @@ web.
 ```bash
 codex exec \
   -C "$PWD" \
-  -m gpt-5.5 -c model_reasoning_effort='"high"' \
+  -m gpt-5.6-sol -c model_reasoning_effort='"high"' \
   -s read-only \
   -c tools.web_search=true \
   --json \
@@ -179,7 +192,7 @@ session rollout files.
 For pure review, prefer the first-class review command:
 
 ```bash
-codex exec review --base main -m gpt-5.5 -c model_reasoning_effort='"high"' < /dev/null
+codex exec review --base main -m gpt-5.6-sol -c model_reasoning_effort='"high"' < /dev/null
 codex exec review --uncommitted < /dev/null
 codex exec review --commit <sha> < /dev/null
 ```
