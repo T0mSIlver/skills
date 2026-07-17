@@ -56,6 +56,8 @@ Parse the `path:line-range` entries and **read only those spans** — that's the
 - **stdout = answer, stderr = diagnostics.** Read stdout; ignore stderr.
 - Tuning belongs in your fastcontext config, not in each call. The only flag worth reaching for per-run is `--max-turns 16` on a large exploration.
 - Treat cited ranges as **candidate evidence, not ground truth.** Ranges the model never opened are dropped, but it can still cite a real file at the wrong lines — open each span and confirm it actually answers your question before relying on it.
+- **Negative claims are unreliable.** Positive citations are safe to open directly, but any "X does not exist / is not referenced" conclusion needs a direct grep before you act on it — fastcontext has reported a pattern absent from a file whose literal first entry was that pattern.
+- **An empty `<final_answer>` block with exit `0` is a failed run, not a clean "nothing found".** It happens when citation validation drops every citation (e.g. the model cited paths with a bogus prefix) or the model answered in prose only. Re-ask with a rephrased or narrower question, or drop `--citation` to see the prose; treat "nothing found" as unproven until a direct grep agrees.
 - The answer holds at most ~25 citations (a safety cap); ask a narrower question if you need more.
-- **A nonzero exit code means the run failed** (e.g. the endpoint was unreachable); the error is on stderr and stdout stays empty. Exit `0` with a `<final_answer>` block is a good run — retry or fall back to manual exploration only on a nonzero exit.
+- **A nonzero exit code means the run failed** (e.g. the endpoint was unreachable); the error is on stderr and stdout stays empty. Exit `0` with a non-empty `<final_answer>` block is a good run — retry or fall back to manual exploration on a nonzero exit or an empty block.
 - Ask specific questions; run several queries for a multi-part investigation.
