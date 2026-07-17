@@ -167,8 +167,12 @@ Gotchas.
 - Parse `thread.started` in `events.jsonl` for the session id.
 - Read `final.md` for the final answer.
 - Inspect the worktree diff with `git -C "$worktree" diff`.
-- Run `codex exec review --base <base>` or a separate read-only reviewer before
-  merging, cherry-picking, or opening a PR.
+- Run `codex exec review --base <base>` (broken on 0.144.1 — see Built-in
+  review mode) or a separate read-only reviewer before merging, cherry-picking,
+  or opening a PR.
+- The worker's commits may be missing even when its edits are all on disk: a
+  sandboxed worker in a linked worktree cannot write git metadata (see
+  Gotchas). Harvest from the working tree, not from the branch history.
 
 ## Resume
 
@@ -184,18 +188,37 @@ the prompt as an argument and, in codex-cli 0.142.5, do not append piped stdin
 the way top-level `codex exec` does — but redirecting is harmless and guarantees
 every invocation stays wedge-proof if that behavior changes.
 
+`codex exec resume` rejects the exec flags (`-C`, `-m`, `-c`, `-s`, `--json`,
+`-o`) with a usage error, exit 2 — verified on 0.142.x and 0.144.1. A resumed
+turn therefore runs with config-file defaults, not the flags of the original
+launch. When a follow-up needs a specific model, sandbox, or output capture,
+skip resume: launch a fresh `codex exec` with a self-contained prompt that
+embeds the prior finding and the fix diff.
+
 Do not use `--ephemeral` for a run you may need to resume; it avoids persisting
 session rollout files.
 
 ## Built-in review mode
 
-For pure review, prefer the first-class review command:
+For pure review, the first-class review command exists — but check your version
+before relying on it (see below):
 
 ```bash
 codex exec review --base main -m gpt-5.6-sol -c model_reasoning_effort='"high"' < /dev/null
 codex exec review --uncommitted < /dev/null
 codex exec review --commit <sha> < /dev/null
 ```
+
+Known breakage:
+
+- **codex-cli 0.144.1 regression: `codex exec review --base <ref>` recurses.**
+  It re-execs itself with the resolved SHA in a chain of child processes
+  (observed 3+ levels deep), never emits the findings block, and leaves stray
+  processes behind when the wrapper times out (`pkill -f "codex exec review"`
+  to clean up). The same invocation worked on 0.142.5. Workaround: skip review
+  mode — run plain `codex exec` with `-s read-only` in the branch checkout and
+  a prompt like "review the diff between <base-sha> and HEAD".
+- On 0.142.5, `--base` cannot be combined with a `[PROMPT]` argument.
 
 ## Reusable named profiles
 
@@ -251,6 +274,24 @@ codex exec -C "$worktree" -p editor   - < "$run_dir/prompt.md"
 - ChatGPT-plan usage limits abort runs mid-flight with a reset-at timestamp.
   Fall back to another vendor, such as opencode, until that time and retry
   Codex after the stated reset.
+- **Sandboxed workers cannot write git metadata in a linked worktree.** The
+  worktree's admin directory lives under the parent repo's
+  `.git/worktrees/<name>`, outside the sandbox's writable roots, so
+  `git commit` and `git merge` fail even with `-C <worktree>` and
+  `--sandbox workspace-write`. Never ask a worker to `git merge` — it will
+  content-merge the working tree and leave no merge commit, forcing `-s ours`
+  surgery later. Correct division of labor: the orchestrator runs `git merge`
+  and leaves the conflicted tree; the worker only resolves file content; the
+  orchestrator commits. For commit-shaped deliverables, brief the worker:
+  "commit; if commit fails, produce a `git bundle` of the exact final tree as
+  logical commits" — then the orchestrator runs `git fetch <bundle> <branch>`
+  and `git reset --hard` to the bundle head. Verified lossless in practice.
+- A crashing MCP server in the user's `~/.codex/config.toml` aborts the entire
+  run (e.g. "rmcp transport worker quit with fatal AuthRequired" from a server
+  that fails auth). Pass `--ignore-user-config` to skip the user config — auth
+  still resolves via `CODEX_HOME`, so login survives — but model/profile
+  settings are dropped too, so re-specify `-m` and
+  `-c model_reasoning_effort=...` on the CLI.
 - Worktrees do not include ignored local files by default. Copy only explicit
   prerequisites such as `.env.local`, and never copy broad secret directories.
 - `codex apply` applies the latest diff produced by a Codex agent to the current
