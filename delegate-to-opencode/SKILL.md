@@ -218,6 +218,14 @@ SQLite/WAL state under `~/.local/share/opencode/opencode.db`.
   exactly like a fresh launch — the `< /dev/null` redirect is just as mandatory
   here as in Step 5, or they wedge at `init`.
 - Export a transcript with `opencode export <sessionID>`.
+- **A dead mid-implementation run loses the conversation, not the code.** When
+  the `timeout` wrapper kills a silently stalled edit worker (or it dies
+  mid-run), its edits are already on disk in the worktree, uncommitted. Recover
+  by handing the worktree to a fresh run — same vendor or another one — with a
+  continue-brief: read the original prompt file and `git diff`, judge the
+  partial work critically rather than assuming it is correct, finish it, verify,
+  and report. This beats resuming a session whose provider stream already
+  zombied.
 
 ## Inline config alternative
 
