@@ -66,6 +66,14 @@ Include context, exact task, constraints, acceptance criteria, verification
 commands, and final output shape. Ask for evidence: command names, exit status,
 test output summary, changed files, and remaining risks.
 
+State explicitly: **verify synchronously — run the verification commands to
+completion in the foreground and never end the turn waiting on a background
+monitor, task notification, or watcher.** Delegated Claude workers otherwise
+park themselves "waiting for the monitor" and yield-loop instead of finishing.
+If a worker still ends a turn waiting, nudge it once (resume the session or
+paste into its tmux session); if it parks again, take over — its edits are
+already on disk in the worktree.
+
 ## Step 3 - Pick model and effort
 
 ```text
