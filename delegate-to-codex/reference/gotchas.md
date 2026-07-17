@@ -38,11 +38,10 @@ git reset --hard <bundle-head>
 
 ## `codex exec review` recursion (0.144.1 regression)
 
-After the 0.142.5 → 0.144.1 auto-update, `codex exec review --base <ref>`
-re-execs itself with the resolved SHA in a chain of child processes (3+ levels
-observed), never emits the findings block, and leaves stray processes when the
-wrapper times out — clean up with `pkill -f "codex exec review"`. The same
-invocation worked on 0.142.5. Workaround: plain `codex exec -s read-only` in
+On 0.144.1, `codex exec review --base <ref>` re-execs itself with the resolved
+SHA in a chain of child processes (3+ levels observed), never emits the
+findings block, and leaves stray processes when the wrapper times out — clean
+up with `pkill -f "codex exec review"`. The same invocation worked on 0.142.5. Workaround: plain `codex exec -s read-only` in
 the branch checkout with a "review the diff between <base-sha> and HEAD"
 prompt. Separate 0.142.5 quirk: `--base` cannot be combined with a `[PROMPT]`
 argument.
