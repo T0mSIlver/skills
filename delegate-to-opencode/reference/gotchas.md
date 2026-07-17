@@ -26,12 +26,15 @@ detect and relaunch. Health signal during a run: a healthy `--format json`
 run streams events continuously; 0 bytes after ~5 min or mtime stale >10 min
 means hung.
 
-## Concurrency limit
+## Concurrency
 
-A third concurrent instance can hang at startup with zero log entries, blocked
+Single field observation (2026-07-03, opencode 1.17.13, one machine): with two
+instances running, a third hung at startup with zero log entries, blocked
 before its first log write on the shared SQLite/WAL state at
-`~/.local/share/opencode/opencode.db` held by the running instances. Keep ≤2
-concurrent; stagger reviews behind implementations.
+`~/.local/share/opencode/opencode.db` held by the running instances. This is
+not a documented opencode limit — treat "stagger past two" as a conservative
+heuristic and re-test on newer versions. The tell for this failure mode is a
+startup hang with an empty log, as opposed to a mid-stream stall.
 
 ## The 32k output-token clamp
 

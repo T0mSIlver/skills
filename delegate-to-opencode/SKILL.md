@@ -49,7 +49,7 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
    ```
 
    Reviewer: same command with `--agent reviewer` and `--dir "$PWD"`.
-   Keep at most **two concurrent opencode instances** per machine.
+   Stagger concurrent runs past two per machine (see Gotchas).
 
 4. **Harvest.** Parse the final text event and `sessionID` from `events.jsonl`.
    Exit 0 does not mean an answer — always check the finish reason:
@@ -73,8 +73,10 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
 - **Silent provider stalls hang forever** (no stream timeout; only explicit
   provider errors retry). The `timeout` wrapper is what turns a zombie into a
   clean failure.
-- **A third concurrent instance can block before its first log line** on the
-  shared SQLite/WAL db under `~/.local/share/opencode/`.
+- **A third concurrent instance has hung at startup** (zero log entries,
+  blocked on the shared SQLite/WAL db under `~/.local/share/opencode/`) —
+  observed once on 1.17.13, so treat "stagger past two" as a conservative
+  heuristic, not a documented limit.
 - **Output is clamped to 32k tokens including reasoning** — a thinking-heavy
   brief can burn it all and emit nothing, with exit 0 and `reason: "length"`.
   Set `OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX` to the model's real
