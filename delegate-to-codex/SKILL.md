@@ -1,298 +1,99 @@
 ---
 name: delegate-to-codex
-description: Call the OpenAI Codex CLI (`codex exec`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent Codex run. Use for Codex CLI subagent-style delegation, long-running worker runs, worktree-isolated edits, machine-readable JSONL output, `codex exec review`, resume flows, and harness gotchas around sandboxing, profiles, and `--dangerously-bypass-approvals-and-sandbox`.
+description: Call the OpenAI Codex CLI (`codex exec`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent Codex run. Use for Codex CLI subagent-style delegation, long-running worker runs, worktree-isolated edits, machine-readable JSONL output, resume flows, and harness gotchas around stdin, sandboxing, and profiles.
 ---
 
 # Delegate to Codex (CLI)
 
-Run `codex exec` non-interactively for independent investigation, review, or a
-delegated worker. For edit tasks, isolate the worker in a branch/worktree and
-capture enough state to poll, resume, review, and clean up.
+Run `codex exec` non-interactively for a second opinion, review, or a delegated
+edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'`
+(`medium`/`low` only for small or mechanical work).
 
-## Prerequisites
+## Happy path
 
-- Verify `codex` is on PATH with `codex --version`.
-- Verify auth is available with `codex login`, ChatGPT auth, or a scoped
-  `CODEX_API_KEY`/`OPENAI_API_KEY` setup.
-- Run inside a Git repository unless you intentionally pass
-  `--skip-git-repo-check`.
-- When copying bundled configs, resolve `skill_dir` to the directory containing
-  this `SKILL.md`; `assets/...` is not relative to the target repo.
+1. **Isolate.** Read-only work runs in the current checkout with `-s read-only`.
+   Edit work gets its own worktree so the diff is easy to inspect or discard:
 
-## Step 1 - Choose isolation
+   ```bash
+   slug="codex-$(date +%Y%m%d-%H%M%S)"
+   worktree="../$(basename "$PWD")-$slug"
+   git worktree add -b "agent/codex/$slug" "$worktree" HEAD
+   run_dir="$worktree/.agent-runs/$slug"; mkdir -p "$run_dir"
+   ```
 
-For read-only review, stay in the current checkout and use `-s read-only`.
+2. **Write the brief** to `$run_dir/prompt.md` (read-only runs: `/tmp/codex-$slug/`).
+   Include context, exact task, constraints, verification commands, output
+   contract — and a **hard completion criterion**: GPT-5.6 Sol is exploratory
+   and keeps widening scope without an unambiguous definition of "done".
 
-For edit work, prefer a new worktree. This keeps long runs from modifying the
-main agent's files and makes the resulting diff easy to inspect or discard.
+3. **Launch.** Always feed the prompt from the file with `- < prompt.md`; never
+   pass it as a bare argument under a harness (see Gotchas: stdin wedge).
 
-```bash
-slug="codex-$(date +%Y%m%d-%H%M%S)"
-branch="agent/codex/$slug"
-worktree="../$(basename "$PWD")-$slug"
-git worktree add -b "$branch" "$worktree" HEAD
-mkdir -p "$worktree/.agent-runs/$slug"
-```
+   Read-only reviewer / second opinion:
 
-If the worker needs uncommitted local changes, either commit only the intentional
-prerequisite changes first or create an explicit patch and apply it inside the
-worktree. Do not use a blind `git add -A` checkpoint when unrelated user work is
-present.
+   ```bash
+   codex exec -C "$PWD" \
+     -m gpt-5.6-sol -c model_reasoning_effort='"high"' \
+     -s read-only --json -o "$run_dir/final.md" \
+     - < "$run_dir/prompt.md" > "$run_dir/events.jsonl"
+   ```
 
-## Step 2 - Write a prompt file
+   Edit worker — same command with `-C "$worktree"` and
+   `--sandbox workspace-write` instead of `-s read-only`.
 
-Write the full brief to a markdown file under the run directory. For read-only
-runs this can be under `/tmp`; for edit runs keep it inside the worker worktree:
+   Research briefs that need current information: add `-c tools.web_search=true`.
 
-```text
-/tmp/codex-$slug/prompt.md
-$worktree/.agent-runs/$slug/prompt.md
-```
-
-Include:
-
-- Context: relevant files, commands, docs, and current branch/base.
-- Task: exactly what to do or review, plus what is out of scope.
-- Constraints: style, libraries, files not to touch, branch/worktree rules.
-- Acceptance criteria: tests/builds to run and a precise definition of what
-  "done" means. State this concretely — GPT-5.6 Sol (Step 3) is exploratory and
-  will keep widening scope without a hard completion criterion to stop against.
-- Output contract: summary, changed files, verification evidence, open risks.
-
-## Step 3 - Pick model and effort
-
-Default to GPT-5.6 Sol. Pick a reasoning variant with `model_reasoning_effort` —
-`high` for demanding work, `medium` or `low` only for small scans or mechanical
-tasks:
-
-```bash
--m gpt-5.6-sol -c model_reasoning_effort='"high"'    # demanding
--m gpt-5.6-sol -c model_reasoning_effort='"medium"'  # moderate
--m gpt-5.6-sol -c model_reasoning_effort='"low"'     # small scans / mechanical
-```
-
-Do not hard-code this when the user explicitly asks for a different model or
-cost/latency profile.
-
-GPT-5.6 Sol is exploratory by default: without a precise definition of when the
-work is complete, it keeps investigating, widening scope, and second-guessing
-instead of stopping. Pin the completion criterion in the prompt (Step 2) — state
-the exact acceptance test, the concrete deliverable, and what is explicitly out
-of scope, so "done" is unambiguous. This matters more the lower the reasoning
-effort, but applies at every variant.
-
-## Step 4 - Launch the run
-
-Every launch below either feeds the prompt from a file with `- < prompt.md` or
-redirects `< /dev/null`. This is mandatory, not decoration: under a
-non-interactive harness (the Claude Code Bash tool, cron, most orchestrators)
-stdin is an open pipe that never closes, and `codex exec` reads stdin at startup
-whenever you pass `-` or pass a prompt *argument* alongside piped stdin — so
-without a redirect it wedges forever waiting for EOF. See Gotchas.
-
-### Read-only reviewer / second opinion
-
-```bash
-run_dir="/tmp/codex-$slug"
-prompt_file="$run_dir/prompt.md"
-mkdir -p "$run_dir"
-
-codex exec \
-  -C "$PWD" \
-  -m gpt-5.6-sol -c model_reasoning_effort='"high"' \
-  -s read-only \
-  --json \
-  -o "$run_dir/final.md" \
-  - < "$prompt_file" \
-  > "$run_dir/events.jsonl"
-```
-
-### Edit worker
-
-Use `workspace-write` with no prompts as the default unattended local worker. It
-can edit within the worktree while keeping Codex's sandbox boundary.
-
-```bash
-run_dir="$worktree/.agent-runs/$slug"
-
-codex exec \
-  -C "$worktree" \
-  -m gpt-5.6-sol -c model_reasoning_effort='"high"' \
-  --sandbox workspace-write \
-  --json \
-  -o "$run_dir/final.md" \
-  - < "$run_dir/prompt.md" \
-  > "$run_dir/events.jsonl"
-```
-
-Use `--dangerously-bypass-approvals-and-sandbox` only inside a separate
-container/VM/CI runner whose filesystem, network, and secrets are already
-bounded. A worktree alone is not a security sandbox.
-
-### Enabling live web search (research delegations)
-
-`codex exec` has no `--search` flag. Enable the native Responses `web_search`
-tool with a config override:
-
-```bash
--c tools.web_search=true
-```
-
-Add it to any launch that needs current information — research briefs and
-second-opinion prompts about fast-moving topics. With this flag, the `--json`
-event stream shows `web_search` items running multi-query searches. Leave it off
-for pure code review or edit work, which should reason over the checkout, not the
-web.
-
-```bash
-codex exec \
-  -C "$PWD" \
-  -m gpt-5.6-sol -c model_reasoning_effort='"high"' \
-  -s read-only \
-  -c tools.web_search=true \
-  --json \
-  -o "$run_dir/final.md" \
-  - < "$prompt_file" \
-  > "$run_dir/events.jsonl"
-```
-
-The persistent equivalent is `[tools]\nweb_search = true` in a profile config
-(see `assets/`). The top-level interactive flag also works when placed *before*
-the subcommand — `codex --search exec "..." < /dev/null` — but the
-`-c tools.web_search=true` override is the form to reach for on `codex exec`; see
-Gotchas.
-
-## Step 5 - Harvest and review
-
-- Parse `thread.started` in `events.jsonl` for the session id.
-- Read `final.md` for the final answer.
-- Inspect the worktree diff with `git -C "$worktree" diff`.
-- Run `codex exec review --base <base>` (broken on 0.144.1 — see Built-in
-  review mode) or a separate read-only reviewer before merging, cherry-picking,
-  or opening a PR.
-- The worker's commits may be missing even when its edits are all on disk: a
-  sandboxed worker in a linked worktree cannot write git metadata (see
-  Gotchas). Harvest from the working tree, not from the branch history.
-
-## Resume
-
-Continue a non-ephemeral session:
-
-```bash
-codex exec resume --last "Continue from the previous result and address only the remaining gaps." < /dev/null
-codex exec resume <session-id> "Address the reviewer findings and rerun verification." < /dev/null
-```
-
-The `< /dev/null` keeps these safe under a harness. `resume` and `review` take
-the prompt as an argument and, in codex-cli 0.142.5, do not append piped stdin
-the way top-level `codex exec` does — but redirecting is harmless and guarantees
-every invocation stays wedge-proof if that behavior changes.
-
-`codex exec resume` rejects the exec flags (`-C`, `-m`, `-c`, `-s`, `--json`,
-`-o`) with a usage error, exit 2 — verified on 0.142.x and 0.144.1. A resumed
-turn therefore runs with config-file defaults, not the flags of the original
-launch. When a follow-up needs a specific model, sandbox, or output capture,
-skip resume: launch a fresh `codex exec` with a self-contained prompt that
-embeds the prior finding and the fix diff.
-
-Do not use `--ephemeral` for a run you may need to resume; it avoids persisting
-session rollout files.
-
-## Built-in review mode
-
-For pure review, the first-class review command exists — but check your version
-before relying on it (see below):
-
-```bash
-codex exec review --base main -m gpt-5.6-sol -c model_reasoning_effort='"high"' < /dev/null
-codex exec review --uncommitted < /dev/null
-codex exec review --commit <sha> < /dev/null
-```
-
-Known breakage:
-
-- **codex-cli 0.144.1 regression: `codex exec review --base <ref>` recurses.**
-  It re-execs itself with the resolved SHA in a chain of child processes
-  (observed 3+ levels deep), never emits the findings block, and leaves stray
-  processes behind when the wrapper times out (`pkill -f "codex exec review"`
-  to clean up). The same invocation worked on 0.142.5. Workaround: skip review
-  mode — run plain `codex exec` with `-s read-only` in the branch checkout and
-  a prompt like "review the diff between <base-sha> and HEAD".
-- On 0.142.5, `--base` cannot be combined with a `[PROMPT]` argument.
-
-## Reusable named profiles
-
-Profiles live at `$CODEX_HOME/<name>.config.toml` (default `~/.codex/`). Drop-in
-configs are in `assets/`:
-
-- `assets/reviewer.config.toml` -> read-only reviewer.
-- `assets/editor.config.toml` -> workspace-write edit worker with no prompts.
-
-```bash
-skill_dir="<directory containing this SKILL.md>"
-cp "$skill_dir/assets/reviewer.config.toml" "${CODEX_HOME:-$HOME/.codex}/reviewer.config.toml"
-cp "$skill_dir/assets/editor.config.toml"   "${CODEX_HOME:-$HOME/.codex}/editor.config.toml"
-
-codex exec -C "$worktree" -p reviewer - < "$run_dir/prompt.md"
-codex exec -C "$worktree" -p editor   - < "$run_dir/prompt.md"
-```
+4. **Harvest.** Final answer in `final.md`; session id in the `thread.started`
+   event; diff via `git -C "$worktree" diff`. Harvest from the **working tree**,
+   not branch history — the worker's commits may be missing (see Gotchas).
+   Before merging, run a fresh read-only reviewer over the diff.
 
 ## Gotchas
 
-- Stdin handling is the top source of silent hangs — the same failure class as
-  opencode's missing `< /dev/null`. `codex exec` reads the prompt from stdin
-  when you pass `-` (or pass no prompt at all). It ALSO reads stdin when you pass
-  a prompt *argument* while stdin is piped: it appends that stdin as a `<stdin>`
-  block and prints `Reading additional input from stdin...`. Under a
-  non-interactive harness (the Claude Code Bash tool, cron, most orchestrators)
-  stdin is an open pipe that never closes, so codex blocks reading it until EOF
-  and wedges at startup — 0% CPU, empty output, before it ever contacts the
-  model. Two safe forms: feed the prompt from a file with `- < prompt.md` (the
-  Step 4 examples do this; the file supplies EOF), or, if you pass the prompt as
-  an argument, redirect `< /dev/null`. Never write the bare `codex exec
-  "$(cat prompt.md)"` argument form under a harness — it hangs. Verified on
-  0.142.5: `codex exec "hi" < <(sleep 60)` wedges at "Reading additional input
-  from stdin"; `codex exec "hi" < /dev/null` proceeds. When a prompt argument is
-  intended as the instruction, note that any piped stdin is appended as extra
-  context, not substituted for the argument.
-- `-p` selects a Codex config profile, not a custom subagent. Custom Codex
-  subagents are TOML files under `.codex/agents/` or `~/.codex/agents/`.
-- `--search` is a top-level `codex` (interactive TUI) flag only. On codex-cli
-  0.142.5, `codex exec --search ...` errors with `unexpected argument '--search'
-  found`. Enable web search on `codex exec` with `-c tools.web_search=true`. The
-  top-level flag does work when placed before the subcommand
-  (`codex --search exec "..." < /dev/null`), but the config override is the
-  reliable form for `exec` launches and matches the `-c` style used elsewhere
-  here.
-- `--json` writes JSONL events to stdout. If you also want the final answer as a
-  simple file, pass `-o <file>`.
-- `-s read-only` is a hard filesystem boundary; commands that write caches,
-  build artifacts, or temp files inside the repo can fail.
-- On codex-cli 0.142.x, `codex exec` rejects `-a/--ask-for-approval`; it is
-  already non-interactive. Sandbox flags such as `--sandbox workspace-write`
-  still apply.
-- ChatGPT-plan usage limits abort runs mid-flight with a reset-at timestamp.
-  Fall back to another vendor, such as opencode, until that time and retry
-  Codex after the stated reset.
-- **Sandboxed workers cannot write git metadata in a linked worktree.** The
-  worktree's admin directory lives under the parent repo's
-  `.git/worktrees/<name>`, outside the sandbox's writable roots, so
-  `git commit` and `git merge` fail even with `-C <worktree>` and
-  `--sandbox workspace-write`. Never ask a worker to `git merge` — it will
-  content-merge the working tree and leave no merge commit, forcing `-s ours`
-  surgery later. Correct division of labor: the orchestrator runs `git merge`
-  and leaves the conflicted tree; the worker only resolves file content; the
-  orchestrator commits. For commit-shaped deliverables, brief the worker:
-  "commit; if commit fails, produce a `git bundle` of the exact final tree as
-  logical commits" — then the orchestrator runs `git fetch <bundle> <branch>`
-  and `git reset --hard` to the bundle head. Verified lossless in practice.
-- A crashing MCP server in the user's `~/.codex/config.toml` aborts the entire
-  run (e.g. "rmcp transport worker quit with fatal AuthRequired" from a server
-  that fails auth). Pass `--ignore-user-config` to skip the user config — auth
-  still resolves via `CODEX_HOME`, so login survives — but model/profile
-  settings are dropped too, so re-specify `-m` and
-  `-c model_reasoning_effort=...` on the CLI.
-- Worktrees do not include ignored local files by default. Copy only explicit
-  prerequisites such as `.env.local`, and never copy broad secret directories.
-- `codex apply` applies the latest diff produced by a Codex agent to the current
-  tree. Check `pwd`, branch, and `git status` before using it.
+- **Stdin wedge.** `codex exec` reads piped stdin whenever you pass `-`, no
+  prompt, or a prompt *argument* — and under a harness stdin never closes, so it
+  wedges at startup (0% CPU, no output). Use `- < prompt.md`, or add
+  `< /dev/null` to any argument form. Never `codex exec "$(cat prompt.md)"` bare.
+- **Workers cannot commit in a linked worktree.** The sandbox can't write the
+  parent repo's `.git/worktrees/<name>`, so `git commit`/`git merge` fail even
+  with `workspace-write`. The orchestrator runs all git commands; workers only
+  edit and resolve content. Commit-shaped deliverable: brief the worker "commit;
+  if commit fails, produce a `git bundle`" and fetch from the bundle.
+- **`codex exec review` recurses on 0.144.1** — re-execs itself endlessly, emits
+  no findings, leaves stray processes. Review with plain `codex exec
+  -s read-only` and a "review the diff between <sha> and HEAD" prompt instead.
+- **`codex exec resume` rejects the exec flags** (`-C -m -c -s --json -o`, exit
+  2), so resumed turns run on config defaults. Prefer a fresh self-contained run
+  that embeds the prior finding.
+- **A crashing MCP server in `~/.codex/config.toml` aborts the whole run.** Pass
+  `--ignore-user-config` (auth still resolves via `CODEX_HOME`) and re-specify
+  `-m`/`-c` on the CLI.
+- ChatGPT-plan usage limits abort runs mid-flight with a reset time. Fall back
+  to another vendor until then.
+- `-s read-only` is a hard filesystem boundary — commands that write caches or
+  build artifacts fail under it.
+- `-p` selects a config profile, not an agent persona; custom subagents are TOML
+  files under `.codex/agents/`.
+- `codex apply` applies the latest agent diff to the *current* tree — check
+  `pwd` and branch first.
+- Worktrees omit ignored files. Copy only explicit prerequisites (e.g.
+  `.env.local`), never secret directories.
+
+## Not possible
+
+- No approval prompts in exec mode: `-a/--ask-for-approval` is rejected.
+- No `--search` flag on `codex exec` — use `-c tools.web_search=true`.
+- No worktree creation or cleanup — manage them yourself.
+- No resuming `--ephemeral` runs.
+- The sandbox is not security isolation:
+  `--dangerously-bypass-approvals-and-sandbox` only inside a bounded
+  container/VM/CI runner.
+
+## Profiles
+
+Drop-in configs in `assets/` (`reviewer.config.toml`, `editor.config.toml`) go
+to `$CODEX_HOME/<name>.config.toml` (default `~/.codex/`); launch with
+`codex exec -p reviewer - < prompt.md`. Resolve `skill_dir` from this SKILL.md's
+location — `assets/` is not relative to the target repo.
+
+Evidence and full mechanics behind each gotcha: `reference/gotchas.md`.
