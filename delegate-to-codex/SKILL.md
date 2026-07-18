@@ -1,6 +1,6 @@
 ---
 name: delegate-to-codex
-description: Call the OpenAI Codex CLI (`codex exec`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent Codex run. Use for Codex CLI subagent-style delegation, long-running worker runs, worktree-isolated edits, machine-readable JSONL output, resume flows, and harness gotchas around stdin, sandboxing, and profiles.
+description: Call the OpenAI Codex CLI (`codex exec`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent Codex run. Use for Codex CLI subagent-style delegation, long-running worker runs, worktree-isolated edits, machine-readable JSONL output, resume flows, and harness gotchas around stdin and sandboxing.
 ---
 
 # Delegate to Codex (CLI)
@@ -88,12 +88,5 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
 - The sandbox is not security isolation:
   `--dangerously-bypass-approvals-and-sandbox` only inside a bounded
   container/VM/CI runner.
-
-## Profiles
-
-Drop-in configs in `assets/` (`reviewer.config.toml`, `editor.config.toml`) go
-to `$CODEX_HOME/<name>.config.toml` (default `~/.codex/`); launch with
-`codex exec -p reviewer - < prompt.md`. Resolve `skill_dir` from this SKILL.md's
-location — `assets/` is not relative to the target repo.
 
 Evidence and full mechanics behind each gotcha: `reference/gotchas.md`.
