@@ -11,17 +11,23 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
 
 ## Happy path
 
-1. **Isolate.** Read-only work runs in the current checkout with `-s read-only`.
-   Edit work gets its own worktree so the diff is easy to inspect or discard:
+1. **Isolate.** Read-only work runs in the current checkout with `-s read-only`:
 
    ```bash
    slug="codex-$(date +%Y%m%d-%H%M%S)"
+   run_dir="/tmp/codex-$slug"; mkdir -p "$run_dir"
+   ```
+
+   Edit work gets its own worktree instead, so the diff is easy to inspect or
+   discard:
+
+   ```bash
    worktree="../$(basename "$PWD")-$slug"
    git worktree add -b "agent/codex/$slug" "$worktree" HEAD
    run_dir="$worktree/.agent-runs/$slug"; mkdir -p "$run_dir"
    ```
 
-2. **Write the brief** to `$run_dir/prompt.md` (read-only runs: `/tmp/codex-$slug/`).
+2. **Write the brief** to `$run_dir/prompt.md`.
    Include context, exact task, constraints, verification commands, output
    contract — and a **hard completion criterion**: GPT-5.6 Sol is exploratory
    and keeps widening scope without an unambiguous definition of "done".
@@ -73,7 +79,7 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
 - `-s read-only` is a hard filesystem boundary — commands that write caches or
   build artifacts fail under it.
 - `-p` selects a config profile, not an agent persona; custom subagents are TOML
-  files under `.codex/agents/`.
+  files under `.codex/agents/` or `~/.codex/agents/`.
 - `codex apply` applies the latest agent diff to the *current* tree — check
   `pwd` and branch first.
 - Worktrees omit ignored files. Copy only explicit prerequisites (e.g.
