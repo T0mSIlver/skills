@@ -94,10 +94,3 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
 - Persistent servers for future mobile/web dispatch — that is
   `claude remote-control` server mode; use the `claude-remote-control-server`
   skill.
-
-## Reusable agents
-
-Drop-ins in `assets/` (`cc-reviewer.md`, `cc-editor.md`) go to
-`.claude/agents/`; launch with `claude -p --agent cc-reviewer
---permission-mode plan ...`. Resolve `skill_dir` from this SKILL.md's location —
-`assets/` is not relative to the target repo.
