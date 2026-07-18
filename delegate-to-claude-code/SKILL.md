@@ -14,7 +14,7 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
 ## Happy path
 
 1. **Write the brief** to `.agent-runs/$slug/prompt.md` (`slug="claude-$(date
-   +%Y%m%d-%H%M%S)"`): context, exact task, constraints, acceptance criteria,
+   +%Y%m%d-%H%M%S)"; mkdir -p ".agent-runs/$slug"`): context, exact task, constraints, acceptance criteria,
    verification commands, output shape. Demand evidence (commands run, exit
    status, changed files, risks) and state explicitly: **verify synchronously —
    never end the turn waiting on a background monitor or watcher.** Workers
@@ -32,8 +32,9 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
    ```
 
    Edit worker: same command, replacing `--permission-mode plan` with
-   `--permission-mode acceptEdits` and adding `--worktree "$slug"` (Claude
-   creates the worktree and branch).
+   `--permission-mode acceptEdits`, renaming `--name`/`--tmux-session` to
+   `"$slug-edit"`, and adding `--worktree "$slug"` (Claude creates the worktree
+   and branch).
 
    Noninteractive fallback (JSON capture, no Remote Control):
 
@@ -49,9 +50,10 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
    `--permission-mode acceptEdits`, replace `--output-format json` with
    `--output-format stream-json --verbose`, and add `--worktree "$slug"
    --max-budget-usd 10`. For a fire-and-return background worker use
-   `claude --bg --worktree "$slug" --permission-mode acceptEdits
-   --name "$slug-edit" "$(cat ".agent-runs/$slug/prompt.md")"` and manage it
-   with `claude agents --json`.
+   `claude --bg --worktree "$slug" --model opus --effort high
+   --permission-mode acceptEdits --name "$slug-edit"
+   "$(cat ".agent-runs/$slug/prompt.md")"` and manage it with
+   `claude agents --json`.
 
 3. **Harvest.** `--output-format json`: final text in `.result`, session id in
    `.session_id`; `stream-json --verbose` for live logs. `claude-rc-spawn`
@@ -78,6 +80,8 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
   take over — its edits are already on disk in the worktree.
 - `--agent` selects a persona only; hard permissions come from
   `--permission-mode` (`plan`, `acceptEdits`, `auto`) — pair them every time.
+  Use `acceptEdits` for a bounded unattended edit worker, `auto` when you want
+  background safety checks around broader tool calls.
 - `--max-budget-usd` caps print-mode (`claude -p`) runs only.
 - Add `--tmux` with `--worktree` when you want Claude Code's built-in tmux
   handling instead of `claude-rc-spawn`.
