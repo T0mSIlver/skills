@@ -11,22 +11,31 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
 
 ## Happy path
 
-1. **Isolate and install agents.** Read-only review runs in the current
-   checkout; edit work gets its own worktree (opencode never creates one).
-   Copy the bundled agents — they are `mode: all`, required for direct
-   `--agent` launches:
+1. **Isolate and install agents.** Copy the bundled agents (they are
+   `mode: all`, required for direct `--agent` launches) into
+   `.opencode/agents/` of the checkout the run will use — opencode resolves
+   `--agent` against `--dir`, so the agent must live there. Read-only review
+   runs in the current checkout:
 
    ```bash
    slug="opencode-$(date +%Y%m%d-%H%M%S)"
-   worktree="../$(basename "$PWD")-$slug"
    skill_dir="<directory containing this SKILL.md>"
+   run_dir="/tmp/opencode-$slug"
+   mkdir -p "$run_dir" .opencode/agents
+   cp "$skill_dir/assets/reviewer.md" .opencode/agents/
+   ```
+
+   Edit work gets its own worktree instead (opencode never creates one):
+
+   ```bash
+   worktree="../$(basename "$PWD")-$slug"
    git worktree add -b "agent/opencode/$slug" "$worktree" HEAD
    run_dir="$worktree/.agent-runs/$slug"
    mkdir -p "$run_dir" "$worktree/.opencode/agents"
-   cp "$skill_dir/assets/reviewer.md" "$skill_dir/assets/editor.md" "$worktree/.opencode/agents/"
+   cp "$skill_dir/assets/editor.md" "$worktree/.opencode/agents/"
    ```
 
-2. **Write the brief** to `$run_dir/prompt.md` (read-only: `/tmp/opencode-$slug/`):
+2. **Write the brief** to `$run_dir/prompt.md`:
    context, exact task, constraints, acceptance criteria, verification commands,
    required final output. It reaches opencode inline as the positional message —
    `"$(cat prompt.md)"`. `--file` cannot carry the prompt (see Gotchas).
@@ -98,7 +107,9 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
   finish, verify.
 - The shared log is `~/.local/share/opencode/log/opencode.log` (UTC); grep
   `run=`/`agent=` to tell "never initialized" from "stalled mid-stream".
-- Worktrees omit ignored files; copy only explicit prerequisites.
+- Worktrees omit ignored files; copy only explicit prerequisites. If the worker
+  needs uncommitted local changes, apply an explicit patch in the worktree —
+  never checkpoint unrelated user WIP with `git add -A`.
 
 ## Not possible
 
@@ -111,7 +122,9 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
 
 ## Inline config alternative
 
-Instead of the markdown assets, declare `reviewer`/`editor` in `opencode.json`
-with `"mode": "all"` and `permission` maps (`edit: deny` for the reviewer).
+Instead of the markdown assets, declare the agents in `opencode.json`
+(`"$schema": "https://opencode.ai/config.json"`): mirror each asset's
+frontmatter — `description`, `mode`, `model`, `permission` — as
+`agent.reviewer` / `agent.editor` objects under the top-level `agent` key.
 
 Evidence, exact failure modes, and the output-cap analysis: `reference/gotchas.md`.
