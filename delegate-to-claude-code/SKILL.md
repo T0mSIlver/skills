@@ -31,8 +31,9 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
      --model opus --effort high
    ```
 
-   Edit worker: same command with `--permission-mode acceptEdits` and
-   `--worktree "$slug"` (Claude creates the worktree and branch).
+   Edit worker: same command, replacing `--permission-mode plan` with
+   `--permission-mode acceptEdits` and adding `--worktree "$slug"` (Claude
+   creates the worktree and branch).
 
    Noninteractive fallback (JSON capture, no Remote Control):
 
@@ -44,11 +45,13 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
      --name "$slug-review" --add-dir .
    ```
 
-   For an edit worker add `--permission-mode acceptEdits --worktree "$slug"
-   --output-format stream-json --verbose --max-budget-usd 10`. For a
-   fire-and-return background worker use `claude --bg --worktree "$slug"
-   --permission-mode acceptEdits --name "$slug-edit" "$(cat prompt.md)"` and
-   manage it with `claude agents --json`.
+   For an edit worker replace `--permission-mode plan` with
+   `--permission-mode acceptEdits`, replace `--output-format json` with
+   `--output-format stream-json --verbose`, and add `--worktree "$slug"
+   --max-budget-usd 10`. For a fire-and-return background worker use
+   `claude --bg --worktree "$slug" --permission-mode acceptEdits
+   --name "$slug-edit" "$(cat ".agent-runs/$slug/prompt.md")"` and manage it
+   with `claude agents --json`.
 
 3. **Harvest.** `--output-format json`: final text in `.result`, session id in
    `.session_id`; `stream-json --verbose` for live logs. `claude-rc-spawn`
@@ -76,6 +79,8 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
 - `--agent` selects a persona only; hard permissions come from
   `--permission-mode` (`plan`, `acceptEdits`, `auto`) — pair them every time.
 - `--max-budget-usd` caps print-mode (`claude -p`) runs only.
+- Add `--tmux` with `--worktree` when you want Claude Code's built-in tmux
+  handling instead of `claude-rc-spawn`.
 - `claude -p` skips the workspace-trust dialog — run it only in directories you
   trust.
 - `--add-dir` grants file access; it does not make that directory the working
@@ -89,8 +94,9 @@ Model default: `--model opus --effort high` (`sonnet --effort low` for trivia).
   `CLAUDE_CODE_OAUTH_TOKEN` auth — full claude.ai login only.
 - Budget caps on `--bg` background agents (`--max-budget-usd` is print-mode
   only).
-- `--dangerously-skip-permissions` outside a bounded container/VM — it can
-  write protected config areas; never the default edit-worker mode.
+- `--dangerously-skip-permissions` outside a bounded, preferably
+  network-isolated container/VM — it can write protected config areas; never
+  the default edit-worker mode.
 - Persistent servers for future mobile/web dispatch — that is
   `claude remote-control` server mode; use the `claude-remote-control-server`
   skill.
