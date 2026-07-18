@@ -50,13 +50,18 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
 
    Research briefs that need current information: add `-c tools.web_search=true`.
 
-4. **Harvest.** Final answer in `final.md`; session id in the `thread.started`
-   event; diff via `git -C "$worktree" diff`. Harvest from the **working tree**,
-   not branch history — the worker's commits may be missing (see Gotchas).
-   Before merging, run a fresh read-only reviewer over the diff.
+4. **Harvest.** Final answer in `$run_dir/final.md`; session id in the
+   `thread.started` event in `$run_dir/events.jsonl`. For edit work also:
+   diff via `git -C "$worktree" diff` — harvest from the **working tree**, not
+   branch history, since the worker's commits may be missing (see Gotchas) —
+   and run a fresh read-only reviewer over the diff before merging.
 
 ## Gotchas
 
+- **A missing `codex` binary or stale auth surfaces mid-run** as an abort — or
+  a hang indistinguishable from the stdin wedge. Preflight `codex --version`
+  and auth (`codex login`, ChatGPT auth, or a scoped
+  `CODEX_API_KEY`/`OPENAI_API_KEY`) before long runs.
 - **Stdin wedge.** `codex exec` reads piped stdin whenever you pass `-`, no
   prompt, or a prompt *argument* — and under a harness stdin never closes, so it
   wedges at startup (0% CPU, no output). Use `- < prompt.md`, or add
@@ -66,7 +71,7 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
   with `workspace-write`. The orchestrator runs all git commands; workers only
   edit and resolve content. Commit-shaped deliverable: brief the worker "commit;
   if commit fails, produce a `git bundle`" and fetch from the bundle.
-- **`codex exec review` recurses on 0.144.1** — re-execs itself endlessly, emits
+- **`codex exec review --base <ref>` recurses on 0.144.1** — re-execs itself endlessly, emits
   no findings, leaves stray processes. Review with plain `codex exec
   -s read-only` and a "review the diff between <sha> and HEAD" prompt instead.
 - **`codex exec resume` rejects the exec flags** (`-C -m -c -s --json -o`, exit
