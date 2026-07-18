@@ -22,6 +22,7 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
    discard:
 
    ```bash
+   slug="codex-$(date +%Y%m%d-%H%M%S)"
    worktree="../$(basename "$PWD")-$slug"
    git worktree add -b "agent/codex/$slug" "$worktree" HEAD
    run_dir="$worktree/.agent-runs/$slug"; mkdir -p "$run_dir"
@@ -70,7 +71,8 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
   -s read-only` and a "review the diff between <sha> and HEAD" prompt instead.
 - **`codex exec resume` rejects the exec flags** (`-C -m -c -s --json -o`, exit
   2), so resumed turns run on config defaults. Prefer a fresh self-contained run
-  that embeds the prior finding.
+  that embeds the prior finding; if you must resume:
+  `codex exec resume --last "..." < /dev/null`.
 - **A crashing MCP server in `~/.codex/config.toml` aborts the whole run.** Pass
   `--ignore-user-config` (auth still resolves via `CODEX_HOME`) and re-specify
   `-m`/`-c` on the CLI.
@@ -83,7 +85,9 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
 - `codex apply` applies the latest agent diff to the *current* tree — check
   `pwd` and branch first.
 - Worktrees omit ignored files. Copy only explicit prerequisites (e.g.
-  `.env.local`), never secret directories.
+  `.env.local`), never secret directories. If the worker needs uncommitted
+  local changes, apply an explicit patch in the worktree — never checkpoint
+  unrelated user WIP with `git add -A`.
 
 ## Not possible
 
@@ -93,6 +97,6 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
 - No resuming `--ephemeral` runs.
 - The sandbox is not security isolation:
   `--dangerously-bypass-approvals-and-sandbox` only inside a bounded
-  container/VM/CI runner.
+  container/VM/CI runner — a worktree is not a security sandbox.
 
 Evidence and full mechanics behind each gotcha: `reference/gotchas.md`.
