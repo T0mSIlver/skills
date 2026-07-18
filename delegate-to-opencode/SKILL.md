@@ -28,6 +28,8 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
    Edit work gets its own worktree instead (opencode never creates one):
 
    ```bash
+   slug="opencode-$(date +%Y%m%d-%H%M%S)"
+   skill_dir="<directory containing this SKILL.md>"
    worktree="../$(basename "$PWD")-$slug"
    git worktree add -b "agent/opencode/$slug" "$worktree" HEAD
    run_dir="$worktree/.agent-runs/$slug"
@@ -65,13 +67,14 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
 
    ```bash
    jq -r 'select(.type=="step_finish") | .part.reason' "$run_dir/events.jsonl" \
-     | grep -qx length && echo "TRUNCATED - raise OUTPUT_TOKEN_MAX or shorten the brief"
+     | grep -qx length && echo "TRUNCATED - raise OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX or shorten the brief"
    ```
 
    `stop` is healthy. Hung-run check: `events.jsonl` still 0 bytes after ~5 min,
    or mtime stale >10 min → kill and relaunch. Resume with
-   `opencode run --continue "..." < /dev/null` or `--session <id>`; add `--fork`
-   to branch without mutating the original.
+   `opencode run --continue "..." < /dev/null` or
+   `opencode run --session <id> "..." < /dev/null`; add `--fork` to branch
+   without mutating the original.
 
 ## Gotchas
 
