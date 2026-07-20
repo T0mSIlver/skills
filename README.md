@@ -26,13 +26,13 @@ folder, so any SKILL.md-aware tool can consume it. Pick a rail:
 [many others](https://github.com/vercel-labs/skills)):
 
 ```bash
-npx skills add T0mSIlver/skills                                  # pick interactively
-npx skills add T0mSIlver/skills -a claude-code -a codex --all -g # everything, globally
+npx skills add T0mSIlver/skills                               # pick interactively
+npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, globally
 ```
 
 **Claude Code plugin marketplace:**
 
-```
+```text
 /plugin marketplace add T0mSIlver/skills
 /plugin install cli-delegation@t0msilver-skills
 /plugin install claude-rc-server@t0msilver-skills
@@ -97,10 +97,11 @@ Some skills need more than the folder copy — each declares its requirements in
 
 ## Repo layout
 
-Each skill directory contains a `SKILL.md` with concrete commands. Drop-in
-agent and profile configs live in that skill's `assets/` folder — `agents/` for
-`claude-remote-control-server` — and skill-specific executable helpers in its
-`scripts/` folder. The root `scripts/` directory is reserved for repo
+Each skill directory contains a `SKILL.md` with concrete commands. Where
+present, drop-in agent and profile configs live in the skill's `assets/`
+folder (`agents/` for `claude-remote-control-server`), deep-dive evidence in
+`reference/`, and skill-specific executable helpers in its `scripts/`
+folder. The root `scripts/` directory is reserved for repo
 maintenance scripts, and `.claude-plugin/marketplace.json` makes the repo
 installable as a Claude Code plugin marketplace.
 
