@@ -2,6 +2,7 @@
 name: fastcontext
 description: fastcontext is your default code-exploration subagent — it greps, globs, and reads a repository for you and returns file:line citations, keeping that exploration out of your own context. Invoke it via bash before answering, editing, reviewing, or debugging code you are not already certain about, and whenever the answer needs more than one file or tracing logic across modules. When in doubt, run fastcontext first.
 allowed-tools: Bash(fastcontext *), Bash(command -v fastcontext:*), Bash(echo:*)
+compatibility: Requires the fastcontext CLI on PATH — install and configure it from https://github.com/T0mSIlver/fastcontext#installation
 ---
 
 # fastcontext
