@@ -1,0 +1,34 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate skills against the Agent Skills spec
+        run: |
+          set -euo pipefail
+          fail=0
+          for dir in */; do
+            skill="${dir%/}"
+            [ -f "$skill/SKILL.md" ] || continue
+            echo "::group::$skill"
+            npx -y skills-ref validate "./$skill" || fail=1
+            echo "::endgroup::"
+          done
+          exit "$fail"
+
+      - name: Validate plugin marketplace
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate .
