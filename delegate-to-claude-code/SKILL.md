@@ -1,6 +1,7 @@
 ---
 name: delegate-to-claude-code
 description: Call the Claude Code CLI (`claude`) as a delegated reviewer, second opinion, or edit worker. Use for Claude Code subagent-style delegation with `claude-rc-spawn`, `claude -p`, `--bg`, `--worktree`, `--tmux`, plan/read-only reviewers, acceptEdits/auto edit workers, JSON/stream-json capture, resume flows, and gotchas around permission modes, worktree cleanup, agent personas, and `--dangerously-skip-permissions`. For persistent `claude remote-control` repo servers, use the claude-remote-control-server skill instead.
+compatibility: Requires the claude CLI; tmux and the bundled scripts/claude-rc-spawn helper on PATH for remote-visible sessions (plain `claude -p` works without them).
 ---
 
 # Delegate to Claude Code (CLI)

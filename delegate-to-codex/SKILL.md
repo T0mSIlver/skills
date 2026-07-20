@@ -1,6 +1,7 @@
 ---
 name: delegate-to-codex
 description: Call the OpenAI Codex CLI (`codex exec`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent Codex run. Use for Codex CLI subagent-style delegation, long-running worker runs, worktree-isolated edits, machine-readable JSONL output, resume flows, and harness gotchas around stdin and sandboxing.
+compatibility: Requires the OpenAI Codex CLI (codex) installed and authenticated.
 ---
 
 # Delegate to Codex (CLI)

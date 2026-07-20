@@ -1,0 +1,53 @@
+{
+  "name": "t0msilver-skills",
+  "owner": {
+    "name": "Tom Vaucourt"
+  },
+  "description": "Skills that let a coding agent delegate work to another coding CLI, plus a persistent Claude Code Remote Control server setup.",
+  "plugins": [
+    {
+      "name": "cli-delegation",
+      "source": "./",
+      "strict": false,
+      "description": "Delegate reviewer, second-opinion, and edit-worker runs to the claude, codex, and opencode CLIs, and read-only repo exploration to fastcontext. Worktree-first edits, machine-readable capture, reviewer-after-worker.",
+      "skills": [
+        "./delegate-to-claude-code",
+        "./delegate-to-codex",
+        "./delegate-to-opencode",
+        "./fastcontext"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "delegation",
+        "subagent",
+        "claude-code",
+        "codex",
+        "opencode",
+        "worktree",
+        "code-review"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "claude-rc-server",
+      "source": "./claude-remote-control-server",
+      "strict": false,
+      "description": "Run persistent per-repo `claude remote-control` servers under user systemd so they survive reboots and stay reachable from claude.ai/code. Setup runs via the bundled install script, not automatically.",
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "remote-control",
+        "systemd",
+        "claude-code"
+      ],
+      "category": "workflow"
+    }
+  ]
+}

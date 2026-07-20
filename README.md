@@ -1,8 +1,9 @@
 # CLI subagent skills
 
-Skills that let an agent drive another coding CLI programmatically for a second
-opinion, a code review, or a delegated worker run. Each `delegate-to-*` skill
-ships a read-only reviewer and an edit-capable worker/profile.
+[Agent Skills](https://agentskills.io) that let a coding agent drive another
+coding CLI programmatically — for a second opinion, a code review, or a
+delegated worker run. Each `delegate-to-*` skill ships a read-only reviewer and
+an edit-capable worker/profile.
 
 The important trick is not just "how to launch the CLI"; it is how to launch it
 without losing control of the main checkout. Prefer isolated branches/worktrees,
@@ -16,9 +17,42 @@ machine-readable output, and explicit run state.
 | [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | `opencode run` | Delegate reviewer/editor runs; primary/all agents with `edit: deny` vs `edit: allow` |
 | [`fastcontext`](fastcontext/SKILL.md) | `fastcontext` | Delegate read-only repository exploration; returns `file:line` citations without spending your context |
 
-The `fastcontext` CLI is a separate tool — install and configure it from
-[**T0mSIlver/fastcontext**](https://github.com/T0mSIlver/fastcontext#installation) before using that
-skill. The skill checks for it on `PATH` at load and points you there if it's missing.
+## Install
+
+Each skill is a plain [Agent Skills](https://agentskills.io/specification)
+folder, so any SKILL.md-aware tool can consume it. Pick a rail:
+
+**`skills` CLI** (installs into Claude Code, Codex, opencode, Cursor, and
+[many others](https://github.com/vercel-labs/skills)):
+
+```bash
+npx skills add T0mSIlver/skills                                  # pick interactively
+npx skills add T0mSIlver/skills -a claude-code -a codex --all -g # everything, globally
+```
+
+**Claude Code plugin marketplace:**
+
+```
+/plugin marketplace add T0mSIlver/skills
+/plugin install cli-delegation@t0msilver-skills
+/plugin install claude-rc-server@t0msilver-skills
+```
+
+**Manual:** copy any top-level skill directory into your agent's skills folder
+(`~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/`, …).
+
+Some skills need more than the folder copy — each declares its requirements in
+`compatibility:` frontmatter:
+
+- `fastcontext` requires the separate
+  [**fastcontext** CLI](https://github.com/T0mSIlver/fastcontext#installation)
+  on `PATH`; the skill checks for it at load and points you there if missing.
+- `claude-remote-control-server` sets up a user systemd service via its bundled
+  `scripts/install-claude-rc-server-service.sh` (nothing runs at install time —
+  the skill walks the agent through it).
+- `delegate-to-claude-code` prefers its `scripts/claude-rc-spawn` helper (needs
+  `tmux`) on `PATH` for remote-visible sessions; plain `claude -p` delegation
+  works without it.
 
 ## Shared conventions
 
@@ -61,102 +95,20 @@ skill. The skill checks for it on `PATH` at load and points you there if it's mi
   non-empty positional message, and it must come *after* that message, or yargs
   swallows the message into the file list.
 
+## Repo layout
+
 Each skill directory contains a `SKILL.md` with concrete commands. Drop-in
 agent and profile configs live in that skill's `assets/` folder — `agents/` for
 `claude-remote-control-server` — and skill-specific executable helpers in its
 `scripts/` folder. The root `scripts/` directory is reserved for repo
-maintenance scripts.
+maintenance scripts, and `.claude-plugin/marketplace.json` makes the repo
+installable as a Claude Code plugin marketplace.
 
-## Keep local native skill folders current
+## Self-updating deployment (optional)
 
-This repo includes a small sync setup that keeps the same skill versions
-available to Claude Code, Codex, and opencode:
-
-| Location | Serves |
-|----------|--------|
-| `~/.claude/skills/` | Claude Code (native) |
-| `~/.codex/skills/` | Codex (native) |
-| `~/.config/opencode/skills/` | opencode (native) |
-
-Install the user-level timer:
-
-```bash
-scripts/install-sync-timer.sh
-```
-
-The timer runs every 2 minutes. Each run fetches `origin/main`, exports that
-fetched tree into a temporary directory, and then syncs every top-level
-directory containing a `SKILL.md` into the three native locations. If GitHub
-fetching fails because credentials or the network are unavailable, the sync
-still updates the native folders from the current local checkout. It updates
-only skills managed by this repo and leaves unrelated local skills alone. It
-also installs skill-managed helper commands, such as `claude-rc-spawn` and
-`install-claude-rc-server-service.sh`, into `~/.local/bin`.
-
-The repo is the source of truth, but **local edits win**. The sync hashes each
-installed skill against the state it wrote last time (`.skills-sync-state`), and
-a skill whose installed copy was edited in place is *held* — never overwritten.
-A hold ends in one of three ways:
-
-- The edits land on `origin/main` merged as-is, and the sync reconverges quietly.
-- Upstream changes the skill while it is held — the PR was merged with
-  modifications, say. The reviewed upstream version wins and replaces the local
-  edits, and a one-shot copy of them is kept in `/tmp` and named in the journal.
-- The edits are discarded explicitly with `skills-pr --discard`.
-
-While a hold lasts, the sync stays quiet rather than noisy:
-
-- Each destination gets a `README.md` saying the directory is managed, where
-  the content comes from (remote, branch, commit), when it last synced, and
-  which skills are currently held because of local edits.
-- The first sync that sees a local edit logs one `NOTICE: local edits in …`
-  journal line with the exact next steps, then stays quiet while the hold
-  lasts.
-- "synced" journal lines only appear when a skill's content actually changed,
-  so notices stand out instead of drowning in no-op noise.
-
-## Upstreaming a fix found while using a skill
-
-An in-place edit to an installed copy is almost always an agent that spotted a
-mistake mid-task. The intended flow is: edit the installed copy, open a PR
-with one command, and **ask the repo owner to review it** — the local edit
-stays live (held) in the meantime, and everything reconverges on merge.
-`skills-pr` is installed into `~/.local/bin` by the sync:
-
-```bash
-# after editing the installed copy in place:
-skills-pr -m "delegate-to-codex: fix resume example"
-# ... then tell the owner to review the PR it prints.
-
-# preview without pushing or opening a PR:
-skills-pr --dry-run
-
-# throw the local edits away and reinstall the repo version:
-skills-pr --discard delegate-to-codex
-```
-
-It diffs the installed copies against `origin/main`, applies the drift in a
-temporary worktree of the repo checkout (found via the `.skills-sync-repo`
-breadcrumb each destination carries), commits, pushes a `skills-pr/...`
-branch, opens the PR with `gh`, and prints the review-request next step. The
-destination `README.md` and the sync's `NOTICE` journal line teach the same
-two commands, so an agent whose skill is held is told the path in the same
-breath.
-
-For private GitHub repos, the timer needs noninteractive git credentials. The
-installer imports currently available `GITHUB_TOKEN`, `GH_TOKEN`, and
-`SSH_AUTH_SOCK` values into the user systemd manager without writing them to the
-unit file.
-
-Useful commands:
-
-```bash
-scripts/sync-skills.sh
-skills-pr --dry-run
-skills-pr --discard <skill>
-install-claude-rc-server-service.sh
-systemctl --user status skills-sync.timer
-systemctl --user status claude-rc-skills.service
-journalctl --user -u skills-sync.service -n 80 --no-pager
-journalctl --user -u claude-rc-skills.service -n 80 --no-pager
-```
+The author's own deployment loop — a systemd timer that syncs these skills from
+`origin/main` into the Claude Code/Codex/opencode native folders, holds local
+edits instead of overwriting them, and lets an agent upstream a fix from an
+installed copy as a PR with one `skills-pr` command — is documented in
+[docs/sync-system.md](docs/sync-system.md). You do not need it to use the
+skills; the install rails above are the supported path.

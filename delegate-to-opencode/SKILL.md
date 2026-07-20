@@ -1,6 +1,7 @@
 ---
 name: delegate-to-opencode
 description: "Call the opencode CLI (`opencode run`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent opencode run. Use for GLM-5.2/opencode harness delegation, primary/all agent configs with edit permissions, worktree-isolated edit workers, JSON event capture, session resume/fork flows, and gotchas around `mode: subagent`, `--auto`, prompt files, and `--dir`."
+compatibility: Requires the opencode CLI installed and authenticated with a configured model provider.
 ---
 
 # Delegate to opencode (CLI)
