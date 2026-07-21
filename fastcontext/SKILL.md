@@ -62,3 +62,4 @@ Parse the `path:line-range` entries and **read only those spans** — that's the
 - The answer holds at most ~25 citations (a safety cap); ask a narrower question if you need more.
 - **A nonzero exit code means the run failed** (e.g. the endpoint was unreachable); the error is on stderr and stdout stays empty. Exit `0` with a non-empty `<final_answer>` block is a good run — retry or fall back to manual exploration on a nonzero exit or an empty block.
 - Ask specific questions; run several queries for a multi-part investigation.
+- **Cap concurrency at 2.** Run at most 2 fastcontext sessions at once; queue the rest.
