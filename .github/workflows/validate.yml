@@ -1,0 +1,45 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Validate skills against the Agent Skills spec
+        # skills-ref on PyPI is the official Anthropic validator
+        # (github.com/anthropics/agentskills); the npm package of the same
+        # name is an unrelated third-party port — do not use it.
+        run: |
+          set -euo pipefail
+          fail=0
+          seen=0
+          for dir in */; do
+            skill="${dir%/}"
+            [ -f "$skill/SKILL.md" ] || continue
+            seen=$((seen + 1))
+            echo "::group::$skill"
+            uvx --from skills-ref==0.1.1 agentskills validate "./$skill" || fail=1
+            echo "::endgroup::"
+          done
+          if [ "$seen" -eq 0 ]; then
+            echo "No SKILL.md found in any top-level directory" >&2
+            exit 1
+          fi
+          exit "$fail"
+
+      - name: Validate plugin marketplace
+        run: |
+          npm install -g @anthropic-ai/claude-code@2.1.215
+          claude plugin validate . --strict
