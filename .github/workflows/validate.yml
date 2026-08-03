@@ -39,6 +39,33 @@ jobs:
           fi
           exit "$fail"
 
+      - name: Lint shell scripts
+        # Gated at warning: the only info-level findings today are SC2016 in
+        # claude-rc-spawn, which deliberately emits literal ${cmd[@]} into a
+        # script it generates. Drop to --severity=style to see those.
+        run: |
+          set -euo pipefail
+          files=()
+          while IFS= read -r f; do
+            case "$f" in
+              *.sh) files+=("$f") ;;
+              *)
+                [ -f "$f" ] || continue
+                IFS= read -r shebang <"$f" || continue
+                case "$shebang" in
+                  '#!'*bash* | '#!'*/sh | '#!'*' sh') files+=("$f") ;;
+                esac
+                ;;
+            esac
+          done < <(git ls-files)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No shell scripts found — discovery is probably broken" >&2
+            exit 1
+          fi
+          printf 'linting %s scripts:\n' "${#files[@]}"
+          printf '  %s\n' "${files[@]}"
+          shellcheck --severity=warning --color=always -- "${files[@]}"
+
       - name: Validate plugin marketplace
         run: |
           npm install -g @anthropic-ai/claude-code@2.1.215

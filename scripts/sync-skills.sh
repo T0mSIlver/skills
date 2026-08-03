@@ -207,7 +207,7 @@ for dest_root in "${DESTINATIONS[@]}"; do
           rsync -a -- "$dest_root/$old_skill/" "$replaced/"
           log "NOTICE: upstream removed $old_skill while it was held; the local edits are preserved at $replaced"
         fi
-        rm -rf -- "$dest_root/$old_skill"
+        rm -rf -- "${dest_root:?}/${old_skill:?}"
         log "removed stale synced skill $old_skill from $dest_root"
       fi
     done <"$manifest"
