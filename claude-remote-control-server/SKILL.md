@@ -1,6 +1,6 @@
 ---
 name: claude-remote-control-server
-description: Install, update, inspect, or troubleshoot persistent Claude Code Remote Control servers for repositories. Use when the user asks to run `claude remote-control`, create a repo-specific remote-control server, make it survive reboots, manage user systemd services such as `claude-rc-skills.service`, configure `--spawn worktree`, service names, session names, prefixes, capacity, lingering, or add another repo to claude.ai/code remote control.
+description: Install, update, inspect, or troubleshoot persistent Claude Code Remote Control servers for repositories. Use when the user asks to run `claude remote-control`, create a repo-specific remote-control server, make it survive reboots, manage user systemd services such as `claude-rc-skills.service`, configure `--spawn worktree`, service names, session names, prefixes, capacity, permission modes for spawned sessions (`--permission-mode`, `bypassPermissions`), lingering, or add another repo to claude.ai/code remote control.
 compatibility: Linux with user systemd (loginctl lingering); the claude CLI logged in via claude.ai. Setup runs the bundled scripts/install-claude-rc-server-service.sh.
 ---
 
@@ -34,6 +34,36 @@ explicit form above is only needed to override them. Use one user systemd servic
 per repo, and pick distinct `SERVICE_NAME`, `SESSION_NAME`, and `SESSION_PREFIX`
 values so sessions are easy to identify in claude.ai/code.
 
+## Permission Mode For Spawned Sessions
+
+`PERMISSION_MODE` sets `--permission-mode` on the server, which every session it
+spawns inherits. Accepted values are the CLI's own choices — `acceptEdits`,
+`auto`, `bypassPermissions`, `manual`, `dontAsk`, `plan` — plus the undocumented
+but working `default`; the installer rejects anything else instead of writing a
+unit that crash-loops. Omit it to keep the CLI default.
+
+Spawn sessions that never stop for permission prompts:
+
+```bash
+REPO_DIR="$HOME/work/myapp" \
+PERMISSION_MODE=bypassPermissions \
+install-claude-rc-server-service.sh
+```
+
+This is the practical mode for remote control from a phone or browser: there is
+no terminal in front of the session, so a prompt would otherwise leave the
+dispatched work parked until you get back to the machine. It also means those
+sessions run every tool call unattended, so only use it for repos where that is
+acceptable, and prefer `--spawn worktree` (the default here) so each session is
+confined to its own worktree.
+
+Changing the mode is a reinstall — re-run the installer with the new
+`PERMISSION_MODE` value, then confirm the flag landed:
+
+```bash
+systemctl --user cat claude-rc-myapp.service | grep -- --permission-mode
+```
+
 ## Verify
 
 ```bash
@@ -64,3 +94,5 @@ journalctl --user -u claude-rc-myapp.service -f
   Control services so Claude can use the local full claude.ai login.
 - Keep `Restart=always`, `RestartSec=30`, and `StartLimitIntervalSec=0` so the
   service keeps retrying through reboot, network, or temporary auth trouble.
+- Set the permission mode through `PERMISSION_MODE` at install time rather than
+  hand-editing `ExecStart`, so the next reinstall does not silently drop it.

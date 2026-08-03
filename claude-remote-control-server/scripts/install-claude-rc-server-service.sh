@@ -16,6 +16,7 @@ HOST_NAME="$(hostname -s 2>/dev/null || echo localhost)"
 SESSION_NAME="${SESSION_NAME:-$REPO_NAME@$HOST_NAME}"
 SESSION_PREFIX="${SESSION_PREFIX:-$HOST_NAME-$REPO_NAME}"
 CAPACITY="${CAPACITY:-8}"
+PERMISSION_MODE="${PERMISSION_MODE:-}"
 CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude)}"
 SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 SERVICE_PATH="$SYSTEMD_USER_DIR/$SERVICE_NAME.service"
@@ -40,6 +41,21 @@ if ! git -C "$REPO_DIR" rev-parse --show-toplevel >/dev/null 2>&1; then
   exit 1
 fi
 
+# Optional --permission-mode for sessions this server spawns. Validated here
+# so a typo fails the install instead of crash-looping the service later.
+PERMISSION_MODE_ARG=""
+if [[ -n "$PERMISSION_MODE" ]]; then
+  case "$PERMISSION_MODE" in
+    acceptEdits | auto | bypassPermissions | manual | dontAsk | plan | default) ;;
+    *)
+      printf 'unsupported PERMISSION_MODE: %s\n' "$PERMISSION_MODE" >&2
+      printf 'expected one of: acceptEdits auto bypassPermissions manual dontAsk plan\n' >&2
+      exit 1
+      ;;
+  esac
+  PERMISSION_MODE_ARG=" --permission-mode $PERMISSION_MODE"
+fi
+
 mkdir -p "$SYSTEMD_USER_DIR"
 
 service_tmp="$(mktemp)"
@@ -56,7 +72,7 @@ Type=simple
 WorkingDirectory=$REPO_DIR
 Environment=HOME=$HOME
 Environment=PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL $CLAUDE_BIN remote-control --name "$SESSION_NAME" --remote-control-session-name-prefix "$SESSION_PREFIX" --spawn worktree --capacity $CAPACITY
+ExecStart=/usr/bin/env -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL $CLAUDE_BIN remote-control --name "$SESSION_NAME" --remote-control-session-name-prefix "$SESSION_PREFIX" --spawn worktree --capacity $CAPACITY$PERMISSION_MODE_ARG
 Restart=always
 RestartSec=30
 
