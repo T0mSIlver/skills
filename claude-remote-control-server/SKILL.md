@@ -37,9 +37,10 @@ values so sessions are easy to identify in claude.ai/code.
 ## Permission Mode For Spawned Sessions
 
 `PERMISSION_MODE` sets `--permission-mode` on the server, which every session it
-spawns inherits. Accepted values are `acceptEdits`, `auto`, `bypassPermissions`,
-`default`, `dontAsk`, and `plan`; the installer rejects anything else instead of
-writing a unit that crash-loops. Omit it to keep the CLI default.
+spawns inherits. Accepted values are the CLI's own choices — `acceptEdits`,
+`auto`, `bypassPermissions`, `manual`, `dontAsk`, `plan` — plus the undocumented
+but working `default`; the installer rejects anything else instead of writing a
+unit that crash-loops. Omit it to keep the CLI default.
 
 Spawn sessions that never stop for permission prompts:
 

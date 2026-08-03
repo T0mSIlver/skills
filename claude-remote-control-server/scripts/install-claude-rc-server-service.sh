@@ -46,10 +46,10 @@ fi
 PERMISSION_MODE_ARG=""
 if [[ -n "$PERMISSION_MODE" ]]; then
   case "$PERMISSION_MODE" in
-    acceptEdits | auto | bypassPermissions | default | dontAsk | plan) ;;
+    acceptEdits | auto | bypassPermissions | manual | dontAsk | plan | default) ;;
     *)
       printf 'unsupported PERMISSION_MODE: %s\n' "$PERMISSION_MODE" >&2
-      printf 'expected one of: acceptEdits auto bypassPermissions default dontAsk plan\n' >&2
+      printf 'expected one of: acceptEdits auto bypassPermissions manual dontAsk plan\n' >&2
       exit 1
       ;;
   esac
