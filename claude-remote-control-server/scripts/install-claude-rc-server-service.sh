@@ -22,9 +22,11 @@ SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 SERVICE_PATH="$SYSTEMD_USER_DIR/$SERVICE_NAME.service"
 
 # DRY_RUN prints the unit to stdout and touches nothing. 0/false/no read as off
-# so `DRY_RUN=0` cannot silently install.
-case "${DRY_RUN:-}" in
-  '' | 0 | false | no) DRY_RUN="" ;;
+# so `DRY_RUN=0` cannot silently install; matched case- and space-insensitively
+# so `False` disables rather than surprising into a dry run.
+dry_run_in="${DRY_RUN:-}"
+case "${dry_run_in//[[:space:]]/}" in
+  '' | 0 | [Ff][Aa][Ll][Ss][Ee] | [Nn][Oo]) DRY_RUN="" ;;
   *) DRY_RUN=1 ;;
 esac
 

@@ -38,12 +38,17 @@ values so sessions are easy to identify in claude.ai/code.
 disk or systemd — preview a config change, or diff it against the live unit:
 
 ```bash
-DRY_RUN=1 CAPACITY=12 install-claude-rc-server-service.sh \
-  | diff - <(systemctl --user cat claude-rc-skills.service | tail -n +2)
+svc=claude-rc-skills   # the service you are comparing against
+DRY_RUN=1 CAPACITY=12 SERVICE_NAME="$svc" install-claude-rc-server-service.sh \
+  | diff - <(systemctl --user cat "$svc.service" | tail -n +2)
 ```
 
+`systemctl --user cat` prepends a `# /path` line, hence the `tail`. Pass the same
+overrides the service was installed with, or the diff reports those as changes.
+
 Validation still runs under `DRY_RUN`, so it also checks a `PERMISSION_MODE`
-value without installing. `DRY_RUN=0`, `false`, and `no` mean off.
+value without installing. `DRY_RUN=0`, `false`, and `no` mean off, case- and
+space-insensitively.
 
 ## Permission Mode For Spawned Sessions
 
