@@ -21,14 +21,25 @@ CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude)}"
 SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 SERVICE_PATH="$SYSTEMD_USER_DIR/$SERVICE_NAME.service"
 
-if ! command -v systemctl >/dev/null 2>&1; then
-  printf 'systemctl was not found; install another process supervisor for claude remote-control\n' >&2
-  exit 1
-fi
+# DRY_RUN prints the unit to stdout and touches nothing. 0/false/no read as off
+# so `DRY_RUN=0` cannot silently install; matched case- and space-insensitively
+# so `False` disables rather than surprising into a dry run.
+dry_run_in="${DRY_RUN:-}"
+case "${dry_run_in//[[:space:]]/}" in
+  '' | 0 | [Ff][Aa][Ll][Ss][Ee] | [Nn][Oo]) DRY_RUN="" ;;
+  *) DRY_RUN=1 ;;
+esac
 
-if ! command -v loginctl >/dev/null 2>&1; then
-  printf 'loginctl was not found; cannot enable user lingering automatically\n' >&2
-  exit 1
+if [[ -z "$DRY_RUN" ]]; then
+  if ! command -v systemctl >/dev/null 2>&1; then
+    printf 'systemctl was not found; install another process supervisor for claude remote-control\n' >&2
+    exit 1
+  fi
+
+  if ! command -v loginctl >/dev/null 2>&1; then
+    printf 'loginctl was not found; cannot enable user lingering automatically\n' >&2
+    exit 1
+  fi
 fi
 
 if [[ -z "$CLAUDE_BIN" || ! -x "$CLAUDE_BIN" ]]; then
@@ -56,8 +67,6 @@ if [[ -n "$PERMISSION_MODE" ]]; then
   PERMISSION_MODE_ARG=" --permission-mode $PERMISSION_MODE"
 fi
 
-mkdir -p "$SYSTEMD_USER_DIR"
-
 service_tmp="$(mktemp)"
 trap 'rm -f "$service_tmp"' EXIT
 
@@ -80,6 +89,14 @@ RestartSec=30
 WantedBy=default.target
 UNIT
 
+if [[ -n "$DRY_RUN" ]]; then
+  printf 'dry run: would write %s and run systemctl --user enable --now %s.service\n' \
+    "$SERVICE_PATH" "$SERVICE_NAME" >&2
+  cat "$service_tmp"
+  exit 0
+fi
+
+mkdir -p "$SYSTEMD_USER_DIR"
 install -m 0644 "$service_tmp" "$SERVICE_PATH"
 
 systemctl --user daemon-reload

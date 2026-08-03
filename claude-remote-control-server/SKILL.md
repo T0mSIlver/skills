@@ -34,6 +34,22 @@ explicit form above is only needed to override them. Use one user systemd servic
 per repo, and pick distinct `SERVICE_NAME`, `SESSION_NAME`, and `SESSION_PREFIX`
 values so sessions are easy to identify in claude.ai/code.
 
+`DRY_RUN=1` prints the unit it would write to stdout and exits without touching
+disk or systemd — preview a config change, or diff it against the live unit:
+
+```bash
+svc=claude-rc-skills   # the service you are comparing against
+DRY_RUN=1 CAPACITY=12 SERVICE_NAME="$svc" install-claude-rc-server-service.sh \
+  | diff - <(systemctl --user cat "$svc.service" | tail -n +2)
+```
+
+`systemctl --user cat` prepends a `# /path` line, hence the `tail`. Pass the same
+overrides the service was installed with, or the diff reports those as changes.
+
+Validation still runs under `DRY_RUN`, so it also checks a `PERMISSION_MODE`
+value without installing. `DRY_RUN=0`, `false`, and `no` mean off, case- and
+space-insensitively.
+
 ## Permission Mode For Spawned Sessions
 
 `PERMISSION_MODE` sets `--permission-mode` on the server, which every session it
