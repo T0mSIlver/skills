@@ -43,10 +43,21 @@ jobs:
         # Gated at warning: the only info-level findings today are SC2016 in
         # claude-rc-spawn, which deliberately emits literal ${cmd[@]} into a
         # script it generates. Drop to --severity=style to see those.
+        #
+        # Pinned rather than using the runner image's shellcheck, so an image
+        # bump cannot turn CI red with no code change.
+        env:
+          SHELLCHECK_VERSION: v0.10.0
         run: |
           set -euo pipefail
+          curl -fsSL -o /tmp/shellcheck.tar.xz \
+            "https://github.com/koalaman/shellcheck/releases/download/$SHELLCHECK_VERSION/shellcheck-$SHELLCHECK_VERSION.linux.x86_64.tar.xz"
+          tar -xJf /tmp/shellcheck.tar.xz -C /tmp
+          shellcheck="/tmp/shellcheck-$SHELLCHECK_VERSION/shellcheck"
+          "$shellcheck" --version
+
           files=()
-          while IFS= read -r f; do
+          while IFS= read -r -d '' f; do
             case "$f" in
               *.sh) files+=("$f") ;;
               *)
@@ -57,14 +68,14 @@ jobs:
                 esac
                 ;;
             esac
-          done < <(git ls-files)
+          done < <(git ls-files -z)
           if [ "${#files[@]}" -eq 0 ]; then
             echo "No shell scripts found — discovery is probably broken" >&2
             exit 1
           fi
           printf 'linting %s scripts:\n' "${#files[@]}"
           printf '  %s\n' "${files[@]}"
-          shellcheck --severity=warning --color=always -- "${files[@]}"
+          "$shellcheck" --severity=warning --color=always -- "${files[@]}"
 
       - name: Validate plugin marketplace
         run: |
