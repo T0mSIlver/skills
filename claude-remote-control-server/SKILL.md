@@ -52,13 +52,12 @@ space-insensitively.
 
 ## Permission Mode For Spawned Sessions
 
-`PERMISSION_MODE` sets `--permission-mode` on the server, which every session it
-spawns inherits. Accepted values are the CLI's own choices — `acceptEdits`,
-`auto`, `bypassPermissions`, `manual`, `dontAsk`, `plan` — plus the undocumented
-but working `default`; the installer rejects anything else instead of writing a
-unit that crash-loops. Omit it to keep the CLI default.
-
-Spawn sessions that never stop for permission prompts:
+`PERMISSION_MODE` sets `--permission-mode` on the server, and every session it
+spawns starts with that flag on its command line. Accepted values are the CLI's
+own choices — `acceptEdits`, `auto`, `bypassPermissions`, `manual`, `dontAsk`,
+`plan` — plus the undocumented but working `default`; the installer rejects
+anything else instead of writing a unit that crash-loops. Omit it to keep the
+CLI default.
 
 ```bash
 REPO_DIR="$HOME/work/myapp" \
@@ -66,12 +65,22 @@ PERMISSION_MODE=bypassPermissions \
 install-claude-rc-server-service.sh
 ```
 
-This is the practical mode for remote control from a phone or browser: there is
-no terminal in front of the session, so a prompt would otherwise leave the
-dispatched work parked until you get back to the machine. It also means those
-sessions run every tool call unattended, so only use it for repos where that is
-acceptable, and prefer `--spawn worktree` (the default here) so each session is
-confined to its own worktree.
+Sessions spawned from claude.ai/code do not currently honor this flag: the web
+UI sends its own permission mode with every spawn (its picker offers only
+Manual, Accept edits, and Plan), and the client-sent mode overrides the server
+flag. The spawned process carries `--permission-mode bypassPermissions`, yet
+its transcript records `"permissionMode":"default"` and Bash calls still stop
+for approval in the UI. Verified 2026-08-04 on CLI 2.1.220 — evidence in
+[reference/web-spawn-permission-mode.md](reference/web-spawn-permission-mode.md);
+tracked upstream as
+[anthropics/claude-code#71518](https://github.com/anthropics/claude-code/issues/71518).
+
+For prompt-free remote sessions, use `permissions.allow` rules in the repo's
+`.claude/settings.json` instead — those apply in every mode, including the
+Manual mode web spawns land in. To check the mode a session actually runs in,
+read `"permissionMode"` from its transcript under `~/.claude/projects/`; the
+process arguments and the claude.ai mode dropdown both mislead (bypass is
+never reported to the UI even when active).
 
 Changing the mode is a reinstall — re-run the installer with the new
 `PERMISSION_MODE` value, then confirm the flag landed:
