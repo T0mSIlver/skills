@@ -20,6 +20,7 @@ DESTINATIONS=(
 HELPER_SPECS=(
   "delegate-to-claude-code/scripts/claude-rc-spawn:claude-rc-spawn"
   "claude-remote-control-server/scripts/install-claude-rc-server-service.sh:install-claude-rc-server-service.sh"
+  "drive-codex-in-herdr/scripts/codex-pane-up:codex-pane-up"
   "scripts/skills-pr:skills-pr"
 )
 
