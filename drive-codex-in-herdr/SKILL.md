@@ -29,17 +29,21 @@ Model default: `-m gpt-5.6-sol -c model_reasoning_effort='"high"'`
 
    ```bash
    pane=$(codex-pane-up reviewer "$PWD" \
-     -m gpt-5.6-sol -c model_reasoning_effort='"high"' -s read-only)
+     -m gpt-5.6-sol -c model_reasoning_effort='"high"' -s read-only -a never)
    ```
 
-   Edit worker — its own worktree, and a sandbox that can write to it:
+   Pass `-a never` explicitly: it is what makes `-s read-only` a real boundary
+   rather than one an approval can step over (see Gotchas).
+
+   Edit worker — its own worktree, and a sandbox that can write to it. Resolve
+   the path before handing it over; `--cwd` should not be relative:
 
    ```bash
    slug="codex-$(date +%Y%m%d-%H%M%S)"
-   wt="../$(basename "$PWD")-$slug"
-   git worktree add -b "agent/codex/$slug" "$wt" HEAD
+   git worktree add -b "agent/codex/$slug" "../$(basename "$PWD")-$slug" HEAD
+   wt=$(cd "../$(basename "$PWD")-$slug" && pwd -P)
    pane=$(codex-pane-up worker "$wt" \
-     -m gpt-5.6-sol -c model_reasoning_effort='"high"' -s workspace-write)
+     -m gpt-5.6-sol -c model_reasoning_effort='"high"' -s workspace-write -a never)
    ```
 
 3. **Prompt, one turn at a time.** `--wait` returns when the agent settles into
@@ -101,11 +105,13 @@ Model default: `-m gpt-5.6-sol -c model_reasoning_effort='"high"'`
   recover long messages (a 120-line reply came back whole at `--lines 400`), but
   for any substantial deliverable have the worker write Markdown to a path and
   read the file instead.
-- **Trusting herdr's own codex hook once removes a modal and improves
-  detection.** `herdr integration install codex` writes a SessionStart hook to
-  `~/.codex/hooks.json`; until trusted, every codex launch stops on "Hooks need
-  review", and status stays screen-inferred. Trust is granted interactively
-  ("Trust all and continue") and persists.
+- **The helper declines hook trust on purpose, so the modal keeps coming back.**
+  `herdr integration install codex` writes a SessionStart hook to
+  `~/.codex/hooks.json`; until it is trusted, every codex launch stops on "Hooks
+  need review" and status stays screen-inferred rather than hook-reported.
+  Answering "Trust all and continue" fixes both, permanently — but it is a
+  blanket grant over every configured hook, so the user makes it once by hand.
+  Do not change the helper to answer it for them.
 - **Names are aliases for a pane's current occupant**, not durable ids. A name
   clears when that codex exits. Re-resolve with `herdr agent list` rather than
   assuming a name still points anywhere.

@@ -64,7 +64,15 @@ Two distinct modals were seen on this machine, in order:
 The hook is herdr's own integration, `~/.codex/hooks.json` →
 `bash '/home/dev/.codex/herdr-agent-state.sh' session`, installed by
 `herdr integration install codex`. Trusting it clears the modal permanently and
-switches codex from screen-manifest inference to hook-reported state.
+switches codex from screen-manifest inference to hook-reported state. The helper
+still answers "continue without trusting": the grant covers every configured
+hook, not just herdr's, and that is not a choice a script should make for the
+user. It costs two keystrokes per launch until they grant it themselves.
+
+Multi-key `send-keys` is the documented form (`herdr agent send-keys <target>
+<key> [key ...]`) and was used for both modals here — `down enter` selected
+"2. Skip" on the update offer, `down down enter` selected "3. Continue without
+trusting" — with the composer reached afterwards in both cases.
 
 The reliable "composer is live" marker is the footer line, absent from every
 modal screen:

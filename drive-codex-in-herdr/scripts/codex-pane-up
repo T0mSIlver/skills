@@ -20,6 +20,7 @@ cwd=${2:?cwd required}
 shift 2
 
 [ "${HERDR_ENV:-}" = 1 ] || { echo "not inside a herdr pane" >&2; exit 1; }
+command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
 
 dir=${HERDR_SPLIT_DIRECTION:-right}
 split=$(herdr pane split --current --direction "$dir" --cwd "$cwd" --no-focus) || exit 1
@@ -49,14 +50,28 @@ done
 
 # 2. Clear startup modals. herdr reports idle for all of them, so the screen is
 #    the only evidence. Ready == the composer footer "<model> <effort> · <cwd>".
+#
+#    Never re-fire keys at an unchanged screen: codex may simply not have
+#    repainted yet, and the duplicate keys would land on whatever it shows next
+#    -- worst case an Enter that submits an empty prompt at the composer.
+#
+#    The hook-trust modal is answered "continue without trusting" (down down
+#    enter) on purpose. Granting blanket hook trust is a security decision for
+#    the user to make once, interactively; a script must not make it for them.
+#    The cost is that this modal reappears on every launch until they do.
 snap=""
+fired=""
 for _ in $(seq 1 60); do
   snap=$(herdr agent read "$name" --source detection 2>/dev/null) || snap=""
   case "$snap" in
-    *" · /"*)              printf '%s\n' "$pane"; exit 0 ;;   # composer footer
-    *"1. Update now"*)     herdr agent send-keys "$name" down enter >/dev/null ;;
-    *"Hooks need review"*) herdr agent send-keys "$name" down down enter >/dev/null ;;
+    *" · /"* | *" · ~"*) printf '%s\n' "$pane"; exit 0 ;;   # composer footer
   esac
+  if [ "$snap" != "$fired" ]; then
+    case "$snap" in
+      *"1. Update now"*)     herdr agent send-keys "$name" down enter >/dev/null; fired=$snap ;;
+      *"Hooks need review"*) herdr agent send-keys "$name" down down enter >/dev/null; fired=$snap ;;
+    esac
+  fi
   sleep 0.5
 done
 
