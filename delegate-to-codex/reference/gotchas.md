@@ -46,15 +46,34 @@ the branch checkout with a "review the diff between <base-sha> and HEAD"
 prompt. Separate 0.142.5 quirk: `--base` cannot be combined with a `[PROMPT]`
 argument.
 
-## `codex exec resume` flag rejection (0.142.x–0.144.1)
+## `codex exec resume` flags and sandbox escalation (0.144.1)
 
-`codex exec resume` rejects `-C`, `-m`, `-c`, `-s`, `--json`, `-o` with a usage
-error, exit 2 (zero-token probe:
-`CODEX_HOME=$(mktemp -d) codex exec resume --last -s read-only "hi" < /dev/null`).
-Resumed turns therefore run with config-file defaults, not the original
-launch's flags. When a follow-up needs a specific model, sandbox, or output
-capture, launch a fresh `codex exec` whose prompt embeds the prior finding and
-the fix diff.
+Earlier notes here claimed `resume` rejects all of `-C -m -c -s --json -o`. That
+was over-generalized from a single `-s` probe. Retested on 0.144.1
+(`codex exec resume --help`, plus live runs):
+
+- **Accepted:** `-m`, `-c`, `--json`, `-o`, `--output-schema`, `--ephemeral`,
+  `--ignore-user-config`, `--skip-git-repo-check`, `-i`.
+- **Rejected, exit 2:** `-C` and `-s` — `error: unexpected argument '-s' found`.
+
+Resume by id works and keeps context: a baseline run answering `BANANA`,
+resumed as `codex exec resume "$thread_id" -m gpt-5.6-luna --json -o r1.md
+"What word did you just reply?" < /dev/null`, returned `BANANA`, exit 0. The
+`thread_id` from `thread.started` is unchanged across resumes, so it can be
+reused for a whole chain.
+
+The consequence of `-s` being rejected is a real privilege escalation, not a
+convenience gap. With `sandbox_mode = "danger-full-access"` in
+`~/.codex/config.toml`, a session originally launched `-s read-only` and then
+resumed with no sandbox flag ran `echo escaped > WROTE.txt` successfully
+(`WROTE.txt` created on disk, agent replied `DONE`). The same resume with
+`-c sandbox_mode='"read-only"'` refused: agent replied `FAILED` and no file was
+created. So `-c sandbox_mode=...` is the working substitute for the rejected
+`-s`, and omitting it means the resumed turn inherits the config default rather
+than the original run's policy.
+
+Same trap on the model: with `model = "gpt-5.6-terra"` in config, a resume
+without `-m` runs terra regardless of what the original run used.
 
 ## User-config MCP crashes
 

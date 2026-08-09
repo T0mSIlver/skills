@@ -15,6 +15,7 @@ machine-readable output, and explicit run state.
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | `claude remote-control` | Run persistent per-repo Remote Control servers under systemd |
 | [`delegate-to-codex`](delegate-to-codex/SKILL.md) | `codex exec` | Delegate reviewer/editor runs; `-s read-only` vs `workspace-write` |
 | [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | `opencode run` | Delegate reviewer/editor runs; primary/all agents with `edit: deny` vs `edit: allow` |
+| [`drive-codex-in-herdr`](drive-codex-in-herdr/SKILL.md) | `codex` (TUI) + `herdr` | Multi-turn delegation to a live codex pane; keep prompting one thread, answer its approval gates |
 | [`fastcontext`](fastcontext/SKILL.md) | `fastcontext` | Delegate read-only repository exploration; returns `file:line` citations without spending your context |
 
 ## Install
@@ -53,6 +54,9 @@ Some skills need more than the folder copy — each declares its requirements in
 - `delegate-to-claude-code` prefers its `scripts/claude-rc-spawn` helper (needs
   `tmux`) on `PATH` for remote-visible sessions; plain `claude -p` delegation
   works without it.
+- `drive-codex-in-herdr` needs [`herdr`](https://herdr.dev) and its
+  `scripts/codex-pane-up` helper on `PATH`, and only works from inside a
+  herdr-managed pane (`HERDR_ENV=1`).
 
 ## Shared conventions
 

@@ -52,7 +52,9 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
    Research briefs that need current information: add `-c tools.web_search=true`.
 
 4. **Harvest.** Final answer in `$run_dir/final.md`; session id in the
-   `thread.started` event in `$run_dir/events.jsonl`. For edit work also:
+   `thread.started` event's `thread_id` field in `$run_dir/events.jsonl` —
+   keep it, it is the only safe handle for a follow-up turn (see Gotchas).
+   For edit work also:
    diff via `git -C "$worktree" diff` — harvest from the **working tree**, not
    branch history, since the worker's commits may be missing (see Gotchas) —
    and run a fresh read-only reviewer over the diff before merging.
@@ -75,10 +77,20 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
 - **`codex exec review --base <ref>` recurses on 0.144.1** — re-execs itself endlessly, emits
   no findings, leaves stray processes. Review with plain `codex exec
   -s read-only` and a "review the diff between <sha> and HEAD" prompt instead.
-- **`codex exec resume` rejects the exec flags** (`-C -m -c -s --json -o`, exit
-  2), so resumed turns run on config defaults. Prefer a fresh self-contained run
-  that embeds the prior finding; if you must resume:
-  `codex exec resume --last "..." < /dev/null`.
+- **`codex exec resume` silently drops the original sandbox.** It accepts `-m`,
+  `-c`, `--json`, `-o` but rejects `-C` and `-s` (exit 2), so the resumed turn
+  takes `sandbox_mode` from `~/.codex/config.toml` — a run launched
+  `-s read-only` resumes with whatever the config says, up to
+  `danger-full-access`. Re-assert it through `-c`, which is accepted:
+  `codex exec resume "$thread_id" -m gpt-5.6-sol -c sandbox_mode='"read-only"'
+  --json -o resume.md "..." < /dev/null`. Re-pass `-m` too, or the resume runs
+  on the config's model.
+- **Resume by id, not `--last`.** `--last` picks the newest recorded session in
+  the cwd, which is the wrong thread as soon as any other codex run has started
+  since. Use the `thread_id` from the `thread.started` event; it stays stable
+  across resumes of the same thread.
+- **Resume cannot change the working directory** (`-C` rejected), so a thread is
+  pinned to the tree it started in. Cross-tree follow-ups need a fresh run.
 - **A crashing MCP server in `~/.codex/config.toml` aborts the whole run.** Pass
   `--ignore-user-config` (auth still resolves via `CODEX_HOME`) and re-specify
   `-m`/`-c` on the CLI.

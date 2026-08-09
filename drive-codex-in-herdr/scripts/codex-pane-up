@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Bring up a codex TUI in a fresh background herdr pane and leave it at a
+# composer that is genuinely ready for input.
+#
+# Usage: codex-pane-up <agent-name> <cwd> [codex-args...]
+# Env:   HERDR_SPLIT_DIRECTION=right|down (default right)
+# Prints the pane id on stdout. Exits non-zero with a reason on stderr, after
+# closing the pane it created.
+#
+# Solves three races that `herdr agent start` alone does not:
+#   1. a freshly split pane is not an "available shell" for a while
+#      -> agent_pane_busy
+#   2. codex boots behind startup modals (update offer, hook trust) while herdr
+#      already reports idle + interactive_ready -> the first prompt is eaten
+#   3. the composer paints a frame after the modal clears
+set -u
+
+name=${1:?agent name required}
+cwd=${2:?cwd required}
+shift 2
+
+[ "${HERDR_ENV:-}" = 1 ] || { echo "not inside a herdr pane" >&2; exit 1; }
+command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
+
+dir=${HERDR_SPLIT_DIRECTION:-right}
+split=$(herdr pane split --current --direction "$dir" --cwd "$cwd" --no-focus) || exit 1
+pane=$(printf '%s' "$split" | jq -r '.result.pane.pane_id')
+if [ -z "$pane" ] || [ "$pane" = null ]; then
+  echo "no pane id in split response" >&2
+  exit 1
+fi
+
+die() { echo "$*" >&2; herdr pane close "$pane" >/dev/null 2>&1; exit 1; }
+
+# 1. Retry `agent start` rather than trying to predict shell readiness: herdr's
+#    "available shell" test is stricter than "no foreground child", so a pid
+#    check passes while the pane is still rejected. Only agent_pane_busy is
+#    retried; anything else is a real failure.
+started=
+for _ in $(seq 1 60); do
+  if out=$(herdr agent start "$name" --kind codex --pane "$pane" -- "$@" 2>&1); then
+    started=1; break
+  fi
+  case "$out" in
+    *agent_pane_busy*) sleep 0.5 ;;
+    *) die "agent start failed: $out" ;;
+  esac
+done
+[ -n "$started" ] || die "pane $pane never became an available shell"
+
+# 2. Clear startup modals. herdr reports idle for all of them, so the screen is
+#    the only evidence. Ready == the composer footer "<model> <effort> · <cwd>".
+#
+#    Never re-fire keys at an unchanged screen: codex may simply not have
+#    repainted yet, and the duplicate keys would land on whatever it shows next
+#    -- worst case an Enter that submits an empty prompt at the composer.
+#
+#    The hook-trust modal is answered "continue without trusting" (down down
+#    enter) on purpose. Granting blanket hook trust is a security decision for
+#    the user to make once, interactively; a script must not make it for them.
+#    The cost is that this modal reappears on every launch until they do.
+snap=""
+fired=""
+for _ in $(seq 1 60); do
+  snap=$(herdr agent read "$name" --source detection 2>/dev/null) || snap=""
+  case "$snap" in
+    *" · /"* | *" · ~"*) printf '%s\n' "$pane"; exit 0 ;;   # composer footer
+  esac
+  if [ "$snap" != "$fired" ]; then
+    case "$snap" in
+      *"1. Update now"*)     herdr agent send-keys "$name" down enter >/dev/null; fired=$snap ;;
+      *"Hooks need review"*) herdr agent send-keys "$name" down down enter >/dev/null; fired=$snap ;;
+    esac
+  fi
+  sleep 0.5
+done
+
+printf 'codex in %s never reached a composer; last screen:\n%s\n' "$pane" "$snap" >&2
+herdr pane close "$pane" >/dev/null 2>&1
+exit 1
