@@ -9,11 +9,12 @@
       "name": "cli-delegation",
       "source": "./",
       "strict": false,
-      "description": "Delegate reviewer, second-opinion, and edit-worker runs to the claude, codex, and opencode CLIs, and read-only repo exploration to fastcontext. Worktree-first edits, machine-readable capture, reviewer-after-worker.",
+      "description": "Delegate reviewer, second-opinion, and edit-worker runs to the claude, codex, and opencode CLIs, and read-only repo exploration to fastcontext. Worktree-first edits, machine-readable capture, reviewer-after-worker. Multi-turn interactive codex delegation via herdr panes.",
       "skills": [
         "./delegate-to-claude-code",
         "./delegate-to-codex",
         "./delegate-to-opencode",
+        "./drive-codex-in-herdr",
         "./fastcontext"
       ],
       "author": {
@@ -27,6 +28,7 @@
         "claude-code",
         "codex",
         "opencode",
+        "herdr",
         "worktree",
         "code-review"
       ],
