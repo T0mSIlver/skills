@@ -14,3 +14,38 @@ ref = "main"
 path = "pstack/skills/unslop"
 license = "pstack/LICENSE"
 commit = "fd6dd6f7276956a532bb78a748a8d2818b6eb5f4"
+
+# Matt Pocock's grilling family: `grilling` is the primitive, `grill-me` and
+# `grill-with-docs` are the user-invoked wrappers, and `domain-modeling` is
+# what `grill-with-docs` calls alongside `grilling`.
+[[skills]]
+name = "grilling"
+repo = "https://github.com/mattpocock/skills"
+ref = "main"
+path = "skills/productivity/grilling"
+license = "LICENSE"
+commit = "885e2ca4d842d139e9aef4e48d366c63cb1b8013"
+
+[[skills]]
+name = "grill-me"
+repo = "https://github.com/mattpocock/skills"
+ref = "main"
+path = "skills/productivity/grill-me"
+license = "LICENSE"
+commit = "885e2ca4d842d139e9aef4e48d366c63cb1b8013"
+
+[[skills]]
+name = "grill-with-docs"
+repo = "https://github.com/mattpocock/skills"
+ref = "main"
+path = "skills/engineering/grill-with-docs"
+license = "LICENSE"
+commit = "885e2ca4d842d139e9aef4e48d366c63cb1b8013"
+
+[[skills]]
+name = "domain-modeling"
+repo = "https://github.com/mattpocock/skills"
+ref = "main"
+path = "skills/engineering/domain-modeling"
+license = "LICENSE"
+commit = "885e2ca4d842d139e9aef4e48d366c63cb1b8013"

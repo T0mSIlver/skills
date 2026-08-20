@@ -40,7 +40,11 @@
       "strict": false,
       "description": "Pristine copies of third-party skills, vendored from their upstream repositories by scripts/vendor-skills.sh. Each directory keeps its upstream LICENSE and a .vendored stamp naming the repo, path, and pinned commit; fixes go upstream, never into this repo.",
       "skills": [
-        "./unslop"
+        "./unslop",
+        "./grilling",
+        "./grill-me",
+        "./grill-with-docs",
+        "./domain-modeling"
       ],
       "author": {
         "name": "Tom Vaucourt"
