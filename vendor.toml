@@ -1,0 +1,16 @@
+# Skills vendored from other repositories. See docs/vendoring.md.
+#
+# Vendored copies are PRISTINE: never patch them in-tree, send fixes upstream.
+# `commit` is the pinned upstream SHA; scripts/vendor-skills.sh bumps it, and
+# the vendor-skills workflow opens the PR that carries the bump.
+#
+# TOML rather than YAML so the parser is python3 stdlib (tomllib) with no
+# third-party dependency to install on a runner.
+
+[[skills]]
+name = "unslop"
+repo = "https://github.com/cursor/plugins"
+ref = "main"
+path = "pstack/skills/unslop"
+license = "pstack/LICENSE"
+commit = "fd6dd6f7276956a532bb78a748a8d2818b6eb5f4"

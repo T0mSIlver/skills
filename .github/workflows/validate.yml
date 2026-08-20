@@ -39,6 +39,13 @@ jobs:
           fi
           exit "$fail"
 
+      - name: Check the vendor manifest matches the vendored directories
+        # --verify only compares vendor.toml against the .vendored stamps on
+        # disk, so it never touches the network. Deliberately NOT --check:
+        # that one goes red the moment an upstream repo moves, which is the
+        # vendor-skills workflow's job to fix, not a reason to block a PR.
+        run: scripts/vendor-skills.sh --verify
+
       - name: Lint shell scripts
         # Gated at warning: the only info-level findings today are SC2016 in
         # claude-rc-spawn, which deliberately emits literal ${cmd[@]} into a

@@ -1,0 +1,105 @@
+name: vendor-skills
+
+# Re-vendors each entry of vendor.toml daily and opens one PR per skill that
+# moved upstream. Vendored copies are pristine — the PR is a verbatim import,
+# so review the upstream diff, never patch the copy in this repo.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Vendor just this skill (blank = all of vendor.toml)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: vendor-skills
+  cancel-in-progress: false
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      skills: ${{ steps.read.outputs.skills }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the vendor manifest
+        id: read
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          set -euo pipefail
+          # tomllib is stdlib on the runner's python3 — no pip install needed.
+          skills="$(python3 -c '
+          import json, os, tomllib
+          with open("vendor.toml", "rb") as fh:
+              names = [s["name"] for s in tomllib.load(fh).get("skills", [])]
+          only = os.environ.get("ONLY", "").strip()
+          if only:
+              names = [n for n in names if n == only]
+              if not names:
+                  raise SystemExit("no manifest entry named " + only)
+          print(json.dumps(names))
+          ')"
+          echo "skills=$skills" >>"$GITHUB_OUTPUT"
+          echo "will vendor: $skills"
+
+  vendor:
+    needs: list
+    if: needs.list.outputs.skills != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        skill: ${{ fromJSON(needs.list.outputs.skills) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vendor the skill
+        env:
+          SKILL: ${{ matrix.skill }}
+        run: scripts/vendor-skills.sh --only "$SKILL" --summary "$RUNNER_TEMP/summary.md"
+
+      - name: Collect PR metadata
+        id: meta
+        env:
+          SKILL: ${{ matrix.skill }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >>"$GITHUB_OUTPUT"
+            echo "$SKILL is already at the upstream commit"
+            exit 0
+          fi
+          sha="$(python3 -c '
+          import json, os
+          with open(os.environ["SKILL"] + "/.vendored", encoding="utf-8") as fh:
+              print(json.load(fh)["commit"])
+          ')"
+          {
+            echo "changed=true"
+            echo "short=${sha:0:7}"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Open or update the PR
+        if: steps.meta.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          # VENDOR_PR_TOKEN must be a PAT with contents:write and
+          # pull_requests:write. Without it the fallback GITHUB_TOKEN still
+          # opens the PR, but GitHub does not fire `pull_request` workflows for
+          # anything pushed with it — so validate.yml would never run on the
+          # bot's PR and the vendored skill would land unvalidated.
+          token: ${{ secrets.VENDOR_PR_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: vendor/${{ matrix.skill }}
+          commit-message: 'vendor: update ${{ matrix.skill }} to ${{ steps.meta.outputs.short }}'
+          title: 'vendor: update ${{ matrix.skill }} to ${{ steps.meta.outputs.short }}'
+          body-path: ${{ runner.temp }}/summary.md
+          labels: vendor
+          delete-branch: true
