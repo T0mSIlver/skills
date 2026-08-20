@@ -18,6 +18,20 @@ machine-readable output, and explicit run state.
 | [`drive-codex-in-herdr`](drive-codex-in-herdr/SKILL.md) | `codex` (TUI) + `herdr` | Multi-turn delegation to a live codex pane; keep prompting one thread, answer its approval gates |
 | [`fastcontext`](fastcontext/SKILL.md) | `fastcontext` | Delegate read-only repository exploration; returns `file:line` citations without spending your context |
 
+## Vendored skills
+
+The repo also carries pristine copies of skills published elsewhere, so the same
+install rails deliver them. Each vendored directory keeps its upstream `LICENSE`
+and a `.vendored` stamp naming the source repo, path, and pinned commit, and a
+daily workflow opens a PR when upstream moves.
+
+| Skill | Upstream | License |
+|-------|----------|---------|
+| [`unslop`](unslop/SKILL.md) | [`cursor/plugins`](https://github.com/cursor/plugins) `pstack/skills/unslop` | MIT © Lauren Tan |
+
+These copies are never patched here — fixes go upstream. See
+[docs/vendoring.md](docs/vendoring.md) to add one.
+
 ## Install
 
 Each skill is a plain [Agent Skills](https://agentskills.io/specification)
@@ -37,6 +51,7 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 /plugin marketplace add T0mSIlver/skills
 /plugin install cli-delegation@t0msilver-skills
 /plugin install claude-rc-server@t0msilver-skills
+/plugin install vendored@t0msilver-skills
 ```
 
 **Manual:** copy any top-level skill directory into your agent's skills folder
@@ -107,7 +122,8 @@ folder (`agents/` for `claude-remote-control-server`), deep-dive evidence in
 `reference/`, and skill-specific executable helpers in its `scripts/`
 folder. The root `scripts/` directory is reserved for repo
 maintenance scripts, and `.claude-plugin/marketplace.json` makes the repo
-installable as a Claude Code plugin marketplace.
+installable as a Claude Code plugin marketplace. `vendor.toml` pins the skills
+imported from other repositories ([docs/vendoring.md](docs/vendoring.md)).
 
 ## Self-updating deployment (optional)
 

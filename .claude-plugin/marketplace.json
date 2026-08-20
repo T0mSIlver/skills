@@ -35,6 +35,25 @@
       "category": "workflow"
     },
     {
+      "name": "vendored",
+      "source": "./",
+      "strict": false,
+      "description": "Pristine copies of third-party skills, vendored from their upstream repositories by scripts/vendor-skills.sh. Each directory keeps its upstream LICENSE and a .vendored stamp naming the repo, path, and pinned commit; fixes go upstream, never into this repo.",
+      "skills": [
+        "./unslop"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "vendored",
+        "third-party",
+        "writing"
+      ],
+      "category": "workflow"
+    },
+    {
       "name": "claude-rc-server",
       "source": "./claude-remote-control-server",
       "strict": false,
