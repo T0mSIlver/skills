@@ -85,7 +85,8 @@ the upstream repo.
 `pull_requests: write`. The workflow falls back to `GITHUB_TOKEN`, but GitHub
 does not trigger `pull_request` workflows for anything pushed with that token —
 `validate.yml` would never run on the bot's PR, and the vendored skill would
-land unvalidated.
+land unvalidated. The `vendor` label must also exist in the repo
+(`gh label create vendor --color 0E8A16`); the action does not create it.
 
 ## Gotchas
 
