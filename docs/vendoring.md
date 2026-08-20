@@ -14,6 +14,10 @@ Vendored today:
 | Skill | Upstream | License |
 |-------|----------|---------|
 | [`unslop`](../unslop/SKILL.md) | [`cursor/plugins`](https://github.com/cursor/plugins) `pstack/skills/unslop` | MIT, Lauren Tan |
+| [`grilling`](../grilling/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/productivity/grilling` | MIT, Matt Pocock |
+| [`grill-me`](../grill-me/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/productivity/grill-me` | MIT, Matt Pocock |
+| [`grill-with-docs`](../grill-with-docs/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/engineering/grill-with-docs` | MIT, Matt Pocock |
+| [`domain-modeling`](../domain-modeling/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/engineering/domain-modeling` | MIT, Matt Pocock |
 
 ## The moving parts
 
@@ -105,6 +109,12 @@ land unvalidated. The `vendor` label must also exist in the repo
   `skills-pr --discard <skill>` and send the fix upstream instead.
 - Editing `commit` in `vendor.toml` by hand desynchronises it from the stamp and
   turns `--verify` (and therefore CI) red. Run the script instead.
+- The spec validator (`skills-ref`) rejects frontmatter keys it does not know,
+  but upstream skills legitimately use Claude Code extensions such as
+  `disable-model-invocation`. CI validates through
+  `scripts/validate-skills.py`, which adds Claude Code's documented keys to the
+  validator's allowlist. A new key that is really in Claude Code's frontmatter
+  reference goes into `CLAUDE_CODE_FIELDS` there, not into the vendored skill.
 
 ## Not possible
 

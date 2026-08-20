@@ -28,6 +28,13 @@ daily workflow opens a PR when upstream moves.
 | Skill | Upstream | License |
 |-------|----------|---------|
 | [`unslop`](unslop/SKILL.md) | [`cursor/plugins`](https://github.com/cursor/plugins) `pstack/skills/unslop` | MIT © Lauren Tan |
+| [`grilling`](grilling/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/productivity/grilling` | MIT © Matt Pocock |
+| [`grill-me`](grill-me/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/productivity/grill-me` | MIT © Matt Pocock |
+| [`grill-with-docs`](grill-with-docs/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/engineering/grill-with-docs` | MIT © Matt Pocock |
+| [`domain-modeling`](domain-modeling/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/engineering/domain-modeling` | MIT © Matt Pocock |
+
+`grilling` is the interview primitive; `/grill-me` wraps it, and
+`/grill-with-docs` runs it together with `domain-modeling` (glossary + ADRs).
 
 These copies are never patched here — fixes go upstream. See
 [docs/vendoring.md](docs/vendoring.md) to add one.
