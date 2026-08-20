@@ -53,7 +53,10 @@
       "keywords": [
         "vendored",
         "third-party",
-        "writing"
+        "writing",
+        "grilling",
+        "interview",
+        "domain-modeling"
       ],
       "category": "workflow"
     },

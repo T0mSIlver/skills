@@ -26,17 +26,22 @@ from skills_ref import validator
 
 # Frontmatter keys Claude Code reads from SKILL.md beyond the Agent Skills
 # spec: https://code.claude.com/docs/en/skills#frontmatter-reference
+# Only the key is accepted; the values of these fields are not validated.
 CLAUDE_CODE_FIELDS = {
-    "argument-hint",
-    "disable-model-invocation",
-    "user-invocable",
-    "model",
-    "effort",
-    "context",
     "agent",
+    "argument-hint",
+    "arguments",
+    "background",
+    "context",
+    "disable-model-invocation",
+    "disallowed-tools",
+    "effort",
     "hooks",
+    "model",
     "paths",
     "shell",
+    "user-invocable",
+    "when_to_use",
 }
 
 validator.ALLOWED_FIELDS |= CLAUDE_CODE_FIELDS

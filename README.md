@@ -35,6 +35,7 @@ daily workflow opens a PR when upstream moves.
 
 `grilling` is the interview primitive; `/grill-me` wraps it, and
 `/grill-with-docs` runs it together with `domain-modeling` (glossary + ADRs).
+
 These copies are never patched here — fixes go upstream. See
 [docs/vendoring.md](docs/vendoring.md) to add one.
 
