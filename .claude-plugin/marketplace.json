@@ -61,6 +61,29 @@
       "category": "workflow"
     },
     {
+      "name": "unnarrate",
+      "source": "./",
+      "strict": false,
+      "description": "Remove self-narrating meta-commentary from UI copy, docs, code comments, and PR text — text that describes the artifact it lives in or restates what the reader already sees. First-party companion to the vendored unslop skill: unnarrate deletes what shouldn't exist, unslop fixes how the rest sounds.",
+      "skills": [
+        "./unnarrate"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "writing",
+        "unslop",
+        "meta-commentary",
+        "code-comments",
+        "microcopy",
+        "documentation"
+      ],
+      "category": "workflow"
+    },
+    {
       "name": "claude-rc-server",
       "source": "./claude-remote-control-server",
       "strict": false,
