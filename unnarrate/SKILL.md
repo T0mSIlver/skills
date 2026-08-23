@@ -1,6 +1,6 @@
 ---
 name: unnarrate
-description: Remove self-narrating meta-commentary — text that describes the artifact it lives in, restates what the reader already sees, or narrates the process that produced it — from UI copy, docs, code comments, commit messages, and PR descriptions. Apply whenever writing or reviewing those surfaces, and before unslop when editing prose. Triggers: tooltips restating labels, "This section describes...", comments restating the next line, "progress is shown while it runs", PR bullets restating the diff.
+description: 'Remove self-narrating meta-commentary — text that describes the artifact it lives in, restates what the reader already sees, or narrates the process that produced it — from UI copy, docs, code comments, commit messages, and PR descriptions. Apply whenever writing or reviewing those surfaces, and before unslop when editing prose. Triggers: tooltips restating labels, "This section describes...", comments restating the next line, "progress is shown while it runs", PR bullets restating the diff.'
 ---
 
 # Unnarrate
