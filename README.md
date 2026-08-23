@@ -18,6 +18,14 @@ machine-readable output, and explicit run state.
 | [`drive-codex-in-herdr`](drive-codex-in-herdr/SKILL.md) | `codex` (TUI) + `herdr` | Multi-turn delegation to a live codex pane; keep prompting one thread, answer its approval gates |
 | [`fastcontext`](fastcontext/SKILL.md) | `fastcontext` | Delegate read-only repository exploration; returns `file:line` citations without spending your context |
 
+## Writing skills
+
+First-party companions to the vendored writing skills below.
+
+| Skill | Purpose |
+|-------|---------|
+| [`unnarrate`](unnarrate/SKILL.md) | Delete self-narrating meta-commentary from UI copy, docs, code comments, and PR text; deletion-test companion to `unslop` |
+
 ## Vendored skills
 
 The repo also carries pristine copies of skills published elsewhere, so the same
@@ -59,6 +67,7 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 /plugin install cli-delegation@t0msilver-skills
 /plugin install claude-rc-server@t0msilver-skills
 /plugin install vendored@t0msilver-skills
+/plugin install unnarrate@t0msilver-skills
 ```
 
 **Manual:** copy any top-level skill directory into your agent's skills folder
