@@ -3,8 +3,8 @@
   "repo": "https://github.com/mattpocock/skills",
   "ref": "main",
   "path": "skills/engineering/domain-modeling",
-  "commit": "885e2ca4d842d139e9aef4e48d366c63cb1b8013",
-  "upstream": "https://github.com/mattpocock/skills/tree/885e2ca4d842d139e9aef4e48d366c63cb1b8013/skills/engineering/domain-modeling",
-  "vendored_at": "2026-08-20",
+  "commit": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+  "upstream": "https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/domain-modeling",
+  "vendored_at": "2026-09-02",
   "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
 }
