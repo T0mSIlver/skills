@@ -2,7 +2,9 @@ name: vendor-skills
 
 # Re-vendors each entry of vendor.toml daily and opens one PR per skill that
 # moved upstream. Vendored copies are pristine — the PR is a verbatim import,
-# so review the upstream diff, never patch the copy in this repo.
+# so review the upstream diff, never patch the copy in this repo. PRs whose
+# diff is only the commit pin (no skill files changed) merge themselves once
+# validate passes; anything touching skill content waits for review.
 on:
   schedule:
     - cron: '17 6 * * *'
@@ -89,6 +91,7 @@ jobs:
 
       - name: Open or update the PR
         if: steps.meta.outputs.changed == 'true'
+        id: pr
         uses: peter-evans/create-pull-request@v7
         with:
           # VENDOR_PR_TOKEN must be a PAT with contents:write and
@@ -103,3 +106,38 @@ jobs:
           body-path: ${{ runner.temp }}/summary.md
           labels: vendor
           delete-branch: true
+
+      - name: Auto-merge when only the pin moved
+        if: steps.meta.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.VENDOR_PR_TOKEN || secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.pull-request-number }}
+          SKILL: ${{ matrix.skill }}
+        run: |
+          set -euo pipefail
+          # A diff of just <skill>/.vendored + vendor.toml means upstream moved
+          # without touching the skill's files — nothing to review, so merge as
+          # soon as validate passes. Any other file leaves the PR for review.
+          extra="$(gh pr view "$PR" --json files --jq '.files[].path' \
+            | grep -vxF -e "$SKILL/.vendored" -e vendor.toml || true)"
+          if [ -n "$extra" ]; then
+            echo "skill content changed; leaving PR #$PR for review:"
+            echo "$extra"
+            exit 0
+          fi
+          # The pull_request-triggered validate run takes a few seconds to
+          # register on the PR (gh exit code 8 = registered but pending).
+          for _ in $(seq 1 24); do
+            rc=0
+            gh pr checks "$PR" >/dev/null 2>&1 || rc=$?
+            if [ "$rc" -eq 0 ] || [ "$rc" -eq 8 ]; then break; fi
+            sleep 5
+          done
+          gh pr checks "$PR" --watch --fail-fast
+          # Sibling matrix jobs merge concurrently and each touches vendor.toml,
+          # so a merge can fail transiently while GitHub recomputes mergeability.
+          for _ in 1 2 3; do
+            if gh pr merge "$PR" --squash --delete-branch; then exit 0; fi
+            sleep 20
+          done
+          exit 1
