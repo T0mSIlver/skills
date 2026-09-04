@@ -3,8 +3,8 @@
   "repo": "https://github.com/mattpocock/skills",
   "ref": "main",
   "path": "skills/engineering/grill-with-docs",
-  "commit": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-  "upstream": "https://github.com/mattpocock/skills/tree/6654f6b60cd9d5be8b54c6fafe44346dabeb3b76/skills/engineering/grill-with-docs",
-  "vendored_at": "2026-09-02",
+  "commit": "3cca18b368ae95cdbdebbff572ccafa662551015",
+  "upstream": "https://github.com/mattpocock/skills/tree/3cca18b368ae95cdbdebbff572ccafa662551015/skills/engineering/grill-with-docs",
+  "vendored_at": "2026-09-04",
   "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
 }
