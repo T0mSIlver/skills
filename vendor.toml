@@ -24,7 +24,7 @@ repo = "https://github.com/mattpocock/skills"
 ref = "main"
 path = "skills/productivity/grilling"
 license = "LICENSE"
-commit = "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76"
+commit = "3cca18b368ae95cdbdebbff572ccafa662551015"
 
 [[skills]]
 name = "grill-me"
