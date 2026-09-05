@@ -13,7 +13,7 @@ repo = "https://github.com/cursor/plugins"
 ref = "main"
 path = "pstack/skills/unslop"
 license = "pstack/LICENSE"
-commit = "7314f723a487ec406b6369fe5865ba034cfed166"
+commit = "93b00b89ef425a9c1bac0d0b317dfc49c930ac99"
 
 # Matt Pocock's grilling family: `grilling` is the primitive, `grill-me` and
 # `grill-with-docs` are the user-invoked wrappers, and `domain-modeling` is
