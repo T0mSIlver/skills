@@ -17,19 +17,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-AGENTS = ("claude", "codex", "opencode")
+AGENTS = ("claude", "codex", "opencode", "pi")
 
 DEST_ENV = {
     "claude": ("CLAUDE_SKILLS_DIR", "~/.claude/skills"),
     "codex": ("CODEX_SKILLS_DIR", "~/.codex/skills"),
     "opencode": ("OPENCODE_SKILLS_DIR", "~/.config/opencode/skills"),
+    "pi": ("PI_SKILLS_DIR", "~/.pi/agent/skills"),
 }
 
 HEADER = """\
 # Skills kept off this machine. One rule per line:
 #
 #   <skill>            off for every agent
-#   <agent>:<skill>    off for that agent only  (claude, codex, opencode)
+#   <agent>:<skill>    off for that agent only  (claude, codex, opencode, pi)
 #
 # Disabled means not installed — the sync removes the skill's directory and
 # keeps it removed. Nothing here touches the repo or the remote.

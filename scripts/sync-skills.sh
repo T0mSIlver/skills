@@ -16,11 +16,12 @@ DESTINATIONS=(
   "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
   "${CODEX_SKILLS_DIR:-$HOME/.codex/skills}"
   "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
+  "${PI_SKILLS_DIR:-$HOME/.pi/agent/skills}"
 )
 
 # Agent name per destination, positionally. These are the names accepted as
 # the "<agent>:" prefix in the disabled list and by skills-toggle.
-DEST_AGENTS=(claude codex opencode)
+DEST_AGENTS=(claude codex opencode pi)
 
 # Machine-local list of skills to keep OFF this machine, one rule per line:
 # "<skill>" disables it for every agent, "<agent>:<skill>" for one. Disabled

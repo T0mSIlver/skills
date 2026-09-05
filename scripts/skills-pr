@@ -4,7 +4,7 @@ shopt -s nullglob
 
 # skills-pr — open a PR on the skills repo from in-place edits made to the
 # installed skill copies (~/.claude/skills, ~/.codex/skills,
-# ~/.config/opencode/skills).
+# ~/.config/opencode/skills, ~/.pi/agent/skills).
 #
 # Typical use, right after fixing a mistake in an installed skill:
 #   skills-pr -m "delegate-to-codex: fix resume example"
@@ -22,6 +22,7 @@ DESTINATIONS=(
   "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
   "${CODEX_SKILLS_DIR:-$HOME/.codex/skills}"
   "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
+  "${PI_SKILLS_DIR:-$HOME/.pi/agent/skills}"
 )
 
 usage() {

@@ -71,7 +71,8 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 ```
 
 **Manual:** copy any top-level skill directory into your agent's skills folder
-(`~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/`, …).
+(`~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/`,
+`~/.pi/agent/skills/`, …).
 
 Running the optional [sync timer](docs/sync-system.md)? `skills-toggle` keeps
 individual skills off a machine without touching the repo — disabling removes

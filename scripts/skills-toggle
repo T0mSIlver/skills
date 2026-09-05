@@ -22,11 +22,12 @@ REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-main}"
 DISABLED_FILE="${SKILLS_DISABLED_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/skills-sync/disabled}"
 
-AGENTS=(claude codex opencode)
+AGENTS=(claude codex opencode pi)
 DESTINATIONS=(
   "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
   "${CODEX_SKILLS_DIR:-$HOME/.codex/skills}"
   "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
+  "${PI_SKILLS_DIR:-$HOME/.pi/agent/skills}"
 )
 
 usage() {
@@ -39,7 +40,7 @@ usage: skills-toggle [list]
 
 Turns installed skills on and off for this machine only. With no --agent the
 change applies to every agent; repeat --agent to name a subset. Agents:
-claude, codex, opencode.
+claude, codex, opencode, pi.
 
 Disabling removes the skill from the agent's skills directory (that is the
 only way an agent stops offering it) and the sync leaves it removed. The
@@ -136,7 +137,7 @@ write_rules() {
 # Skills kept off this machine. One rule per line:
 #
 #   <skill>            off for every agent
-#   <agent>:<skill>    off for that agent only  (claude, codex, opencode)
+#   <agent>:<skill>    off for that agent only  (claude, codex, opencode, pi)
 #
 # Disabled means not installed — the sync removes the skill's directory and
 # keeps it removed. Nothing here touches the repo or the remote.

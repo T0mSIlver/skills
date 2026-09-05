@@ -1,7 +1,7 @@
 # Deploying these skills with the sync timer
 
 This is the author's own deployment loop for keeping the same skill versions
-live across Claude Code, Codex, and opencode on a machine. It is **optional** —
+live across Claude Code, Codex, opencode, and pi on a machine. It is **optional** —
 `npx skills add T0mSIlver/skills` or the Claude Code plugin marketplace are the
 supported ways to consume the repo. Use this system if you want skills that
 update themselves from `origin/main` and a one-command path for upstreaming
@@ -12,6 +12,7 @@ fixes an agent makes to an installed copy.
 | `~/.claude/skills/` | Claude Code (native) |
 | `~/.codex/skills/` | Codex (native) |
 | `~/.config/opencode/skills/` | opencode (native) |
+| `~/.pi/agent/skills/` | pi (native) |
 
 Install the user-level timer:
 
@@ -21,7 +22,7 @@ scripts/install-sync-timer.sh
 
 The timer runs every 2 minutes. Each run fetches `origin/main`, exports that
 fetched tree into a temporary directory, and then syncs every top-level
-directory containing a `SKILL.md` into the three native locations. If GitHub
+directory containing a `SKILL.md` into the four native locations. If GitHub
 fetching fails because credentials or the network are unavailable, the sync
 still updates the native folders from the current local checkout. It updates
 only skills managed by this repo and leaves unrelated local skills alone. It
@@ -85,10 +86,10 @@ stdlib `curses` only, so it runs anywhere the sync does.
 skills — on/off per agent, this machine only
 space toggle · a row · w apply · r reload · q quit
 
-SKILL                          claude    codex    opencode
-claude-remote-control-server     on        off       off
-delegate-to-claude-code          off       on        on
-fastcontext                      off*      on        on
+SKILL                          claude    codex    opencode    pi
+claude-remote-control-server     on        off       off       off
+delegate-to-claude-code          off       on        on        on
+fastcontext                      off*      on        on        on
 
 1 unapplied change — w to apply · rules: ~/.config/skills-sync/disabled
 ```
@@ -141,7 +142,7 @@ scripts/sync-skills.sh
 skills-pr --dry-run
 skills-pr --discard <skill>
 skills-toggle list
-skills-toggle disable <skill> [--agent claude|codex|opencode]
+skills-toggle disable <skill> [--agent claude|codex|opencode|pi]
 skills-tui
 install-claude-rc-server-service.sh
 systemctl --user status skills-sync.timer
