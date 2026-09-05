@@ -73,6 +73,17 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 **Manual:** copy any top-level skill directory into your agent's skills folder
 (`~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/`, …).
 
+Running the optional [sync timer](docs/sync-system.md)? `skills-toggle` keeps
+individual skills off a machine without touching the repo — disabling removes
+the skill from the agent's folder, because that is the only thing that stops an
+agent from offering it:
+
+```bash
+skills-toggle list                          # skill-by-agent grid
+skills-toggle disable fastcontext           # off everywhere on this machine
+skills-toggle enable fastcontext --agent codex
+```
+
 Some skills need more than the folder copy — each declares its requirements in
 `compatibility:` frontmatter:
 

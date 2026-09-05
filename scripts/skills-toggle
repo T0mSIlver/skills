@@ -1,0 +1,324 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# skills-toggle — turn installed skills on and off per agent, on this machine
+# only.
+#
+#   skills-toggle list
+#   skills-toggle disable fastcontext
+#   skills-toggle enable fastcontext --agent codex
+#
+# Disabling REMOVES the skill from the agent's skills directory rather than
+# leaving it in place and blocking it: an agent only stops offering a skill
+# when its file is gone, and a permission rule that blocks execution still
+# pays the context cost of the skill's description every session.
+#
+# The rules live in a machine-local file that the repo never syncs, so a
+# disable survives the sync timer and changes nothing on the remote. Nothing
+# here is a substitute for deleting a skill upstream — this is the "not on
+# this box, for now" lever.
+
+REMOTE="${REMOTE:-origin}"
+BRANCH="${BRANCH:-main}"
+DISABLED_FILE="${SKILLS_DISABLED_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/skills-sync/disabled}"
+
+AGENTS=(claude codex opencode)
+DESTINATIONS=(
+  "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+  "${CODEX_SKILLS_DIR:-$HOME/.codex/skills}"
+  "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
+)
+
+usage() {
+  cat <<'EOF'
+usage: skills-toggle [list]
+       skills-toggle disable <skill>... [--agent <agent>]...
+       skills-toggle enable  <skill>... [--agent <agent>]...
+       skills-toggle edit
+
+Turns installed skills on and off for this machine only. With no --agent the
+change applies to every agent; repeat --agent to name a subset. Agents:
+claude, codex, opencode.
+
+Disabling removes the skill from the agent's skills directory (that is the
+only way an agent stops offering it) and the sync leaves it removed. The
+skill stays in the repo and on the remote; re-enable it any time.
+
+  list    print the skill-by-agent grid (default)
+  edit    open the rules file in $EDITOR, then apply
+EOF
+}
+
+log() { printf '%s\n' "$*" >&2; }
+die() {
+  log "skills-toggle: $*"
+  exit 1
+}
+
+is_agent() {
+  local a
+  for a in "${AGENTS[@]}"; do
+    [[ "$a" == "$1" ]] && return 0
+  done
+  return 1
+}
+
+# Locate the repo checkout the way skills-pr does, via the sync breadcrumb.
+find_repo_dir() {
+  local dest_root
+  if [[ -n "${SKILLS_REPO_DIR:-}" ]]; then
+    printf '%s\n' "$SKILLS_REPO_DIR"
+    return 0
+  fi
+  for dest_root in "${DESTINATIONS[@]}"; do
+    if [[ -f "$dest_root/.skills-sync-repo" ]]; then
+      printf '%s\n' "$(<"$dest_root/.skills-sync-repo")"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Every skill the repo installs, from origin/main so the grid lists what the
+# next sync will act on rather than whatever the checkout happens to be at.
+repo_skills() {
+  local repo_dir="$1" skill
+  git -C "$repo_dir" fetch --prune "$REMOTE" "$BRANCH" >/dev/null 2>&1 || true
+  local ref="$REMOTE/$BRANCH"
+  git -C "$repo_dir" rev-parse --verify --quiet "$ref" >/dev/null || ref=HEAD
+  git -C "$repo_dir" ls-tree -r --name-only "$ref" 2>/dev/null |
+    while IFS= read -r path; do
+      case "$path" in
+        */SKILL.md)
+          skill="${path%/SKILL.md}"
+          [[ "$skill" == */* ]] || printf '%s\n' "$skill"
+          ;;
+      esac
+    done | sort -u
+}
+
+# Rules file -> "<agent>/<skill>" keys, "*" meaning every agent.
+declare -A DISABLED=()
+load_rules() {
+  DISABLED=()
+  [[ -f "$DISABLED_FILE" ]] || return 0
+  local line agent skill
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="${line//[[:space:]]/}"
+    [[ -n "$line" ]] || continue
+    if [[ "$line" == *:* ]]; then
+      agent="${line%%:*}"
+      skill="${line#*:}"
+    else
+      agent="*"
+      skill="$line"
+    fi
+    [[ -n "$agent" && -n "$skill" ]] || continue
+    DISABLED["$agent/$skill"]=1
+  done <"$DISABLED_FILE"
+}
+
+disabled_for() { # <agent> <skill>
+  [[ -n "${DISABLED["*/$2"]:-}" || -n "${DISABLED["$1/$2"]:-}" ]]
+}
+
+write_rules() {
+  mkdir -p "$(dirname "$DISABLED_FILE")"
+  local tmp
+  tmp="$(mktemp)"
+  {
+    cat <<'EOF'
+# Skills kept off this machine. One rule per line:
+#
+#   <skill>            off for every agent
+#   <agent>:<skill>    off for that agent only  (claude, codex, opencode)
+#
+# Disabled means not installed — the sync removes the skill's directory and
+# keeps it removed. Nothing here touches the repo or the remote.
+# Managed by skills-toggle; hand edits are fine.
+EOF
+    local key agent skill
+    for key in "${!DISABLED[@]}"; do
+      agent="${key%%/*}"
+      skill="${key#*/}"
+      if [[ "$agent" == "*" ]]; then
+        printf '%s\n' "$skill"
+      else
+        printf '%s:%s\n' "$agent" "$skill"
+      fi
+    done | sort
+  } >"$tmp"
+  install -m 0644 "$tmp" "$DISABLED_FILE"
+  rm -f "$tmp"
+}
+
+apply() {
+  local repo_dir
+  if ! repo_dir="$(find_repo_dir)" || [[ ! -x "$repo_dir/scripts/sync-skills.sh" ]]; then
+    log "could not run the sync; it will pick the change up within minutes"
+    return 0
+  fi
+  if bash "$repo_dir/scripts/sync-skills.sh" >/dev/null 2>&1; then
+    log "applied"
+  else
+    log "sync failed or was already running; the timer will apply this within minutes"
+  fi
+}
+
+cmd_list() {
+  local repo_dir skills=() skill agent i mark row
+  repo_dir="$(find_repo_dir)" || die "could not locate the skills repo checkout (set SKILLS_REPO_DIR)"
+  mapfile -t skills < <(repo_skills "$repo_dir")
+  ((${#skills[@]})) || die "no skills found in $repo_dir"
+
+  local width=0
+  for skill in "${skills[@]}"; do
+    ((${#skill} > width)) && width=${#skill}
+  done
+  ((width < 5)) && width=5
+
+  printf "%-${width}s" "SKILL"
+  for agent in "${AGENTS[@]}"; do printf '  %-8s' "$agent"; done
+  printf '\n'
+
+  local any_off=0
+  for skill in "${skills[@]}"; do
+    row="$(printf "%-${width}s" "$skill")"
+    for agent in "${AGENTS[@]}"; do
+      if disabled_for "$agent" "$skill"; then
+        mark="off"
+        any_off=1
+      else
+        mark="on"
+      fi
+      row+="$(printf '  %-8s' "$mark")"
+    done
+    printf '%s\n' "$row"
+  done
+
+  if ((any_off)); then
+    printf '\nrules: %s\n' "$DISABLED_FILE"
+  else
+    printf '\nnothing disabled; rules would live in %s\n' "$DISABLED_FILE"
+  fi
+}
+
+cmd_set() { # <enable|disable> <agents...> -- <skills...>
+  local action="$1"
+  shift
+  local agents=() skills=() seen_sep=0 arg
+  for arg in "$@"; do
+    if ((seen_sep)); then
+      skills+=("$arg")
+    elif [[ "$arg" == "--" ]]; then
+      seen_sep=1
+    else
+      agents+=("$arg")
+    fi
+  done
+  ((${#skills[@]})) || die "$action needs at least one skill name"
+
+  local all_agents=0
+  if ((${#agents[@]} == 0)); then
+    all_agents=1
+    agents=("${AGENTS[@]}")
+  fi
+
+  local repo_dir known="" skill agent
+  if repo_dir="$(find_repo_dir)"; then
+    known="$(repo_skills "$repo_dir")"
+  fi
+
+  local changed=0
+  for skill in "${skills[@]}"; do
+    if [[ -n "$known" ]] && ! grep -Fxq -- "$skill" <<<"$known"; then
+      log "warning: $skill is not a skill in the repo — writing the rule anyway"
+    fi
+    if [[ "$action" == disable ]]; then
+      if ((all_agents)); then
+        # One bare rule replaces any per-agent rules for this skill.
+        for agent in "${AGENTS[@]}"; do unset 'DISABLED[$agent/$skill]'; done
+        DISABLED["*/$skill"]=1
+      else
+        for agent in "${agents[@]}"; do DISABLED["$agent/$skill"]=1; done
+      fi
+    else
+      if ((all_agents)); then
+        unset 'DISABLED[*/$skill]'
+        for agent in "${AGENTS[@]}"; do unset 'DISABLED[$agent/$skill]'; done
+      else
+        # Re-enabling one agent has to expand a blanket rule into the
+        # per-agent rules it stood for, minus the ones being turned back on.
+        if [[ -n "${DISABLED["*/$skill"]:-}" ]]; then
+          unset 'DISABLED[*/$skill]'
+          for agent in "${AGENTS[@]}"; do DISABLED["$agent/$skill"]=1; done
+        fi
+        for agent in "${agents[@]}"; do unset 'DISABLED[$agent/$skill]'; done
+      fi
+    fi
+    changed=1
+    log "$action $skill for ${agents[*]}"
+  done
+
+  ((changed)) || return 0
+  write_rules
+  apply
+}
+
+cmd_edit() {
+  mkdir -p "$(dirname "$DISABLED_FILE")"
+  [[ -f "$DISABLED_FILE" ]] || {
+    load_rules
+    write_rules
+  }
+  "${EDITOR:-vi}" "$DISABLED_FILE"
+  load_rules
+  write_rules
+  apply
+}
+
+command -v git >/dev/null 2>&1 || die "git is required"
+
+action="${1:-list}"
+[[ $# -gt 0 ]] && shift || true
+case "$action" in
+  -h | --help | help)
+    usage
+    exit 0
+    ;;
+  list) load_rules && cmd_list ;;
+  edit) cmd_edit ;;
+  enable | disable)
+    agents=()
+    skills=()
+    while (($#)); do
+      case "$1" in
+        --agent | -a)
+          agent="${2:?--agent needs a value}"
+          is_agent "$agent" || die "unknown agent: $agent (known: ${AGENTS[*]})"
+          agents+=("$agent")
+          shift 2
+          ;;
+        -h | --help)
+          usage
+          exit 0
+          ;;
+        -*)
+          usage >&2
+          die "unknown option: $1"
+          ;;
+        *)
+          skills+=("$1")
+          shift
+          ;;
+      esac
+    done
+    load_rules
+    cmd_set "$action" "${agents[@]}" -- "${skills[@]}"
+    ;;
+  *)
+    usage >&2
+    die "unknown command: $action"
+    ;;
+esac

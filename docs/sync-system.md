@@ -50,6 +50,41 @@ While a hold lasts, the sync stays quiet rather than noisy:
 - "synced" journal lines only appear when a skill's content actually changed,
   so notices stand out instead of drowning in no-op noise.
 
+## Turning a skill off on one machine
+
+An agent stops offering a skill only when the skill's file is gone. Blocking it
+some other way — a Claude Code `permissions.deny` rule, for instance — stops it
+from running but still injects its description into every session, so it keeps
+costing context and keeps tempting the model. Deleting the directory by hand
+does not last either: the next sync, at most two minutes later, reinstalls it.
+
+So the sync itself owns the off switch, and disabled means **not installed**:
+
+```bash
+skills-toggle list                          # the skill-by-agent grid
+skills-toggle disable fastcontext           # off for every agent
+skills-toggle enable fastcontext --agent codex
+skills-toggle edit                          # hand-edit the rules, then apply
+```
+
+Rules live in `~/.config/skills-sync/disabled`, which is machine-local and
+never synced — the skill stays in the repo and on the remote, and other
+machines are unaffected. One rule per line:
+
+```text
+fastcontext                       # off for every agent
+claude:delegate-to-claude-code    # off for Claude Code only
+codex:claude-remote-control-server
+```
+
+`skills-toggle` runs the sync as soon as it writes a rule, so a toggle takes
+effect immediately rather than on the next timer tick. Disabling a skill that
+was *held* for local edits preserves those edits the same way an upstream
+removal does: a copy goes to `/tmp` and the path is named in the journal.
+
+`skills-pr` ignores destinations where a skill is absent, so a disabled skill
+is never mistaken for one you deleted and never turns into a PR.
+
 ## Upstreaming a fix found while using a skill
 
 An in-place edit to an installed copy is almost always an agent that spotted a
@@ -89,6 +124,8 @@ unit file.
 scripts/sync-skills.sh
 skills-pr --dry-run
 skills-pr --discard <skill>
+skills-toggle list
+skills-toggle disable <skill> [--agent claude|codex|opencode]
 install-claude-rc-server-service.sh
 systemctl --user status skills-sync.timer
 systemctl --user status claude-rc-skills.service

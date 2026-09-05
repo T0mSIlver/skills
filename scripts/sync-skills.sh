@@ -10,6 +10,7 @@ SYNC_SOURCE="$REPO_DIR"
 SYNC_COMMIT=""
 ARCHIVE_DIR=""
 current_manifest=""
+dest_manifest=""
 
 DESTINATIONS=(
   "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
@@ -17,11 +18,22 @@ DESTINATIONS=(
   "${OPENCODE_SKILLS_DIR:-$HOME/.config/opencode/skills}"
 )
 
+# Agent name per destination, positionally. These are the names accepted as
+# the "<agent>:" prefix in the disabled list and by skills-toggle.
+DEST_AGENTS=(claude codex opencode)
+
+# Machine-local list of skills to keep OFF this machine, one rule per line:
+# "<skill>" disables it for every agent, "<agent>:<skill>" for one. Disabled
+# means NOT INSTALLED: an agent only stops offering a skill when the file is
+# absent, so a disable has to remove it, not merely block it.
+DISABLED_FILE="${SKILLS_DISABLED_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/skills-sync/disabled}"
+
 HELPER_SPECS=(
   "delegate-to-claude-code/scripts/claude-rc-spawn:claude-rc-spawn"
   "claude-remote-control-server/scripts/install-claude-rc-server-service.sh:install-claude-rc-server-service.sh"
   "drive-codex-in-herdr/scripts/codex-pane-up:codex-pane-up"
   "scripts/skills-pr:skills-pr"
+  "scripts/skills-toggle:skills-toggle"
 )
 
 log() {
@@ -35,6 +47,11 @@ has() {
 cleanup() {
   [[ -n "${ARCHIVE_DIR:-}" ]] && rm -rf "$ARCHIVE_DIR"
   [[ -n "${current_manifest:-}" ]] && rm -f "$current_manifest"
+  [[ -n "${dest_manifest:-}" ]] && rm -f "$dest_manifest"
+  # An EXIT trap's status is the script's status: without this, the last
+  # test above failing (the usual case — dest_manifest is cleared at the end
+  # of each destination) would turn a clean sync into exit 1.
+  return 0
 }
 trap cleanup EXIT
 
@@ -117,8 +134,34 @@ tree_hash() {
   ) | sha256sum | cut -d' ' -f1
 }
 
+# Rules from $DISABLED_FILE, keyed "<agent>/<skill>" with "*" for all agents.
+declare -A DISABLED=()
+load_disabled() {
+  [[ -f "$DISABLED_FILE" ]] || return 0
+  local line agent skill
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    line="${line//[[:space:]]/}"
+    [[ -n "$line" ]] || continue
+    if [[ "$line" == *:* ]]; then
+      agent="${line%%:*}"
+      skill="${line#*:}"
+    else
+      agent="*"
+      skill="$line"
+    fi
+    [[ -n "$agent" && -n "$skill" ]] || continue
+    DISABLED["$agent/$skill"]=1
+  done <"$DISABLED_FILE"
+}
+
+# is_disabled <agent> <skill>
+is_disabled() {
+  [[ -n "${DISABLED["*/$2"]:-}" || -n "${DISABLED["$1/$2"]:-}" ]]
+}
+
 write_dest_readme() {
-  local dest_root="$1" held_list="$2"
+  local dest_root="$1" held_list="$2" disabled_list="$3"
   cat >"$dest_root/README.md" <<EOF
 # Managed directory — synced from the skills repo
 
@@ -145,6 +188,17 @@ and is not overwritten. Then:
 
 Currently held (local edits present): ${held_list:-none}
 
+Currently disabled (kept off this machine on purpose): ${disabled_list:-none}
+
+Disabled skills are removed from this directory rather than installed and
+blocked, because an agent only stops offering a skill when its file is
+gone. Turn one back on with:
+
+    skills-toggle enable <skill>
+
+\`skills-toggle list\` shows the full skill-by-agent grid, and the rules
+live in $DISABLED_FILE.
+
 Skills not managed by the repo are left alone.
 
 Last sync: $(date -Is) from commit $SYNC_COMMIT
@@ -167,16 +221,34 @@ if (( ${#skill_dirs[@]} == 0 )); then
   exit 1
 fi
 
+load_disabled
+
 current_manifest="$(mktemp)"
 
 for skill_dir in "${skill_dirs[@]}"; do
   basename "$skill_dir"
 done >"$current_manifest"
 
-for dest_root in "${DESTINATIONS[@]}"; do
+for dest_index in "${!DESTINATIONS[@]}"; do
+  dest_root="${DESTINATIONS[$dest_index]}"
+  dest_agent="${DEST_AGENTS[$dest_index]:-unknown}"
   mkdir -p "$dest_root"
   manifest="$dest_root/.skills-sync-manifest"
   state_file="$dest_root/.skills-sync-state"
+
+  # What this agent should end up with: every repo skill it has not been
+  # told to skip. Built before the stale sweep so that disabling a skill
+  # takes the same removal path as upstream deleting one.
+  disabled_skills=""
+  dest_manifest="$(mktemp)"
+  while IFS= read -r skill_name; do
+    [[ -n "$skill_name" ]] || continue
+    if is_disabled "$dest_agent" "$skill_name"; then
+      disabled_skills="${disabled_skills:+$disabled_skills, }$skill_name"
+      continue
+    fi
+    printf '%s\n' "$skill_name"
+  done <"$current_manifest" >"$dest_manifest"
 
   # Hashes and hold flags recorded by the previous sync. An installed tree
   # that no longer matches its recorded hash was edited in place; local
@@ -197,7 +269,12 @@ for dest_root in "${DESTINATIONS[@]}"; do
   if [[ -f "$manifest" ]]; then
     while IFS= read -r old_skill; do
       [[ -n "$old_skill" ]] || continue
-      if ! grep -Fxq -- "$old_skill" "$current_manifest"; then
+      if ! grep -Fxq -- "$old_skill" "$dest_manifest"; then
+        if is_disabled "$dest_agent" "$old_skill"; then
+          reason="disabled for $dest_agent"
+        else
+          reason="removed upstream"
+        fi
         # Local edits (whether the hold was already flagged or made since
         # the last sync) — preserve them before the upstream removal wins,
         # like any other upstream change while held.
@@ -206,10 +283,10 @@ for dest_root in "${DESTINATIONS[@]}"; do
           replaced="$(mktemp -d -t skills-sync-replaced-XXXXXX)/$old_skill"
           mkdir -p "$replaced"
           rsync -a -- "$dest_root/$old_skill/" "$replaced/"
-          log "NOTICE: upstream removed $old_skill while it was held; the local edits are preserved at $replaced"
+          log "NOTICE: $old_skill was $reason while it was held; the local edits are preserved at $replaced"
         fi
         rm -rf -- "${dest_root:?}/${old_skill:?}"
-        log "removed stale synced skill $old_skill from $dest_root"
+        log "removed $old_skill from $dest_root ($reason)"
       fi
     done <"$manifest"
   fi
@@ -220,6 +297,10 @@ for dest_root in "${DESTINATIONS[@]}"; do
   for skill_dir in "${skill_dirs[@]}"; do
     skill_name="$(basename "$skill_dir")"
     dest_dir="$dest_root/$skill_name"
+
+    if is_disabled "$dest_agent" "$skill_name"; then
+      continue
+    fi
 
     if [[ -d "$dest_dir" && -n "${last_hash[$skill_name]:-}" ]]; then
       installed_hash="$(tree_hash "$dest_dir")"
@@ -268,13 +349,15 @@ for dest_root in "${DESTINATIONS[@]}"; do
   install -m 0644 "$new_state" "$state_file"
   rm -f "$new_state"
 
-  write_dest_readme "$dest_root" "$held_skills"
+  write_dest_readme "$dest_root" "$held_skills" "$disabled_skills"
   # Breadcrumbs for skills-pr: where the repo checkout lives, and which
   # commit the installed copies were deployed from (so a PR is based on the
   # deployed tree, not a newer fetch that would fold upstream reverts in).
   printf '%s\n' "$REPO_DIR" >"$dest_root/.skills-sync-repo"
   printf '%s\n' "$SYNC_COMMIT_FULL" >"$dest_root/.skills-sync-commit"
-  install -m 0644 "$current_manifest" "$manifest"
+  install -m 0644 "$dest_manifest" "$manifest"
+  rm -f "$dest_manifest"
+  dest_manifest=""
 done
 
 bin_dir="${LOCAL_BIN_DIR:-$HOME/.local/bin}"
