@@ -35,6 +35,7 @@ usage: skills-toggle [list]
        skills-toggle disable <skill>... [--agent <agent>]...
        skills-toggle enable  <skill>... [--agent <agent>]...
        skills-toggle edit
+       skills-toggle apply
 
 Turns installed skills on and off for this machine only. With no --agent the
 change applies to every agent; repeat --agent to name a subset. Agents:
@@ -46,6 +47,9 @@ skill stays in the repo and on the remote; re-enable it any time.
 
   list    print the skill-by-agent grid (default)
   edit    open the rules file in $EDITOR, then apply
+  apply   re-run the sync so the current rules take effect
+
+For an interactive grid, run skills-tui.
 EOF
 }
 
@@ -289,6 +293,7 @@ case "$action" in
     ;;
   list) load_rules && cmd_list ;;
   edit) cmd_edit ;;
+  apply) apply ;;
   enable | disable)
     agents=()
     skills=()

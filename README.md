@@ -82,6 +82,7 @@ agent from offering it:
 skills-toggle list                          # skill-by-agent grid
 skills-toggle disable fastcontext           # off everywhere on this machine
 skills-toggle enable fastcontext --agent codex
+skills-tui                                  # the same grid, interactive
 ```
 
 Some skills need more than the folder copy — each declares its requirements in

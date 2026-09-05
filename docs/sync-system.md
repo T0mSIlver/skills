@@ -77,6 +77,22 @@ claude:delegate-to-claude-code    # off for Claude Code only
 codex:claude-remote-control-server
 ```
 
+`skills-tui` is the same grid, interactive — arrows or `hjkl` to move, space
+to toggle a cell, `a` for a whole row, `w` to apply, `q` to quit. It is Python
+stdlib `curses` only, so it runs anywhere the sync does.
+
+```text
+skills — on/off per agent, this machine only
+space toggle · a row · w apply · r reload · q quit
+
+SKILL                          claude    codex    opencode
+claude-remote-control-server     on        off       off
+delegate-to-claude-code          off       on        on
+fastcontext                      off*      on        on
+
+1 unapplied change — w to apply · rules: ~/.config/skills-sync/disabled
+```
+
 `skills-toggle` runs the sync as soon as it writes a rule, so a toggle takes
 effect immediately rather than on the next timer tick. Disabling a skill that
 was *held* for local edits preserves those edits the same way an upstream
@@ -126,6 +142,7 @@ skills-pr --dry-run
 skills-pr --discard <skill>
 skills-toggle list
 skills-toggle disable <skill> [--agent claude|codex|opencode]
+skills-tui
 install-claude-rc-server-service.sh
 systemctl --user status skills-sync.timer
 systemctl --user status claude-rc-skills.service

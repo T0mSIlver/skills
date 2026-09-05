@@ -1,0 +1,366 @@
+#!/usr/bin/env python3
+"""skills-tui — the skill-by-agent grid, editable in place.
+
+A view over the same machine-local rules file skills-toggle writes
+(~/.config/skills-sync/disabled). Toggle cells, apply, and the sync removes or
+reinstalls the skill directories to match. Disabling means NOT INSTALLED: an
+agent only stops offering a skill when its file is gone.
+
+Only the Python standard library, so it runs wherever the sync already does.
+"""
+
+from __future__ import annotations
+
+import curses
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+AGENTS = ("claude", "codex", "opencode")
+
+DEST_ENV = {
+    "claude": ("CLAUDE_SKILLS_DIR", "~/.claude/skills"),
+    "codex": ("CODEX_SKILLS_DIR", "~/.codex/skills"),
+    "opencode": ("OPENCODE_SKILLS_DIR", "~/.config/opencode/skills"),
+}
+
+HEADER = """\
+# Skills kept off this machine. One rule per line:
+#
+#   <skill>            off for every agent
+#   <agent>:<skill>    off for that agent only  (claude, codex, opencode)
+#
+# Disabled means not installed — the sync removes the skill's directory and
+# keeps it removed. Nothing here touches the repo or the remote.
+# Managed by skills-toggle; hand edits are fine.
+"""
+
+KEYS = "space toggle · a row · w apply · r reload · q quit"
+
+
+def rules_path() -> Path:
+    override = os.environ.get("SKILLS_DISABLED_FILE")
+    if override:
+        return Path(override)
+    config = os.environ.get("XDG_CONFIG_HOME") or "~/.config"
+    return Path(config).expanduser() / "skills-sync" / "disabled"
+
+
+def destination(agent: str) -> Path:
+    env, default = DEST_ENV[agent]
+    return Path(os.environ.get(env, default)).expanduser()
+
+
+def find_repo_dir() -> Path | None:
+    """Locate the repo checkout via the breadcrumb the sync leaves behind."""
+    override = os.environ.get("SKILLS_REPO_DIR")
+    if override:
+        return Path(override)
+    for agent in AGENTS:
+        crumb = destination(agent) / ".skills-sync-repo"
+        try:
+            value = crumb.read_text().strip()
+        except OSError:
+            continue
+        if value:
+            return Path(value)
+    return None
+
+
+def repo_skills(repo_dir: Path) -> list[str]:
+    """Top-level skill names on origin/main.
+
+    No fetch: startup should be instant, and the sync run by `apply` fetches
+    anyway. A skill that only exists on an unfetched remote would be missing
+    from the grid, which is the same thing the sync would install.
+    """
+    remote = os.environ.get("REMOTE", "origin")
+    branch = os.environ.get("BRANCH", "main")
+    for ref in (f"{remote}/{branch}", "HEAD"):
+        try:
+            out = subprocess.run(
+                ["git", "-C", str(repo_dir), "ls-tree", "-r", "--name-only", ref],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout
+        except (subprocess.CalledProcessError, OSError):
+            continue
+        names = sorted(
+            {
+                line[: -len("/SKILL.md")]
+                for line in out.splitlines()
+                if line.endswith("/SKILL.md") and line.count("/") == 1
+            }
+        )
+        if names:
+            return names
+    return []
+
+
+def load_rules(path: Path) -> set[tuple[str, str]]:
+    """Rules as (agent, skill) pairs, with "*" standing for every agent."""
+    rules: set[tuple[str, str]] = set()
+    try:
+        text = path.read_text()
+    except OSError:
+        return rules
+    for line in text.splitlines():
+        line = line.split("#", 1)[0]
+        line = "".join(line.split())
+        if not line:
+            continue
+        agent, sep, skill = line.partition(":")
+        if not sep:
+            agent, skill = "*", agent
+        if agent and skill:
+            rules.add((agent, skill))
+    return rules
+
+
+def write_rules(path: Path, rules: set[tuple[str, str]]) -> None:
+    lines = sorted(skill if agent == "*" else f"{agent}:{skill}" for agent, skill in rules)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(HEADER + "".join(line + "\n" for line in lines))
+    tmp.replace(path)
+
+
+class Grid:
+    """The on/off state, plus the edits not yet written to the rules file."""
+
+    def __init__(self, skills: list[str], rules: set[tuple[str, str]]):
+        self.skills = skills
+        self.saved = self._expand(rules)
+        self.off = set(self.saved)
+
+    def _expand(self, rules: set[tuple[str, str]]) -> set[tuple[str, str]]:
+        """Blanket "*" rules become one pair per agent, so a cell is a cell."""
+        off = set()
+        for agent, skill in rules:
+            for target in AGENTS if agent == "*" else (agent,):
+                off.add((target, skill))
+        return off
+
+    def _collapse(self) -> set[tuple[str, str]]:
+        """Inverse of _expand: a skill off everywhere writes one bare rule."""
+        rules = set()
+        for skill in {s for _, s in self.off}:
+            agents = [a for a in AGENTS if (a, skill) in self.off]
+            if len(agents) == len(AGENTS):
+                rules.add(("*", skill))
+            else:
+                rules.update((a, skill) for a in agents)
+        # Rules naming a skill the repo no longer has would silently vanish on
+        # save, so carry them through untouched.
+        return rules
+
+    def is_off(self, skill: str, agent: str) -> bool:
+        return (agent, skill) in self.off
+
+    def toggle(self, skill: str, agent: str) -> None:
+        key = (agent, skill)
+        self.off.symmetric_difference_update({key})
+
+    def toggle_row(self, skill: str) -> None:
+        # Any cell on means the row turns fully off; otherwise fully on.
+        if all(self.is_off(skill, a) for a in AGENTS):
+            self.off.difference_update((a, skill) for a in AGENTS)
+        else:
+            self.off.update((a, skill) for a in AGENTS)
+
+    @property
+    def pending(self) -> set[tuple[str, str]]:
+        return self.off ^ self.saved
+
+    def changed(self, skill: str, agent: str) -> bool:
+        return (agent, skill) in self.pending
+
+    def save(self, path: Path, extra: set[tuple[str, str]]) -> None:
+        write_rules(path, self._collapse() | extra)
+        self.saved = set(self.off)
+
+
+def run_sync(repo_dir: Path | None) -> str:
+    if repo_dir is None:
+        return "rules saved; no repo checkout found, the timer will apply them"
+    script = repo_dir / "scripts" / "sync-skills.sh"
+    if not script.exists():
+        return "rules saved; sync script not found, the timer will apply them"
+    try:
+        done = subprocess.run(
+            ["bash", str(script)], capture_output=True, text=True, timeout=180
+        )
+    except subprocess.TimeoutExpired:
+        return "sync timed out; the timer will retry"
+    except OSError as exc:
+        return f"could not run the sync: {exc}"
+    if done.returncode == 0:
+        return "applied"
+    return "sync failed or was already running; the timer will retry"
+
+
+class App:
+    def __init__(self, skills, rules, extra, path, repo_dir):
+        self.grid = Grid(skills, rules)
+        self.extra = extra
+        self.path = path
+        self.repo_dir = repo_dir
+        self.row = 0
+        self.col = 0
+        self.top = 0
+        self.status = f"rules: {path}"
+
+    # -- drawing ---------------------------------------------------------
+    def draw(self, stdscr) -> None:
+        stdscr.erase()
+        height, width = stdscr.getmaxyx()
+        skills = self.grid.skills
+        name_w = max((len(s) for s in skills), default=5)
+        name_w = max(name_w, 5)
+        cell_w = 10
+
+        if width < name_w + cell_w * len(AGENTS) + 2 or height < 6:
+            stdscr.addnstr(0, 0, "terminal too small", max(width - 1, 0))
+            stdscr.refresh()
+            return
+
+        title = "skills — on/off per agent, this machine only"
+        stdscr.addnstr(0, 0, title, width - 1, curses.A_BOLD)
+        stdscr.addnstr(1, 0, KEYS, width - 1, curses.A_DIM)
+
+        head = "SKILL".ljust(name_w) + "".join(a.center(cell_w) for a in AGENTS)
+        stdscr.addnstr(3, 0, head, width - 1, curses.A_UNDERLINE)
+
+        body_top = 4
+        body_rows = height - body_top - 2
+        if self.row < self.top:
+            self.top = self.row
+        elif self.row >= self.top + body_rows:
+            self.top = self.row - body_rows + 1
+
+        for index in range(self.top, min(len(skills), self.top + body_rows)):
+            skill = skills[index]
+            y = body_top + index - self.top
+            attr = curses.A_BOLD if index == self.row else curses.A_NORMAL
+            stdscr.addnstr(y, 0, skill.ljust(name_w), name_w, attr)
+            for column, agent in enumerate(AGENTS):
+                off = self.grid.is_off(skill, agent)
+                label = "off" if off else "on"
+                if self.grid.changed(skill, agent):
+                    label += "*"
+                cell_attr = self._pair(2 if off else 1)
+                if index == self.row and column == self.col:
+                    cell_attr |= curses.A_REVERSE
+                stdscr.addnstr(
+                    y, name_w + column * cell_w, label.center(cell_w), cell_w, cell_attr
+                )
+
+        pending = len(self.grid.pending)
+        footer = self.status
+        if pending:
+            plural = "" if pending == 1 else "s"
+            footer = f"{pending} unapplied change{plural} — w to apply · {self.status}"
+        stdscr.addnstr(height - 1, 0, footer[: width - 1], width - 1, curses.A_DIM)
+        stdscr.refresh()
+
+    def _pair(self, index: int) -> int:
+        if not curses.has_colors():
+            return curses.A_DIM if index == 2 else curses.A_NORMAL
+        return curses.color_pair(index)
+
+    # -- input -----------------------------------------------------------
+    def apply(self, stdscr) -> None:
+        if not self.grid.pending:
+            self.status = "nothing to apply"
+            return
+        self.status = "applying…"
+        self.draw(stdscr)
+        self.grid.save(self.path, self.extra)
+        self.status = run_sync(self.repo_dir)
+
+    def reload(self) -> None:
+        rules = load_rules(self.path)
+        self.extra = {(a, s) for a, s in rules if s not in set(self.grid.skills)}
+        self.grid = Grid(self.grid.skills, rules)
+        self.status = "reloaded"
+
+    def loop(self, stdscr) -> None:
+        curses.curs_set(0)
+        if curses.has_colors():
+            curses.use_default_colors()
+            curses.init_pair(1, curses.COLOR_GREEN, -1)
+            curses.init_pair(2, curses.COLOR_RED, -1)
+
+        while True:
+            self.draw(stdscr)
+            try:
+                key = stdscr.getch()
+            except KeyboardInterrupt:
+                return
+
+            skills = self.grid.skills
+            if key in (curses.KEY_DOWN, ord("j")):
+                self.row = min(self.row + 1, len(skills) - 1)
+            elif key in (curses.KEY_UP, ord("k")):
+                self.row = max(self.row - 1, 0)
+            elif key in (curses.KEY_RIGHT, ord("l")):
+                self.col = min(self.col + 1, len(AGENTS) - 1)
+            elif key in (curses.KEY_LEFT, ord("h")):
+                self.col = max(self.col - 1, 0)
+            elif key in (curses.KEY_HOME, ord("g")):
+                self.row = 0
+            elif key in (curses.KEY_END, ord("G")):
+                self.row = len(skills) - 1
+            elif key == ord(" "):
+                self.grid.toggle(skills[self.row], AGENTS[self.col])
+            elif key == ord("a"):
+                self.grid.toggle_row(skills[self.row])
+            elif key in (ord("w"), curses.KEY_ENTER, 10, 13):
+                self.apply(stdscr)
+            elif key == ord("r"):
+                self.reload()
+            elif key == curses.KEY_RESIZE:
+                continue
+            elif key in (ord("q"), 27):
+                if not self.grid.pending:
+                    return
+                self.status = "unapplied changes — w to apply, q again to discard"
+                self.draw(stdscr)
+                if stdscr.getch() in (ord("q"), 27):
+                    return
+
+
+def main() -> int:
+    path = rules_path()
+    repo_dir = find_repo_dir()
+    if repo_dir is None:
+        print(
+            "skills-tui: could not locate the skills repo checkout "
+            "(set SKILLS_REPO_DIR)",
+            file=sys.stderr,
+        )
+        return 1
+
+    skills = repo_skills(repo_dir)
+    if not skills:
+        print(f"skills-tui: no skills found in {repo_dir}", file=sys.stderr)
+        return 1
+
+    rules = load_rules(path)
+    # Rules for skills the repo no longer ships have no cell in the grid.
+    # Preserve them verbatim so opening the TUI never quietly drops one.
+    extra = {(a, s) for a, s in rules if s not in set(skills)}
+
+    if not sys.stdout.isatty():
+        print("skills-tui: not a terminal; use `skills-toggle list`", file=sys.stderr)
+        return 1
+
+    app = App(skills, rules, extra, path, repo_dir)
+    curses.wrapper(app.loop)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

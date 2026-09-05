@@ -5,3 +5,7 @@
 # Local agent/session state
 .agent-runs/
 .claude/worktrees/
+
+# Python bytecode
+__pycache__/
+*.pyc

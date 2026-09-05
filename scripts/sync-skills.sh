@@ -34,6 +34,7 @@ HELPER_SPECS=(
   "drive-codex-in-herdr/scripts/codex-pane-up:codex-pane-up"
   "scripts/skills-pr:skills-pr"
   "scripts/skills-toggle:skills-toggle"
+  "scripts/skills-tui:skills-tui"
 )
 
 log() {
@@ -196,8 +197,9 @@ gone. Turn one back on with:
 
     skills-toggle enable <skill>
 
-\`skills-toggle list\` shows the full skill-by-agent grid, and the rules
-live in $DISABLED_FILE.
+\`skills-toggle list\` prints the full skill-by-agent grid and
+\`skills-tui\` makes it interactive. The rules live in
+$DISABLED_FILE.
 
 Skills not managed by the repo are left alone.
 
