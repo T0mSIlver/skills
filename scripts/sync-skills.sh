@@ -61,7 +61,10 @@ if has flock; then
   mkdir -p "$(dirname "$LOCK_FILE")"
   exec 9>"$LOCK_FILE"
   if ! flock -n 9; then
-    log "another sync is already running"
+    # Exit 0 so a timer tick that yields to a manual run is not a unit
+    # failure — but say so in a form callers can detect, or skills-toggle
+    # would report "applied" for a run that did nothing.
+    log "SKIPPED: another sync is already running"
     exit 0
   fi
 fi
@@ -163,7 +166,7 @@ is_disabled() {
 }
 
 write_dest_readme() {
-  local dest_root="$1" held_list="$2" disabled_list="$3"
+  local dest_root="$1" held_list="$2" disabled_list="$3" stray_list="${4:-}"
   cat >"$dest_root/README.md" <<EOF
 # Managed directory — synced from the skills repo
 
@@ -201,6 +204,9 @@ gone. Turn one back on with:
 \`skills-toggle list\` prints the full skill-by-agent grid and
 \`skills-tui\` makes it interactive. The rules live in
 $DISABLED_FILE.
+
+Disabled but still present (NOT installed by the sync, so left alone
+and still offered by this agent — remove by hand): ${stray_list:-none}
 
 Skills not managed by the repo are left alone.
 
@@ -272,6 +278,13 @@ for dest_index in "${!DESTINATIONS[@]}"; do
   if [[ -f "$manifest" ]]; then
     while IFS= read -r old_skill; do
       [[ -n "$old_skill" ]] || continue
+      # A manifest entry is always a basename. Anything with a slash or a
+      # leading dot cannot be one, and "." / ".." would point rm -rf at the
+      # destination itself or its parent, so refuse rather than resolve it.
+      if [[ "$old_skill" == */* || "$old_skill" == .* ]]; then
+        log "WARNING: ignoring malformed manifest entry in $dest_root: $old_skill"
+        continue
+      fi
       if ! grep -Fxq -- "$old_skill" "$dest_manifest"; then
         if is_disabled "$dest_agent" "$old_skill"; then
           reason="disabled for $dest_agent"
@@ -293,6 +306,22 @@ for dest_index in "${!DESTINATIONS[@]}"; do
       fi
     done <"$manifest"
   fi
+
+  # A disabled skill can still be present without ever having been in the
+  # manifest: a destination pre-populated before the first sync, a directory
+  # recreated by hand, another installer. The sync did not put it there, so
+  # removing it could destroy something it does not own — but staying silent
+  # would leave the grid claiming "off" while the agent still loads it.
+  stray_disabled=""
+  while IFS= read -r skill_name; do
+    [[ -n "$skill_name" ]] || continue
+    is_disabled "$dest_agent" "$skill_name" || continue
+    [[ -d "$dest_root/$skill_name" ]] || continue
+    if ! grep -Fxq -- "$skill_name" "$manifest" 2>/dev/null; then
+      stray_disabled="${stray_disabled:+$stray_disabled, }$skill_name"
+      log "WARNING: $skill_name is disabled for $dest_agent but $dest_root/$skill_name exists and was not installed by the sync — $dest_agent still offers it. Remove it by hand to make the disable effective."
+    fi
+  done <"$current_manifest"
 
   new_state="$(mktemp)"
   printf '%s\n' "$STATE_FORMAT" >>"$new_state"
@@ -352,7 +381,7 @@ for dest_index in "${!DESTINATIONS[@]}"; do
   install -m 0644 "$new_state" "$state_file"
   rm -f "$new_state"
 
-  write_dest_readme "$dest_root" "$held_skills" "$disabled_skills"
+  write_dest_readme "$dest_root" "$held_skills" "$disabled_skills" "$stray_disabled"
   # Breadcrumbs for skills-pr: where the repo checkout lives, and which
   # commit the installed copies were deployed from (so a PR is based on the
   # deployed tree, not a newer fetch that would fold upstream reverts in).

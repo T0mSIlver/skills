@@ -124,10 +124,23 @@ if [[ -n "$discard" ]]; then
   if [[ -x "$repo_dir/scripts/sync-skills.sh" ]]; then
     bash "$repo_dir/scripts/sync-skills.sh" >/dev/null 2>&1 || true
   fi
+  # A skill disabled for an agent is deliberately absent from that agent's
+  # directory, and the sync records that by leaving it out of the
+  # destination's manifest. Requiring every destination to have it back would
+  # report a permanent failure and send the user chasing a phantom sync
+  # problem, so only destinations that want the skill count.
   reinstalled=1
+  disabled_in=""
   for dest_root in "${DESTINATIONS[@]}"; do
-    [[ -d "$dest_root/$discard" ]] || reinstalled=0
+    [[ -d "$dest_root/$discard" ]] && continue
+    if [[ -f "$dest_root/.skills-sync-manifest" ]] &&
+      ! grep -Fxq -- "$discard" "$dest_root/.skills-sync-manifest"; then
+      disabled_in="${disabled_in:+$disabled_in, }$dest_root"
+      continue
+    fi
+    reinstalled=0
   done
+  [[ -n "$disabled_in" ]] && log "$discard stays absent from $disabled_in (disabled there)"
   if ((reinstalled)); then
     log "reinstalled $discard from the repo"
   elif [[ ! -d "$repo_dir/$discard" ]]; then

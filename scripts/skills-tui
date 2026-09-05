@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import curses
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -100,6 +101,22 @@ def repo_skills(repo_dir: Path) -> list[str]:
     return []
 
 
+def unmanaged(rules: set[tuple[str, str]], skills) -> set[tuple[str, str]]:
+    """Rules with no cell in the grid, and so no way to survive a rebuild.
+
+    The grid covers AGENTS x skills. A rule outside that — an unknown skill
+    (deleted upstream) or an unknown agent (hand-written, a typo, a harness
+    being prototyped) — would be dropped by _collapse, silently deleting
+    config the user wrote by hand. Carry those through saves verbatim.
+    """
+    known = set(skills)
+    return {
+        (agent, skill)
+        for agent, skill in rules
+        if skill not in known or (agent != "*" and agent not in AGENTS)
+    }
+
+
 def load_rules(path: Path) -> set[tuple[str, str]]:
     """Rules as (agent, skill) pairs, with "*" standing for every agent."""
     rules: set[tuple[str, str]] = set()
@@ -141,7 +158,8 @@ class Grid:
         off = set()
         for agent, skill in rules:
             for target in AGENTS if agent == "*" else (agent,):
-                off.add((target, skill))
+                if target in AGENTS:
+                    off.add((target, skill))
         return off
 
     def _collapse(self) -> set[tuple[str, str]]:
@@ -197,9 +215,15 @@ def run_sync(repo_dir: Path | None) -> str:
         return "sync timed out; the timer will retry"
     except OSError as exc:
         return f"could not run the sync: {exc}"
-    if done.returncode == 0:
-        return "applied"
-    return "sync failed or was already running; the timer will retry"
+    if done.returncode != 0:
+        return f"sync failed (exit {done.returncode}); the timer will retry"
+    out = (done.stdout or "") + (done.stderr or "")
+    if "SKIPPED: another sync is already running" in out:
+        return "another sync was running; nothing applied yet — the timer will retry"
+    saved = re.findall(r"preserved at (\S+)", out)
+    if saved:
+        return f"applied — local edits saved to {saved[-1]}"
+    return "applied"
 
 
 class App:
@@ -211,6 +235,7 @@ class App:
         self.row = 0
         self.col = 0
         self.top = 0
+        self.too_small = False
         self.status = f"rules: {path}"
 
     # -- drawing ---------------------------------------------------------
@@ -222,8 +247,10 @@ class App:
         name_w = max(name_w, 5)
         cell_w = 10
 
-        if width < name_w + cell_w * len(AGENTS) + 2 or height < 6:
-            stdscr.addnstr(0, 0, "terminal too small", max(width - 1, 0))
+        self.too_small = width < name_w + cell_w * len(AGENTS) + 2 or height < 6
+        if self.too_small:
+            if width > 1:
+                stdscr.addnstr(0, 0, "terminal too small", width - 1)
             stdscr.refresh()
             return
 
@@ -283,7 +310,7 @@ class App:
 
     def reload(self) -> None:
         rules = load_rules(self.path)
-        self.extra = {(a, s) for a, s in rules if s not in set(self.grid.skills)}
+        self.extra = unmanaged(rules, self.grid.skills)
         self.grid = Grid(self.grid.skills, rules)
         self.status = "reloaded"
 
@@ -302,6 +329,14 @@ class App:
                 return
 
             skills = self.grid.skills
+
+            if self.too_small and key not in (
+                ord("q"), 27, curses.KEY_RESIZE,
+            ):
+                # Nothing is on screen; toggling or applying here would change
+                # which skills are installed based on a grid never rendered.
+                continue
+
             if key in (curses.KEY_DOWN, ord("j")):
                 self.row = min(self.row + 1, len(skills) - 1)
             elif key in (curses.KEY_UP, ord("k")):
@@ -329,7 +364,11 @@ class App:
                     return
                 self.status = "unapplied changes — w to apply, q again to discard"
                 self.draw(stdscr)
-                if stdscr.getch() in (ord("q"), 27):
+                try:
+                    confirm = stdscr.getch()
+                except KeyboardInterrupt:
+                    return
+                if confirm in (ord("q"), 27):
                     return
 
 
@@ -352,7 +391,7 @@ def main() -> int:
     rules = load_rules(path)
     # Rules for skills the repo no longer ships have no cell in the grid.
     # Preserve them verbatim so opening the TUI never quietly drops one.
-    extra = {(a, s) for a, s in rules if s not in set(skills)}
+    extra = unmanaged(rules, skills)
 
     if not sys.stdout.isatty():
         print("skills-tui: not a terminal; use `skills-toggle list`", file=sys.stderr)

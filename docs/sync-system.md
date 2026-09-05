@@ -95,9 +95,18 @@ fastcontext                      off*      on        on        on
 ```
 
 `skills-toggle` runs the sync as soon as it writes a rule, so a toggle takes
-effect immediately rather than on the next timer tick. Disabling a skill that
-was *held* for local edits preserves those edits the same way an upstream
-removal does: a copy goes to `/tmp` and the path is named in the journal.
+effect immediately rather than on the next timer tick — unless the timer's own
+sync is mid-run, in which case it says so and the rule lands on the next tick
+instead of claiming to have applied. Disabling a skill that was *held* for
+local edits preserves those edits the same way an upstream removal does: a
+copy goes to `/tmp`, and both tools print the path rather than leaving it in
+the journal only.
+
+A disable removes what the sync installed. A directory the sync did *not*
+install — a destination pre-populated before its first sync, or one recreated
+by hand — is left alone, because it is not the repo's to delete; the sync
+warns on every run and names it in the destination's `README.md`, since the
+agent does still load it.
 
 `skills-pr` ignores destinations where a skill is absent, so a disabled skill
 is never mistaken for one you deleted and never turns into a PR.

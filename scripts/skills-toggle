@@ -131,7 +131,7 @@ disabled_for() { # <agent> <skill>
 write_rules() {
   mkdir -p "$(dirname "$DISABLED_FILE")"
   local tmp
-  tmp="$(mktemp)"
+  tmp="$(mktemp -- "$DISABLED_FILE.XXXXXX")"
   {
     cat <<'EOF'
 # Skills kept off this machine. One rule per line:
@@ -154,25 +154,41 @@ EOF
       fi
     done | sort
   } >"$tmp"
-  install -m 0644 "$tmp" "$DISABLED_FILE"
-  rm -f "$tmp"
+  # Same-directory rename: a concurrent sync reading the file sees either
+  # the old rules or the new ones, never a truncated file.
+  chmod 0644 "$tmp"
+  mv -f -- "$tmp" "$DISABLED_FILE"
 }
 
 apply() {
-  local repo_dir
+  local repo_dir out rc=0
   if ! repo_dir="$(find_repo_dir)" || [[ ! -x "$repo_dir/scripts/sync-skills.sh" ]]; then
     log "could not run the sync; it will pick the change up within minutes"
     return 0
   fi
-  if bash "$repo_dir/scripts/sync-skills.sh" >/dev/null 2>&1; then
-    log "applied"
+  out="$(bash "$repo_dir/scripts/sync-skills.sh" 2>&1)" || rc=$?
+
+  # Held local edits are copied aside before removal and the destination is
+  # named ONLY on the sync's stdout. Swallowing it loses the one pointer to
+  # the user's work, so re-emit those lines here.
+  local notice
+  while IFS= read -r notice; do
+    [[ -n "$notice" ]] && log "${notice#*] }"
+  done < <(printf '%s\n' "$out" | grep -E 'NOTICE:|WARNING:' || true)
+
+  if ((rc != 0)); then
+    log "sync failed (exit $rc); the timer will apply this within minutes"
+  elif printf '%s\n' "$out" | grep -q 'SKIPPED: another sync is already running'; then
+    # The sync exits 0 when it yields the lock, so this is not a failure —
+    # but nothing was applied and saying "applied" would be a lie.
+    log "another sync was already running; nothing applied yet — the timer will apply this within minutes"
   else
-    log "sync failed or was already running; the timer will apply this within minutes"
+    log "applied"
   fi
 }
 
 cmd_list() {
-  local repo_dir skills=() skill agent i mark row
+  local repo_dir skills=() skill agent mark row
   repo_dir="$(find_repo_dir)" || die "could not locate the skills repo checkout (set SKILLS_REPO_DIR)"
   mapfile -t skills < <(repo_skills "$repo_dir")
   ((${#skills[@]})) || die "no skills found in $repo_dir"
@@ -232,7 +248,9 @@ cmd_set() { # <enable|disable> <agents...> -- <skills...>
 
   local repo_dir known="" skill agent
   if repo_dir="$(find_repo_dir)"; then
-    known="$(repo_skills "$repo_dir")"
+    # Best-effort: a stale or non-git SKILLS_REPO_DIR must not abort the
+    # toggle under `set -e`, it just means the name cannot be checked.
+    known="$(repo_skills "$repo_dir" 2>/dev/null || true)"
   fi
 
   local changed=0
