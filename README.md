@@ -15,7 +15,7 @@ machine-readable output, and explicit run state.
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | `claude remote-control` | Run persistent per-repo Remote Control servers under systemd |
 | [`delegate-to-codex`](delegate-to-codex/SKILL.md) | `codex exec` | Delegate reviewer/editor runs; `-s read-only` vs `workspace-write` |
 | [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | `opencode run` | Delegate reviewer/editor runs; primary/all agents with `edit: deny` vs `edit: allow` |
-| [`drive-codex-in-herdr`](drive-codex-in-herdr/SKILL.md) | `codex` (TUI) + `herdr` | Sandbox and user-config rules for a codex agent in a herdr pane; companion to the vendored `herdr` skill |
+| [`drive-codex-in-herdr`](drive-codex-in-herdr/SKILL.md) | `codex` (TUI) + `herdr` | How to bound a codex agent started in a herdr pane; read-only and one-shot work goes to `delegate-to-codex` |
 | [`fastcontext`](fastcontext/SKILL.md) | `fastcontext` | Delegate read-only repository exploration; returns `file:line` citations without spending your context |
 
 ## Writing skills
@@ -45,8 +45,8 @@ daily workflow opens a PR when upstream moves.
 `grilling` is the interview primitive; `/grill-me` wraps it, and
 `/grill-with-docs` runs it together with `domain-modeling` (glossary + ADRs).
 `herdr` is the herdr CLI itself — the pane, tab, and agent surface.
-[`drive-codex-in-herdr`](drive-codex-in-herdr/SKILL.md) adds only what it cannot
-know: how to bound a codex worker.
+[`drive-codex-in-herdr`](drive-codex-in-herdr/SKILL.md) adds only the codex
+sandbox flags it cannot know about.
 
 These copies are never patched here — fixes go upstream. See
 [docs/vendoring.md](docs/vendoring.md) to add one.
