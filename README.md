@@ -40,9 +40,12 @@ daily workflow opens a PR when upstream moves.
 | [`grill-me`](grill-me/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/productivity/grill-me` | MIT © Matt Pocock |
 | [`grill-with-docs`](grill-with-docs/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/engineering/grill-with-docs` | MIT © Matt Pocock |
 | [`domain-modeling`](domain-modeling/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/engineering/domain-modeling` | MIT © Matt Pocock |
+| [`herdr`](herdr/SKILL.md) | [`herdrdev/herdr`](https://github.com/herdrdev/herdr) `skills/herdr` | Apache-2.0 © herdr |
 
 `grilling` is the interview primitive; `/grill-me` wraps it, and
 `/grill-with-docs` runs it together with `domain-modeling` (glossary + ADRs).
+`herdr` is the herdr CLI itself — the generic pane, tab, and agent surface that
+[`drive-codex-in-herdr`](drive-codex-in-herdr/SKILL.md) specialises for codex.
 
 These copies are never patched here — fixes go upstream. See
 [docs/vendoring.md](docs/vendoring.md) to add one.
