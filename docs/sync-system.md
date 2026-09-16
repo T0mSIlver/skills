@@ -29,6 +29,15 @@ only skills managed by this repo and leaves unrelated local skills alone. It
 also installs skill-managed helper commands, such as `claude-rc-spawn` and
 `install-claude-rc-server-service.sh`, into `~/.local/bin`.
 
+The timer, `skills-toggle`, `skills-tui`, and `skills-pr` all run `scripts/sync-skills.sh`
+from the local checkout, and nothing but a manual pull updates that checkout.
+So when the checkout is behind `origin/main` and its copy of the script has no
+local edits, a run hands off to the fetched copy. Changes to the sync itself,
+such as a new helper command, apply on the next tick. A checkout with local
+edits to the script, or with unpushed commits, keeps running its own copy, so a
+sync change can be tried before it is pushed. The handoff code has to reach the
+checkout once, by a pull, before it can take effect.
+
 The repo is the source of truth, but **local edits win**. The sync hashes each
 installed skill against the state it wrote last time (`.skills-sync-state`), and
 a skill whose installed copy was edited in place is *held* — never overwritten.
