@@ -3,7 +3,7 @@
   "owner": {
     "name": "Tom Vaucourt"
   },
-  "description": "Skills that let a coding agent delegate work to another coding CLI, plus a persistent Claude Code Remote Control server setup.",
+  "description": "T0mSIlver's personal agent skills: delegating to other coding CLIs, Remote Control servers, and prose cleanup. Written here or vendored verbatim.",
   "plugins": [
     {
       "name": "cli-delegation",
@@ -39,10 +39,6 @@
       "description": "Pristine copies of third-party skills, vendored from their upstream repositories by scripts/vendor-skills.sh. Each directory keeps its upstream LICENSE and a .vendored stamp naming the repo, path, and pinned commit; fixes go upstream, never into this repo.",
       "skills": [
         "./unslop",
-        "./grilling",
-        "./grill-me",
-        "./grill-with-docs",
-        "./domain-modeling",
         "./herdr"
       ],
       "author": {
@@ -53,9 +49,6 @@
         "vendored",
         "third-party",
         "writing",
-        "grilling",
-        "interview",
-        "domain-modeling",
         "herdr"
       ],
       "category": "workflow"
