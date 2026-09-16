@@ -1,7 +1,7 @@
 ---
 description: Read-only second-opinion reviewer. Investigates and reports findings; never modifies files.
 mode: all
-model: zai-coding-plan/glm-5.2
+model: zai-coding-plan/glm-5.3
 permission:
   edit: deny
   bash: allow
