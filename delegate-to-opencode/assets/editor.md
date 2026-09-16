@@ -1,7 +1,7 @@
 ---
 description: Edit-capable worker. Reads, investigates, and applies scoped code changes with the edit tool.
 mode: all
-model: zai-coding-plan/glm-5.2
+model: zai-coding-plan/glm-5.3
 permission:
   edit: allow
   bash: allow

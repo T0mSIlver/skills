@@ -1,13 +1,13 @@
 ---
 name: delegate-to-opencode
-description: "Call the opencode CLI (`opencode run`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent opencode run. Use for GLM-5.2/opencode harness delegation, primary/all agent configs with edit permissions, worktree-isolated edit workers, JSON event capture, session resume/fork flows, and gotchas around `mode: subagent`, `--auto`, prompt files, and `--dir`."
+description: "Call the opencode CLI (`opencode run`) non-interactively to get a second opinion, run a code review, or delegate read-only or edit-capable work to an independent opencode run. Use for GLM-5.3/opencode harness delegation (never GLM 5.2, it is outdated), primary/all agent configs with edit permissions, worktree-isolated edit workers, JSON event capture, session resume/fork flows, and gotchas around `mode: subagent`, `--auto`, prompt files, and `--dir`."
 compatibility: Requires the opencode CLI installed and authenticated with a configured model provider.
 ---
 
 # Delegate to opencode (CLI)
 
 Run `opencode run` non-interactively for a second opinion, review, or a
-delegated edit worker. Model default: `-m zai-coding-plan/glm-5.2` (verify the
+delegated edit worker. Model default: `-m zai-coding-plan/glm-5.3` (verify the
 slug with `opencode models | grep glm`; don't hard-code `temperature`).
 
 ## Happy path
@@ -51,7 +51,7 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
    timeout --signal=TERM 2700 opencode run \
      --dir "$worktree" \
      --agent editor \
-     -m zai-coding-plan/glm-5.2 \
+     -m zai-coding-plan/glm-5.3 \
      --format json \
      --title "$slug" \
      --auto \
@@ -94,7 +94,7 @@ slug with `opencode models | grep glm`; don't hard-code `temperature`).
   brief can burn it all and emit nothing, with exit 0 and `reason: "length"`.
   Set `OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX` to the model's real
   `limit.output` (models.dev/api.json); it can only raise toward the ceiling.
-  On models without `limit.input` (glm-5.2 included) it shrinks usable context
+  On models without `limit.input` (glm-5.3 included) it shrinks usable context
   one-for-one — match the value to the model, don't set one number globally.
 - **`--file` never carries the prompt** — it only attaches files, a positional
   message is still required, and the flag greedily swallows positionals that
