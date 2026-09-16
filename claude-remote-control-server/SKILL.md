@@ -1,137 +1,64 @@
 ---
 name: claude-remote-control-server
-description: Install, update, inspect, or troubleshoot persistent Claude Code Remote Control servers for repositories. Use when the user asks to run `claude remote-control`, create a repo-specific remote-control server, make it survive reboots, manage user systemd services such as `claude-rc-skills.service`, configure `--spawn worktree`, service names, session names, prefixes, capacity, permission modes for spawned sessions (`--permission-mode`, `bypassPermissions`), lingering, or add another repo to claude.ai/code remote control.
-compatibility: Linux with user systemd (loginctl lingering); the claude CLI logged in via claude.ai. Setup runs the bundled scripts/install-claude-rc-server-service.sh.
+description: Install, change, or troubleshoot per-repo `claude remote-control` (RC) servers under user systemd, which let claude.ai/code start sessions on this machine.
+compatibility: Linux with user systemd and lingering; the claude CLI logged in via claude.ai.
 ---
 
-# Claude Remote Control Server
+# Claude Remote Control server
 
-Manage long-lived `claude remote-control` server mode for repos. This is for
-user-dispatched work from claude.ai/code or the Claude app. It is separate from
-delegated prompted Claude runs, which use `claude-rc-spawn`.
+Each repo gets one user systemd service running
+`claude remote-control --spawn worktree`, so claude.ai/code and the Claude app
+can start sessions in it, each in its own git worktree. Prompted runs you
+delegate yourself use `claude-rc-spawn` instead.
 
-## Install Or Update
+## Install or change a server
 
-From the target repo, install or update its service:
-
-```bash
-install-claude-rc-server-service.sh
-```
-
-Install another repo with explicit names:
+Run the installer from the repo. To change a server, run it again with the new
+values.
 
 ```bash
-REPO_DIR="$HOME/work/myapp" \
-SERVICE_NAME=claude-rc-myapp \
-SESSION_NAME="myapp@$(hostname -s)" \
-SESSION_PREFIX="$(hostname -s)-myapp" \
-CAPACITY=8 \
-install-claude-rc-server-service.sh
+CAPACITY=8 install-claude-rc-server-service.sh
 ```
 
-Defaults are derived from the repo directory name and the short hostname, so the
-explicit form above is only needed to override them. Use one user systemd service
-per repo, and pick distinct `SERVICE_NAME`, `SESSION_NAME`, and `SESSION_PREFIX`
-values so sessions are easy to identify in claude.ai/code.
+| Variable | Default |
+|----------|---------|
+| `REPO_DIR` | the current git checkout |
+| `SERVICE_NAME` | `claude-rc-<repo>` |
+| `SESSION_NAME` | `<repo>@<host>` |
+| `SESSION_PREFIX` | `<host>-<repo>` |
+| `CAPACITY` | `8` |
+| `PERMISSION_MODE` | the CLI's default |
 
-`DRY_RUN=1` prints the unit it would write to stdout and exits without touching
-disk or systemd — preview a config change, or diff it against the live unit:
+`DRY_RUN=1` prints the unit instead of installing it. To preview a change, pass
+the values the service was installed with plus the new one, and diff:
 
 ```bash
-svc=claude-rc-skills   # the service you are comparing against
-DRY_RUN=1 CAPACITY=12 SERVICE_NAME="$svc" install-claude-rc-server-service.sh \
-  | diff - <(systemctl --user cat "$svc.service" | tail -n +2)
+DRY_RUN=1 SERVICE_NAME=claude-rc-myapp CAPACITY=12 install-claude-rc-server-service.sh \
+  | diff - <(systemctl --user cat claude-rc-myapp.service | tail -n +2)
 ```
 
-`systemctl --user cat` prepends a `# /path` line, hence the `tail`. Pass the same
-overrides the service was installed with, or the diff reports those as changes.
+The installer also enables `claude-rc-refresh.timer`. A CLI auto-update can
+delete the binary a server starts sessions from, so the timer restarts servers
+left on an old CLI once no session is mid-turn. Sessions pick up again on their
+next message. See [reference/cli-updates.md](reference/cli-updates.md).
 
-Validation still runs under `DRY_RUN`, so it also checks a `PERMISSION_MODE`
-value without installing. `DRY_RUN=0`, `false`, and `no` mean off, case- and
-space-insensitively.
+Sessions started from claude.ai/code ignore `PERMISSION_MODE`, because the web
+sends its own mode. To stop approval prompts, add `permissions.allow` rules to
+the repo's `.claude/settings.json`. See
+[reference/web-spawn-permission-mode.md](reference/web-spawn-permission-mode.md).
 
-## CLI Updates
-
-A CLI auto-update can delete a running server's binary; the service stays
-`active` but every new session fails with `spawn error: ENOENT`. The installer
-therefore also enables `claude-rc-refresh.timer`, which restarts servers left on
-an old CLI once no session is mid-turn. Sessions resume on their next message,
-and worktrees with changes are kept. Preview with
-`DRY_RUN=1 refresh-claude-rc-servers.sh`; details and troubleshooting are in
-[reference/cli-updates.md](reference/cli-updates.md).
-
-## Permission Mode For Spawned Sessions
-
-`PERMISSION_MODE` sets `--permission-mode` on the server, and every session it
-spawns starts with that flag on its command line. Accepted values are the CLI's
-own choices — `acceptEdits`, `auto`, `bypassPermissions`, `manual`, `dontAsk`,
-`plan` — plus the undocumented but working `default`; the installer rejects
-anything else instead of writing a unit that crash-loops. Omit it to keep the
-CLI default.
-
-```bash
-REPO_DIR="$HOME/work/myapp" \
-PERMISSION_MODE=bypassPermissions \
-install-claude-rc-server-service.sh
-```
-
-Sessions spawned from claude.ai/code do not currently honor this flag: the web
-UI sends its own permission mode with every spawn (its picker offers only
-Manual, Accept edits, and Plan), and the client-sent mode overrides the server
-flag. The spawned process carries `--permission-mode bypassPermissions`, yet
-its transcript records `"permissionMode":"default"` and Bash calls still stop
-for approval in the UI. Verified 2026-08-04 on CLI 2.1.220 — evidence in
-[reference/web-spawn-permission-mode.md](reference/web-spawn-permission-mode.md);
-tracked upstream as
-[anthropics/claude-code#71518](https://github.com/anthropics/claude-code/issues/71518).
-
-For prompt-free remote sessions, use `permissions.allow` rules in the repo's
-`.claude/settings.json` instead — those apply in every mode, including the
-Manual mode web spawns land in. To check the mode a session actually runs in,
-read `"permissionMode"` from its transcript under `~/.claude/projects/`; the
-process arguments and the claude.ai mode dropdown both mislead (bypass is
-never reported to the UI even when active).
-
-Changing the mode is a reinstall — re-run the installer with the new
-`PERMISSION_MODE` value, then confirm the flag landed:
-
-```bash
-systemctl --user cat claude-rc-myapp.service | grep -- --permission-mode
-```
-
-## Verify
+## Check a server
 
 ```bash
 systemctl --user status claude-rc-myapp.service
-journalctl --user -u claude-rc-myapp.service -n 80 --no-pager
 loginctl show-user "$USER" -p Linger
 ```
 
-Expect the service to be `active`, linger to be `Linger=yes`, and the journal to
-show the current claude.ai/code environment URL.
+Expect `active` and `Linger=yes`. `active` only means the process is up. When
+sessions fail to start, plain `journalctl` hides the errors as
+`[171B blob data]`; [reference/cli-updates.md](reference/cli-updates.md#troubleshooting)
+shows how to read them.
 
-`active` does not mean sessions can start: plain `journalctl` hides session
-errors as `[171B blob data]`. To read them, see
-[reference/cli-updates.md](reference/cli-updates.md#troubleshooting).
-
-## Operate
-
-```bash
-systemctl --user restart claude-rc-myapp.service
-systemctl --user stop claude-rc-myapp.service
-systemctl --user disable --now claude-rc-myapp.service
-journalctl --user -u claude-rc-myapp.service -f
-```
-
-## Rules
-
-- Use `--spawn worktree` for repo servers so each remote-dispatched session gets
-  its own Claude-managed git worktree.
-- Keep server mode under systemd for reboot survival. Do not rely on tmux alone.
-- Unset `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`,
-  `ANTHROPIC_AUTH_TOKEN`, and non-default `ANTHROPIC_BASE_URL` for Remote
-  Control services so Claude can use the local full claude.ai login.
-- Keep `Restart=always`, `RestartSec=30`, and `StartLimitIntervalSec=0` so the
-  service keeps retrying through reboot, network, or temporary auth trouble.
-- Set the permission mode through `PERMISSION_MODE` at install time rather than
-  hand-editing `ExecStart`, so the next reinstall does not silently drop it.
+Change a server by re-running the installer, not by editing its unit. The
+installer strips `ANTHROPIC_API_KEY` and similar variables so the server uses
+the claude.ai login, and the next install overwrites hand edits.
