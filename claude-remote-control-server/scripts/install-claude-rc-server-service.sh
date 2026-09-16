@@ -20,6 +20,12 @@ PERMISSION_MODE="${PERMISSION_MODE:-}"
 CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude)}"
 SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 SERVICE_PATH="$SYSTEMD_USER_DIR/$SERVICE_NAME.service"
+# One timer for all servers restarts any left on an old CLI once idle. The
+# script is copied out of SCRIPT_DIR because a plugin install's directory
+# changes path on every plugin update.
+REFRESH_SOURCE="$SCRIPT_DIR/refresh-claude-rc-servers.sh"
+REFRESH_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/claude-rc/refresh-claude-rc-servers.sh"
+REFRESH_UNIT=claude-rc-refresh
 
 # DRY_RUN prints the unit to stdout and touches nothing. 0/false/no read as off
 # so `DRY_RUN=0` cannot silently install; matched case- and space-insensitively
@@ -68,7 +74,9 @@ if [[ -n "$PERMISSION_MODE" ]]; then
 fi
 
 service_tmp="$(mktemp)"
-trap 'rm -f "$service_tmp"' EXIT
+refresh_service_tmp="$(mktemp)"
+refresh_timer_tmp="$(mktemp)"
+trap 'rm -f "$service_tmp" "$refresh_service_tmp" "$refresh_timer_tmp"' EXIT
 
 cat >"$service_tmp" <<UNIT
 [Unit]
@@ -89,9 +97,33 @@ RestartSec=30
 WantedBy=default.target
 UNIT
 
+cat >"$refresh_service_tmp" <<UNIT
+[Unit]
+Description=Restart Claude Code Remote Control servers left on an old CLI
+
+[Service]
+Type=oneshot
+Environment=CLAUDE_BIN=$CLAUDE_BIN
+ExecStart=$REFRESH_PATH
+UNIT
+
+cat >"$refresh_timer_tmp" <<UNIT
+[Unit]
+Description=Check Claude Code Remote Control servers for an old CLI
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+UNIT
+
 if [[ -n "$DRY_RUN" ]]; then
   printf 'dry run: would write %s and run systemctl --user enable --now %s.service\n' \
     "$SERVICE_PATH" "$SERVICE_NAME" >&2
+  printf 'dry run: would copy %s to %s and enable %s.timer\n' \
+    "$REFRESH_SOURCE" "$REFRESH_PATH" "$REFRESH_UNIT" >&2
   cat "$service_tmp"
   exit 0
 fi
@@ -99,8 +131,22 @@ fi
 mkdir -p "$SYSTEMD_USER_DIR"
 install -m 0644 "$service_tmp" "$SERVICE_PATH"
 
+refresh=""
+if [[ -f "$REFRESH_SOURCE" ]]; then
+  refresh=1
+  install -D -m 0755 "$REFRESH_SOURCE" "$REFRESH_PATH"
+  install -m 0644 "$refresh_service_tmp" "$SYSTEMD_USER_DIR/$REFRESH_UNIT.service"
+  install -m 0644 "$refresh_timer_tmp" "$SYSTEMD_USER_DIR/$REFRESH_UNIT.timer"
+else
+  printf 'warning: %s not found; servers will not be restarted after CLI updates\n' \
+    "$REFRESH_SOURCE" >&2
+fi
+
 systemctl --user daemon-reload
 systemctl --user enable --now "$SERVICE_NAME.service"
+if [[ -n "$refresh" ]]; then
+  systemctl --user enable --now "$REFRESH_UNIT.timer"
+fi
 
 if loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q '^Linger=no$'; then
   sudo loginctl enable-linger "$USER"

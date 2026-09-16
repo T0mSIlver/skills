@@ -154,8 +154,10 @@ skills-toggle list
 skills-toggle disable <skill> [--agent claude|codex|opencode|pi]
 skills-tui
 install-claude-rc-server-service.sh
+DRY_RUN=1 refresh-claude-rc-servers.sh
 systemctl --user status skills-sync.timer
 systemctl --user status claude-rc-skills.service
+systemctl --user status claude-rc-refresh.timer
 journalctl --user -u skills-sync.service -n 80 --no-pager
 journalctl --user -u claude-rc-skills.service -n 80 --no-pager
 ```
