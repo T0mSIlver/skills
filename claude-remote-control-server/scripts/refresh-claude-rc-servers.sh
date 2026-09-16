@@ -8,7 +8,7 @@ set -Eeuo pipefail
 # updater deletes old versions it does not see locked, and a version lock
 # holds a single PID, so a long-running server can lose its binary. From then
 # on every spawn fails with ENOENT while systemd still reports the service
-# active. See reference/cli-update-stale-binary.md.
+# active. See reference/cli-updates.md.
 
 CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude || true)}"
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"

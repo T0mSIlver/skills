@@ -1,4 +1,79 @@
-# Evidence: CLI auto-updates delete a running server's binary
+# CLI updates and sessions that fail to start
+
+A server spawns every session from its own versioned binary under
+`~/.local/share/claude/versions/`. The native updater deletes old versions it
+does not see locked, and a version lock holds a single PID, so a server that
+did not win the lock at startup can lose its binary while it runs. From then on
+every session started from claude.ai/code fails within a second, while systemd
+still reports the service `active`. Tracked upstream as
+[anthropics/claude-code#84817](https://github.com/anthropics/claude-code/issues/84817).
+
+## The refresh timer
+
+`claude-rc-refresh.timer`, one for all servers, runs every 5 minutes. It
+restarts each running `claude-rc-*` server whose binary differs from the one
+`claude` points to, or was deleted, once none of its sessions is mid-turn:
+
+- A session is mid-turn unless `~/.claude/sessions/<pid>.json` says
+  `"status":"idle"`. A file whose `procStart` does not match the process is
+  ignored, and the session counts as mid-turn.
+- CLI 2.1.258 and older record no status; those sessions count as mid-turn
+  until their transcript has been quiet for 15 minutes (`QUIET_MINUTES`).
+- Servers from a non-native install, whose binary is outside the launcher's
+  versions directory, are skipped.
+
+```bash
+DRY_RUN=1 refresh-claude-rc-servers.sh
+journalctl --user -u claude-rc-refresh.service -n 20 --no-pager
+systemctl --user list-timers claude-rc-refresh.timer
+```
+
+The timer runs a copy at `~/.local/share/claude-rc/refresh-claude-rc-servers.sh`;
+re-run the installer for any repo to update it.
+
+## What a restart does to sessions
+
+A restart keeps the environment and every session in it. The old server stops
+each session's process, and the new one respawns a session with its history when
+it is next messaged:
+
+- A worktree with uncommitted changes, untracked files, or commits since it was
+  created is kept, and the session resumes in it.
+- A worktree with none of those is removed with its branch at shutdown and
+  recreated from the same base commit on the next message. Gitignored contents
+  such as `node_modules` or build output are lost with it.
+- The session in the repo checkout is respawned right away.
+
+Verified 2026-09-16 on CLI 2.1.273; see
+[Worktree sessions survive a restart](#worktree-sessions-survive-a-restart).
+
+## Troubleshooting
+
+Session events carry terminal escape codes, so plain `journalctl` shows them as
+`[171B blob data]`, buried in several status redraws a second. Read them with
+`-a` over a time window rather than a line count:
+
+```bash
+journalctl --user -u claude-rc-myapp.service --since -1d -a -o cat --no-pager \
+  | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' | grep -E '^\[[0-9:]+\] ' | uniq
+```
+
+- `Session failed: spawn error: ENOENT ... posix_spawn '.../versions/<version>'`:
+  a CLI update deleted the server's binary, and
+  `readlink /proc/<server pid>/exe` ends in `(deleted)`. Restart the service, or
+  wait for the refresh timer.
+- `Session failed: Process exited with error` right after every restart, for the
+  same `cse_...` ID: the server is re-adopting the session recorded in
+  `~/.claude/projects/<repo-slug>/bridge-pointer.json`, and that session was
+  archived on claude.ai. New sessions are unaffected. Moving the pointer aside
+  stops the error, but the server then registers a new environment, so
+  claude.ai/code lists the repo under a new environment ID.
+- Anything else: restart with `--debug-file <path>` added through a temporary
+  drop-in (`~/.config/systemd/user/claude-rc-myapp.service.d/`). The server
+  writes each session's log next to it as `<path stem>-cse_....log`, and the
+  session's own exit reason is in there.
+
+# Evidence
 
 Incident, 2026-09-16, CLI 2.1.259 → 2.1.273 (Linux, user systemd).
 `claude-rc-job-search.service` had run since 2026-09-03. Every session started
@@ -164,8 +239,5 @@ why `refresh-claude-rc-servers.sh` falls back to transcript age for them.
 - **Write the lock file for the server's PID.** The lock format is internal and
   holds one PID, so it would drop whichever process held it before.
 
-Upstream:
-[anthropics/claude-code#84817](https://github.com/anthropics/claude-code/issues/84817)
-reports the same ENOENT from a server's pruned install path, with restarting as
-the workaround. Retest after CLI upgrades: if a server keeps spawning sessions
-after its version is superseded and cleaned up, the timer is no longer needed.
+Retest after CLI upgrades: if a server keeps spawning sessions after its
+version is superseded and cleaned up, the timer is no longer needed.
