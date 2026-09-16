@@ -80,8 +80,58 @@ checkout:
 The new server came up in the same environment
 (`env_01YSW6GXC5fsxB2Pcq4QEPQ9`) and spawned a new child for the same session,
 `cse_01KUMWs4N3MLieCSGwfexGzb`, which kept running. The session to re-adopt comes
-from `~/.claude/projects/<repo-slug>/bridge-pointer.json`. Sessions in spawned
-worktrees were not tested.
+from `~/.claude/projects/<repo-slug>/bridge-pointer.json`.
+
+## Worktree sessions survive a restart
+
+Two sessions were created from claude.ai/code on the same server, then left idle:
+
+- A: "Create a file rc-restart-test.txt containing the word alpha. Don't commit."
+- B: "Run git rev-parse HEAD and reply with the hash. Don't change any files."
+
+`refresh-claude-rc-servers.sh`, run with `CLAUDE_BIN` pointed at an older
+version, restarted the server:
+
+```
+claude-rc-job-search.service: restarting from 2.1.273 (outdated) onto 2.1.271 with 3 idle session(s)
+[21:42:55] Shutting down 3 active session(s)…
+[21:42:55] kept worktree .../bridge-cse_01DGi7UP4XZRYueLfybrDbTX · uncommitted changes
+[21:42:55] removed worktree .../bridge-cse_016L3NE3683uwjZRycTBSfLd
+[21:42:56] Environment preserved. Restart `claude remote-control` to reconnect existing sessions.
+```
+
+B's branch `worktree-bridge-cse_016L3NE3683uwjZRycTBSfLd` was deleted with its
+worktree. The new server re-queued only the repo-checkout session; A and B had
+no process until messaged. claude.ai/code showed nothing unusual. A follow-up to
+each respawned it with `--resume` from the server's copy of the conversation:
+
+```
+[bridge:session] Created worktree for sessionId=[REDACTED] at .../bridge-cse_01DGi7UP4XZRYueLfybrDbTX
+[bridge:session] Child args: --print --sdk-url .../cse_01DGi7UP4XZRYueLfybrDbTX ... --resume=https://api.anthropic.com/v1/code/sessions/cse_01...
+```
+
+A answered from its kept worktree and its history: "`rc-restart-test.txt`
+contains `alpha`. It's still uncommitted. Your first message was: …". B's
+worktree was recreated at the same commit, and it answered "Earlier I reported
+`cadfc49…`. Running `git rev-parse HEAD` again gives the same hash".
+
+The cleanup rule comes from the 2.1.273 bundle. At shutdown each active
+session's worktree is removed, with `git branch -D` on its branch, unless
+`git status --porcelain` shows anything (untracked files count) or
+`git rev-list --count CLAUDE_BASE..HEAD` is non-zero. `CLAUDE_BASE`, in the
+worktree's git directory, is written when the worktree is created and read back
+on every respawn, so commits made before an earlier restart still count.
+Ignored files do not show in `git status`, so a worktree holding only ignored
+files is removed.
+
+A plain SIGTERM does not record the active sessions for re-queuing at startup.
+That path is reserved for shutdown causes `upgrade`, `reload`, and `yield`,
+which the `claude daemon` supervisor reports to the remote-control workers it
+runs. On 2.1.273 its help reads
+"Service install is disabled in this version — the daemon runs on demand and
+exits when the last client disconnects", so it cannot replace the systemd units
+yet. [#88166](https://github.com/anthropics/claude-code/issues/88166) asks for a
+supported persistent service.
 
 When the recorded session has been archived on claude.ai, re-adoption fails on
 every restart, which does not affect new sessions. The server's debug log shows
@@ -114,5 +164,8 @@ why `refresh-claude-rc-servers.sh` falls back to transcript age for them.
 - **Write the lock file for the server's PID.** The lock format is internal and
   holds one PID, so it would drop whichever process held it before.
 
-Retest after CLI upgrades: if a version with a live process but no lock
-survives cleanup, the timer is no longer needed.
+Upstream:
+[anthropics/claude-code#84817](https://github.com/anthropics/claude-code/issues/84817)
+reports the same ENOENT from a server's pruned install path, with restarting as
+the workaround. Retest after CLI upgrades: if a server keeps spawning sessions
+after its version is superseded and cleaned up, the timer is no longer needed.

@@ -69,11 +69,21 @@ the one `claude` points to, once none of the server's sessions is mid-turn:
 - CLI 2.1.258 and older record no status; their sessions count as mid-turn
   until the transcript has been quiet for 15 minutes (`QUIET_MINUTES`).
 
-A restart keeps the environment: the old server shuts its sessions down and
-the new one re-adopts the session it runs in the repo checkout. Re-adoption of
-sessions in spawned worktrees has not been verified. Evidence and the
-alternatives weighed are in
-[reference/cli-update-stale-binary.md](reference/cli-update-stale-binary.md).
+A restart keeps the environment and every session in it. The old server stops
+each session's process, and the new one respawns a session with its history
+when it is next messaged:
+
+- A worktree with uncommitted changes, untracked files, or commits since it was
+  created is kept, and the session resumes in it.
+- A worktree with none of those is removed with its branch at shutdown and
+  recreated from the same base commit on the next message. Gitignored contents
+  such as `node_modules` or build output are lost with it.
+- The session in the repo checkout is respawned right away.
+
+Verified 2026-09-16 on CLI 2.1.273. Evidence and the alternatives weighed are in
+[reference/cli-update-stale-binary.md](reference/cli-update-stale-binary.md);
+the bug is tracked upstream as
+[anthropics/claude-code#84817](https://github.com/anthropics/claude-code/issues/84817).
 
 Preview what the next run would do, and read what past runs did:
 
