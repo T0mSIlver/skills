@@ -1,0 +1,10 @@
+{
+  "name": "gh-stack",
+  "repo": "https://github.com/github/gh-stack",
+  "ref": "main",
+  "path": "skills/gh-stack",
+  "commit": "2bd699a544a09cb5c45a013d03416e0894b0454e",
+  "upstream": "https://github.com/github/gh-stack/tree/2bd699a544a09cb5c45a013d03416e0894b0454e/skills/gh-stack",
+  "vendored_at": "2026-09-16",
+  "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
+}

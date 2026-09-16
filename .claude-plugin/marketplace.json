@@ -39,7 +39,8 @@
       "description": "Pristine copies of third-party skills, vendored from their upstream repositories by scripts/vendor-skills.sh. Each directory keeps its upstream LICENSE and a .vendored stamp naming the repo, path, and pinned commit; fixes go upstream, never into this repo.",
       "skills": [
         "./unslop",
-        "./herdr"
+        "./herdr",
+        "./gh-stack"
       ],
       "author": {
         "name": "Tom Vaucourt"
@@ -49,7 +50,8 @@
         "vendored",
         "third-party",
         "writing",
-        "herdr"
+        "herdr",
+        "stacked-prs"
       ],
       "category": "workflow"
     },

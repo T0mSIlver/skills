@@ -18,7 +18,7 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 /plugin install cli-delegation@t0msilver-skills    # delegate-to-*, fastcontext
 /plugin install claude-rc-server@t0msilver-skills  # claude-remote-control-server
 /plugin install unnarrate@t0msilver-skills
-/plugin install vendored@t0msilver-skills          # unslop, herdr
+/plugin install vendored@t0msilver-skills          # unslop, herdr, gh-stack
 ```
 
 **Manual:** copy a top-level skill directory into your agent's skills folder
@@ -41,6 +41,8 @@ list the requirement in their `compatibility:` frontmatter:
 - `delegate-to-claude-code` works best with `scripts/claude-rc-spawn` (needs
   `tmux`) on `PATH`, which starts sessions you can watch remotely. Plain
   `claude -p` works without it.
+- `gh-stack` needs the [gh-stack](https://github.com/github/gh-stack) `gh`
+  extension.
 - `delegate-to-*` each need their CLI installed and logged in.
 
 ## Turning skills off on one machine
