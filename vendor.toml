@@ -48,7 +48,7 @@ repo = "https://github.com/mattpocock/skills"
 ref = "main"
 path = "skills/engineering/domain-modeling"
 license = "LICENSE"
-commit = "3cca18b368ae95cdbdebbff572ccafa662551015"
+commit = "959a8e9f1edc3adbe2f7e3054bb6fbefa6696260"
 
 # The official herdr CLI skill, from the herdr repo itself: the authority on
 # how an agent inside a herdr pane drives panes, tabs, and other agents.
