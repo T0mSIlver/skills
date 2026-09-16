@@ -15,41 +15,6 @@ path = "pstack/skills/unslop"
 license = "pstack/LICENSE"
 commit = "c1c0a32802223f4be824112dd83d33ad29a8b26c"
 
-# Matt Pocock's grilling family: `grilling` is the primitive, `grill-me` and
-# `grill-with-docs` are the user-invoked wrappers, and `domain-modeling` is
-# what `grill-with-docs` calls alongside `grilling`.
-[[skills]]
-name = "grilling"
-repo = "https://github.com/mattpocock/skills"
-ref = "main"
-path = "skills/productivity/grilling"
-license = "LICENSE"
-commit = "959a8e9f1edc3adbe2f7e3054bb6fbefa6696260"
-
-[[skills]]
-name = "grill-me"
-repo = "https://github.com/mattpocock/skills"
-ref = "main"
-path = "skills/productivity/grill-me"
-license = "LICENSE"
-commit = "959a8e9f1edc3adbe2f7e3054bb6fbefa6696260"
-
-[[skills]]
-name = "grill-with-docs"
-repo = "https://github.com/mattpocock/skills"
-ref = "main"
-path = "skills/engineering/grill-with-docs"
-license = "LICENSE"
-commit = "959a8e9f1edc3adbe2f7e3054bb6fbefa6696260"
-
-[[skills]]
-name = "domain-modeling"
-repo = "https://github.com/mattpocock/skills"
-ref = "main"
-path = "skills/engineering/domain-modeling"
-license = "LICENSE"
-commit = "959a8e9f1edc3adbe2f7e3054bb6fbefa6696260"
-
 # The official herdr CLI skill, from the herdr repo itself: the authority on
 # how an agent inside a herdr pane drives panes, tabs, and other agents.
 [[skills]]

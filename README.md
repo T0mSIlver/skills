@@ -1,164 +1,55 @@
-# CLI subagent skills
+# skills
 
-[Agent Skills](https://agentskills.io) that let a coding agent drive another
-coding CLI programmatically — for a second opinion, a code review, or a
-delegated worker run. Each `delegate-to-*` skill ships a read-only reviewer and
-an edit-capable worker/profile.
+The [Agent Skills](https://agentskills.io) I use with Claude Code, Codex,
+opencode and pi. I wrote some of them. The others are copied unchanged from
+their upstream repos.
 
-The important trick is not just "how to launch the CLI"; it is how to launch it
-without losing control of the main checkout. Prefer isolated branches/worktrees,
-machine-readable output, and explicit run state.
+A skill stays only while it tells the model something the model would get
+wrong without it. That is why most of these are gotchas backed by evidence
+rather than tutorials. When upstream fixes what a skill works around, I delete
+the skill.
 
-| Skill | CLI | Purpose |
-|-------|-----|---------|
-| [`delegate-to-claude-code`](delegate-to-claude-code/SKILL.md) | `claude` | Delegate reviewer/editor runs; `--permission-mode plan` vs `acceptEdits` / `auto` |
-| [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | `claude remote-control` | Run persistent per-repo Remote Control servers under systemd |
-| [`delegate-to-codex`](delegate-to-codex/SKILL.md) | `codex exec` | Delegate reviewer/editor runs; `-s read-only` vs `workspace-write` |
-| [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | `opencode run` | Delegate reviewer/editor runs; primary/all agents with `edit: deny` vs `edit: allow` |
-| [`fastcontext`](fastcontext/SKILL.md) | `fastcontext` | Delegate read-only repository exploration; returns `file:line` citations without spending your context |
+| Skill | What it gives the agent |
+|-------|-------------------------|
+| [`delegate-to-codex`](delegate-to-codex/SKILL.md) | Review and edit runs through `codex exec`, including the stdin wedge and the sandbox that `resume` drops |
+| [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | The same for GLM through `opencode run`, with the agent configs that flags can't express |
+| [`delegate-to-claude-code`](delegate-to-claude-code/SKILL.md) | The same for `claude`, as sessions I can watch and steer from claude.ai/code |
+| [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
+| [`unnarrate`](unnarrate/SKILL.md) | Deletes text that narrates itself: comments that repeat the code, tooltips that repeat the label, PR bullets that repeat the diff |
+| [`unslop`](unslop/SKILL.md) | Vendored from [cursor/plugins](https://github.com/cursor/plugins). Removes AI tells from prose |
+| [`herdr`](herdr/SKILL.md) | Vendored from [herdrdev/herdr](https://github.com/herdrdev/herdr). Controls panes and other agents inside herdr |
+| [`fastcontext`](fastcontext/SKILL.md) | Read-only repo exploration on a local model. Turned off on my machine because the GPU has other jobs |
 
-## Writing skills
+## Why it's built this way
 
-First-party companions to the vendored writing skills below.
-
-| Skill | Purpose |
-|-------|---------|
-| [`unnarrate`](unnarrate/SKILL.md) | Delete self-narrating meta-commentary from UI copy, docs, code comments, and PR text; deletion-test companion to `unslop` |
-
-## Vendored skills
-
-The repo also carries pristine copies of skills published elsewhere, so the same
-install rails deliver them. Each vendored directory keeps its upstream `LICENSE`
-and a `.vendored` stamp naming the source repo, path, and pinned commit, and a
-daily workflow opens a PR when upstream moves.
-
-| Skill | Upstream | License |
-|-------|----------|---------|
-| [`unslop`](unslop/SKILL.md) | [`cursor/plugins`](https://github.com/cursor/plugins) `pstack/skills/unslop` | MIT © Lauren Tan |
-| [`grilling`](grilling/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/productivity/grilling` | MIT © Matt Pocock |
-| [`grill-me`](grill-me/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/productivity/grill-me` | MIT © Matt Pocock |
-| [`grill-with-docs`](grill-with-docs/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/engineering/grill-with-docs` | MIT © Matt Pocock |
-| [`domain-modeling`](domain-modeling/SKILL.md) | [`mattpocock/skills`](https://github.com/mattpocock/skills) `skills/engineering/domain-modeling` | MIT © Matt Pocock |
-| [`herdr`](herdr/SKILL.md) | [`herdrdev/herdr`](https://github.com/herdrdev/herdr) `skills/herdr` | Apache-2.0 © herdr |
-
-`grilling` is the interview primitive; `/grill-me` wraps it, and
-`/grill-with-docs` runs it together with `domain-modeling` (glossary + ADRs).
-`herdr` is the herdr CLI itself — the pane, tab, and agent surface, for driving
-another agent from inside a herdr pane.
-
-These copies are never patched here — fixes go upstream. See
-[docs/vendoring.md](docs/vendoring.md) to add one.
+- **Other CLIs instead of native subagents.** A spawned CLI session treats the
+  prompt as coming from its user and gets on with it. A native subagent stops
+  to ask a user who isn't there. Every session can be resumed, read, watched,
+  or handed to another session partway through, and each task can use a
+  different model and harness. The price is that I run the orchestration
+  myself.
+- **Another model reviews the code.** I don't read agent output line by line.
+  A model from another vendor, in another harness, reviews the diff, and I act
+  on what it finds.
+- **The machine is the sandbox.** Agents run with full permissions on a box
+  that exists for them. Worktrees stop agents from overwriting each other's
+  files. The machine is the only security boundary.
 
 ## Install
 
-Each skill is a plain [Agent Skills](https://agentskills.io/specification)
-folder, so any SKILL.md-aware tool can consume it. Pick a rail:
-
-**`skills` CLI** (installs into Claude Code, Codex, opencode, Cursor, and
-[many others](https://github.com/vercel-labs/skills)):
-
 ```bash
-npx skills add T0mSIlver/skills                               # pick interactively
-npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, globally
+npx skills add T0mSIlver/skills                  # choose skills interactively
 ```
-
-**Claude Code plugin marketplace:**
 
 ```text
-/plugin marketplace add T0mSIlver/skills
-/plugin install cli-delegation@t0msilver-skills
-/plugin install claude-rc-server@t0msilver-skills
-/plugin install vendored@t0msilver-skills
-/plugin install unnarrate@t0msilver-skills
+/plugin marketplace add T0mSIlver/skills         # Claude Code
 ```
 
-**Manual:** copy any top-level skill directory into your agent's skills folder
-(`~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/`,
-`~/.pi/agent/skills/`, …).
+[docs/install.md](docs/install.md) covers the plugin names and what each skill
+needs installed. My own machines don't use either command: they run
+[a sync loop](docs/sync-system.md) that installs `origin/main` into every
+agent's skills folder. [docs/delegation.md](docs/delegation.md) has the rules
+the `delegate-to-*` skills share, and [docs/vendoring.md](docs/vendoring.md)
+explains how the vendored skills stay pinned to upstream.
 
-Running the optional [sync timer](docs/sync-system.md)? `skills-toggle` keeps
-individual skills off a machine without touching the repo — disabling removes
-the skill from the agent's folder, because that is the only thing that stops an
-agent from offering it:
-
-```bash
-skills-toggle list                          # skill-by-agent grid
-skills-toggle disable fastcontext           # off everywhere on this machine
-skills-toggle enable fastcontext --agent codex
-skills-tui                                  # the same grid, interactive
-```
-
-Some skills need more than the folder copy — each declares its requirements in
-`compatibility:` frontmatter:
-
-- `fastcontext` requires the separate
-  [**fastcontext** CLI](https://github.com/T0mSIlver/fastcontext#installation)
-  on `PATH`; the skill checks for it at load and points you there if missing.
-- `claude-remote-control-server` sets up a user systemd service via its bundled
-  `scripts/install-claude-rc-server-service.sh` (nothing runs at install time —
-  the skill walks the agent through it), plus a shared timer that restarts
-  servers left on an old CLI after an auto-update.
-- `delegate-to-claude-code` prefers its `scripts/claude-rc-spawn` helper (needs
-  `tmux`) on `PATH` for remote-visible sessions; plain `claude -p` delegation
-  works without it.
-
-## Shared conventions
-
-- **Worktree first for edits.** Launch edit workers in a new branch/worktree so
-  long runs do not modify the main agent's checkout. Commit or patch in only the
-  exact local state the worker needs; do not blindly `git add -A` unrelated work.
-- **Remote-visible Claude sessions.** For Claude Code delegation, prefer
-  `claude-rc-spawn`: it starts interactive Claude in detached tmux with Remote
-  Control enabled, injects the prompt, and leaves a session the user can inspect
-  from claude.ai/code.
-- **Prompt as a file.** Write the brief to a markdown file with context, task,
-  constraints, acceptance criteria, and required output shape. Pass its contents
-  as the prompt argument, or attach it, instead of hand-writing a large inline
-  string.
-- **Capture run state.** Save the harness output, session id, branch, worktree,
-  and prompt path. Long runs need a handle for polling, resume, cleanup, and
-  review.
-- **Reviewer after worker.** Treat the edit worker's final message as a claim.
-  Run a fresh read-only review against the diff before merging, cherry-picking,
-  or opening a PR.
-
-## Common gotchas
-
-- A git worktree shares repository metadata, but each branch can be checked out
-  in only one worktree at a time.
-- Ignored local files such as `.env` do not magically appear in a fresh
-  worktree. Copy only the files the run needs, preferably via a documented
-  `.worktreeinclude`-style allowlist.
-- Full-bypass flags remove the harness safety boundary. A worktree prevents file
-  collisions, but it is not a secret, network, or machine sandbox.
-- Stdin wedges non-interactive runs. Under a harness the inherited stdin is an
-  open pipe that never closes, and `codex exec` reads stdin whenever you pass a
-  prompt argument alongside it — so it blocks until EOF at 0% CPU, before it ever
-  contacts the model. Always give stdin a source that reaches EOF: `< /dev/null`
-  when the prompt is an argument, or `- < prompt.md` when the brief itself is the
-  stdin.
-- Pass the brief as an argument, not on stdin: inline the prompt file with
-  `"$(cat prompt.md)"`. If a brief is too large to inline comfortably, opencode
-  can attach it — but `--file` never carries the prompt. It still requires a
-  non-empty positional message, and it must come *after* that message, or yargs
-  swallows the message into the file list.
-
-## Repo layout
-
-Each skill directory contains a `SKILL.md` with concrete commands. Where
-present, drop-in agent and profile configs live in the skill's `assets/`
-folder (`agents/` for `claude-remote-control-server`), deep-dive evidence in
-`reference/`, and skill-specific executable helpers in its `scripts/`
-folder. The root `scripts/` directory is reserved for repo
-maintenance scripts, and `.claude-plugin/marketplace.json` makes the repo
-installable as a Claude Code plugin marketplace. `vendor.toml` pins the skills
-imported from other repositories ([docs/vendoring.md](docs/vendoring.md)).
-
-## Self-updating deployment (optional)
-
-The author's own deployment loop — a systemd timer that syncs these skills from
-`origin/main` into the Claude Code/Codex/opencode native folders, holds local
-edits instead of overwriting them, and lets an agent upstream a fix from an
-installed copy as a PR with one `skills-pr` command — is documented in
-[docs/sync-system.md](docs/sync-system.md). You do not need it to use the
-skills; the install rails above are the supported path.
+MIT. Each vendored skill keeps its upstream license.
