@@ -96,7 +96,8 @@ Some skills need more than the folder copy — each declares its requirements in
   on `PATH`; the skill checks for it at load and points you there if missing.
 - `claude-remote-control-server` sets up a user systemd service via its bundled
   `scripts/install-claude-rc-server-service.sh` (nothing runs at install time —
-  the skill walks the agent through it).
+  the skill walks the agent through it), plus a shared timer that restarts
+  servers left on an old CLI after an auto-update.
 - `delegate-to-claude-code` prefers its `scripts/claude-rc-spawn` helper (needs
   `tmux`) on `PATH` for remote-visible sessions; plain `claude -p` delegation
   works without it.

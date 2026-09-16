@@ -1,7 +1,7 @@
 ---
 name: claude-remote-control-server
-description: Install, update, inspect, or troubleshoot persistent Claude Code Remote Control servers for repositories. Use when the user asks to run `claude remote-control`, create a repo-specific remote-control server, make it survive reboots, manage user systemd services such as `claude-rc-skills.service`, configure `--spawn worktree`, service names, session names, prefixes, capacity, permission modes for spawned sessions (`--permission-mode`, `bypassPermissions`), lingering, or add another repo to claude.ai/code remote control.
-compatibility: Linux with user systemd (loginctl lingering); the claude CLI logged in via claude.ai. Setup runs the bundled scripts/install-claude-rc-server-service.sh.
+description: Install, update, inspect, or troubleshoot persistent Claude Code Remote Control servers for repositories. Use when the user asks to run `claude remote-control`, create a repo-specific remote-control server, make it survive reboots, manage user systemd services such as `claude-rc-skills.service`, configure `--spawn worktree`, service names, session names, prefixes, capacity, permission modes for spawned sessions (`--permission-mode`, `bypassPermissions`), lingering, keep servers working across CLI auto-updates (`claude-rc-refresh.timer`), fix sessions that fail to start from claude.ai/code (`Session failed`, `ENOENT` spawn errors), or add another repo to claude.ai/code remote control.
+compatibility: Linux with user systemd (loginctl lingering); the claude CLI logged in via claude.ai. Setup runs the bundled scripts/install-claude-rc-server-service.sh, which also enables a timer running scripts/refresh-claude-rc-servers.sh.
 ---
 
 # Claude Remote Control Server
@@ -49,6 +49,41 @@ overrides the service was installed with, or the diff reports those as changes.
 Validation still runs under `DRY_RUN`, so it also checks a `PERMISSION_MODE`
 value without installing. `DRY_RUN=0`, `false`, and `no` mean off, case- and
 space-insensitively.
+
+## CLI Updates
+
+A server spawns every session from its own versioned binary under
+`~/.local/share/claude/versions/`. The native updater deletes old versions it
+does not see locked, and a version lock holds a single PID, so a server that
+did not win the lock at startup can lose its binary while it runs. From then on
+every session started from claude.ai/code fails within a second with
+`spawn error: ENOENT`, while systemd still reports the service `active` and
+claude.ai/code still lists the environment.
+
+The installer also enables `claude-rc-refresh.timer`, one for all servers.
+Every 5 minutes it restarts each `claude-rc-*` server whose binary differs from
+the one `claude` points to, once none of the server's sessions is mid-turn:
+
+- A session is mid-turn unless `~/.claude/sessions/<pid>.json` says
+  `"status":"idle"`.
+- CLI 2.1.258 and older record no status; their sessions count as mid-turn
+  until the transcript has been quiet for 15 minutes (`QUIET_MINUTES`).
+
+A restart keeps the environment: the old server shuts its sessions down and
+the new one re-adopts the session it runs in the repo checkout. Re-adoption of
+sessions in spawned worktrees has not been verified. Evidence and the
+alternatives weighed are in
+[reference/cli-update-stale-binary.md](reference/cli-update-stale-binary.md).
+
+Preview what the next run would do, and read what past runs did:
+
+```bash
+DRY_RUN=1 refresh-claude-rc-servers.sh
+journalctl --user -u claude-rc-refresh.service -n 20 --no-pager
+```
+
+The timer runs a copy at `~/.local/share/claude-rc/refresh-claude-rc-servers.sh`;
+re-run the installer for any repo to update it.
 
 ## Permission Mode For Spawned Sessions
 
@@ -100,6 +135,33 @@ loginctl show-user "$USER" -p Linger
 Expect the service to be `active`, linger to be `Linger=yes`, and the journal to
 show the current claude.ai/code environment URL.
 
+`active` does not mean sessions can start. The server's session events carry
+terminal escape codes, so plain `journalctl` shows them as `[171B blob data]`,
+buried in several status redraws a second. Read them with `-a` over a time
+window rather than a line count:
+
+```bash
+journalctl --user -u claude-rc-myapp.service --since -1d -a -o cat --no-pager \
+  | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' | grep -E '^\[[0-9:]+\] ' | uniq
+```
+
+## Troubleshoot Sessions That Fail To Start
+
+- `Session failed: spawn error: ENOENT ... posix_spawn '.../versions/<version>'`:
+  the server's binary was deleted by a CLI update, and
+  `readlink /proc/<server pid>/exe` ends in `(deleted)`. Restart the service, or
+  wait for `claude-rc-refresh.timer`.
+- `Session failed: Process exited with error` right after every restart, for the
+  same `cse_...` ID: the server is re-adopting the session recorded in
+  `~/.claude/projects/<repo-slug>/bridge-pointer.json`, and that session was
+  archived on claude.ai. New sessions are unaffected. Moving the pointer aside
+  stops the error, but the server then registers a new environment, so
+  claude.ai/code lists the repo under a new environment ID.
+- Anything else: restart with `--debug-file <path>` added through a temporary
+  drop-in (`~/.config/systemd/user/claude-rc-myapp.service.d/`). The server
+  writes each session's log next to it as `<path stem>-cse_....log`, and the
+  session's own exit reason is in there.
+
 ## Operate
 
 ```bash
@@ -107,6 +169,7 @@ systemctl --user restart claude-rc-myapp.service
 systemctl --user stop claude-rc-myapp.service
 systemctl --user disable --now claude-rc-myapp.service
 journalctl --user -u claude-rc-myapp.service -f
+systemctl --user list-timers claude-rc-refresh.timer
 ```
 
 ## Rules
@@ -121,3 +184,5 @@ journalctl --user -u claude-rc-myapp.service -f
   service keeps retrying through reboot, network, or temporary auth trouble.
 - Set the permission mode through `PERMISSION_MODE` at install time rather than
   hand-editing `ExecStart`, so the next reinstall does not silently drop it.
+- Keep `claude-rc-refresh.timer` enabled. Without it, a server left running
+  across a few CLI releases can stop starting sessions.
