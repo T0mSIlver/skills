@@ -2,6 +2,12 @@
 set -Eeuo pipefail
 
 REPO_DIR="${REPO_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+SELF="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/$(basename -- "${BASH_SOURCE[0]}")"
+# Set when an older copy of this script handed the run off to this one (see
+# the fetch below). That copy already holds the lock on fd 9 and exported the
+# tree this script runs from.
+HANDOFF_ARCHIVE="${SKILLS_SYNC_HANDOFF_ARCHIVE:-}"
+unset SKILLS_SYNC_HANDOFF_ARCHIVE
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-main}"
 LOCK_FILE="${LOCK_FILE:-${XDG_RUNTIME_DIR:-/tmp}/skills-sync.lock}"
@@ -57,7 +63,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if has flock; then
+if [[ -z "$HANDOFF_ARCHIVE" ]] && has flock; then
   mkdir -p "$(dirname "$LOCK_FILE")"
   exec 9>"$LOCK_FILE"
   if ! flock -n 9; then
@@ -91,13 +97,32 @@ if ! has tar; then
   exit 1
 fi
 
-if git fetch --prune "$REMOTE" "$BRANCH"; then
+if [[ -n "$HANDOFF_ARCHIVE" ]]; then
+  ARCHIVE_DIR="$HANDOFF_ARCHIVE"
+  SYNC_SOURCE="$ARCHIVE_DIR"
+  SYNC_COMMIT="$(git rev-parse --short FETCH_HEAD 2>/dev/null || true)"
+  SYNC_COMMIT_FULL="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
+elif git fetch --prune "$REMOTE" "$BRANCH"; then
   ARCHIVE_DIR="$(mktemp -d)"
   if git archive FETCH_HEAD | tar -x -C "$ARCHIVE_DIR"; then
     SYNC_SOURCE="$ARCHIVE_DIR"
     SYNC_COMMIT="$(git rev-parse --short FETCH_HEAD 2>/dev/null || true)"
     SYNC_COMMIT_FULL="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
     log "using fetched $REMOTE/$BRANCH"
+    # Every caller runs this script from the checkout, which nothing updates
+    # but a manual pull, so a change to the sync itself (a new helper, say)
+    # would wait for one. When the checkout is only behind and its copy of
+    # this script has no local edits, finish the run with the fetched copy.
+    # Local edits or unpushed commits keep the local copy, so a sync change
+    # can still be tried out before it is pushed.
+    fetched_self="$ARCHIVE_DIR/scripts/sync-skills.sh"
+    if [[ -f "$fetched_self" ]] && ! cmp -s "$fetched_self" "$SELF" \
+      && git merge-base --is-ancestor HEAD FETCH_HEAD \
+      && [[ -z "$(git status --porcelain -- "$SELF" 2>/dev/null)" ]]; then
+      log "handing off to sync-skills.sh from $REMOTE/$BRANCH; the checkout's copy is older"
+      trap - EXIT
+      REPO_DIR="$REPO_DIR" SKILLS_SYNC_HANDOFF_ARCHIVE="$ARCHIVE_DIR" exec bash "$fetched_self"
+    fi
   else
     log "git archive failed; continuing with local checkout"
   fi
