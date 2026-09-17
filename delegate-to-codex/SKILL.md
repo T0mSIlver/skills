@@ -7,8 +7,10 @@ compatibility: Requires the OpenAI Codex CLI (codex) installed and authenticated
 # Delegate to Codex (CLI)
 
 Run `codex exec` non-interactively for a second opinion, review, or a delegated
-edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'`
-(`medium`/`low` only for small or mechanical work).
+edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"medium"'`.
+`high` only for contract/design turns, or when the usage window has headroom
+that would otherwise expire (`codexbar usage --provider codex`); `low` for
+mechanical work.
 
 ## Happy path
 
@@ -41,7 +43,7 @@ edit worker. Model default: `gpt-5.6-sol` at `-c model_reasoning_effort='"high"'
 
    ```bash
    codex exec -C "$PWD" \
-     -m gpt-5.6-sol -c model_reasoning_effort='"high"' \
+     -m gpt-5.6-sol -c model_reasoning_effort='"medium"' \
      -s read-only --json -o "$run_dir/final.md" \
      - < "$run_dir/prompt.md" > "$run_dir/events.jsonl"
    ```
