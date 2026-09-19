@@ -14,6 +14,8 @@ ref = "main"
 path = "pstack/skills/unslop"
 license = "pstack/LICENSE"
 commit = "032be146865d973682535de75f2287da438550bf"
+# Upstream ships it user-only; I want the model to reach for it on its own.
+frontmatter = { disable-model-invocation = false }
 
 # The official herdr CLI skill, from the herdr repo itself: the authority on
 # how an agent inside a herdr pane drives panes, tabs, and other agents.
