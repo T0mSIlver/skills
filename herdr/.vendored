@@ -3,8 +3,8 @@
   "repo": "https://github.com/herdrdev/herdr",
   "ref": "master",
   "path": "skills/herdr",
-  "commit": "7201907b654aefdb9b636b17ea7ca3cddc873d7b",
-  "upstream": "https://github.com/herdrdev/herdr/tree/7201907b654aefdb9b636b17ea7ca3cddc873d7b/skills/herdr",
-  "vendored_at": "2026-09-18",
+  "commit": "3f2a6e743f67bc947cfa06be25df106d00b9ee11",
+  "upstream": "https://github.com/herdrdev/herdr/tree/3f2a6e743f67bc947cfa06be25df106d00b9ee11/skills/herdr",
+  "vendored_at": "2026-09-19",
   "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
 }
