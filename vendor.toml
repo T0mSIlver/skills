@@ -13,7 +13,7 @@ repo = "https://github.com/cursor/plugins"
 ref = "main"
 path = "pstack/skills/unslop"
 license = "pstack/LICENSE"
-commit = "e31650eea443aaea1e84cc15d88c13f40080b275"
+commit = "032be146865d973682535de75f2287da438550bf"
 
 # The official herdr CLI skill, from the herdr repo itself: the authority on
 # how an agent inside a herdr pane drives panes, tabs, and other agents.
