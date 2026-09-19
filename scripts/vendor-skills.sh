@@ -77,7 +77,7 @@ command -v python3 >/dev/null 2>&1 || die "python3 is required but was not found
 # Manifest reader: one TAB-separated record per skill. tomllib is stdlib on
 # python 3.11+, so this needs nothing installed.
 READ_MANIFEST_PY='
-import sys, tomllib
+import json, sys, tomllib
 required = ("name", "repo", "ref", "path", "commit")
 with open(sys.argv[1], "rb") as fh:
     doc = tomllib.load(fh)
@@ -97,9 +97,14 @@ for entry in skills:
     if name in seen:
         sys.exit(f"vendor-skills: duplicate skill name {name!r}")
     seen.add(name)
+    frontmatter = entry.get("frontmatter", {})
+    if not isinstance(frontmatter, dict) or any(
+        isinstance(v, (dict, list)) for v in frontmatter.values()
+    ):
+        sys.exit(f"vendor-skills: {name}: frontmatter must map keys to scalars")
     print("\t".join((
         name, entry["repo"], entry["ref"], entry["path"],
-        entry.get("license", ""), entry["commit"],
+        entry.get("license", ""), entry["commit"], json.dumps(frontmatter),
     )))
 '
 
@@ -133,6 +138,44 @@ if not done:
 open(path, "w", encoding="utf-8").write("".join(lines))
 '
 
+# Frontmatter overrides: the one local change a vendored copy may carry. Sets
+# each key in SKILL.md's frontmatter, replacing the upstream line (and its
+# indented continuation lines) or appending it. JSON scalars are valid YAML.
+# With --check it writes nothing and exits 1 if the file would change.
+FRONTMATTER_PY='
+import json, re, sys
+path, overrides = sys.argv[1], json.loads(sys.argv[2])
+check = len(sys.argv) > 3
+text = open(path, encoding="utf-8").read()
+lines = text.splitlines(keepends=True)
+if not lines or lines[0].strip() != "---":
+    sys.exit(f"vendor-skills: {path} has no frontmatter")
+end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+if end is None:
+    sys.exit(f"vendor-skills: {path} has unterminated frontmatter")
+head = lines[1:end]
+for key, value in overrides.items():
+    new = f"{key}: {json.dumps(value)}\n"
+    at = next((i for i, l in enumerate(head) if re.match(re.escape(key) + r"\s*:", l)), None)
+    if at is None:
+        head.append(new)
+        continue
+    stop = at + 1
+    while stop < len(head) and head[stop][:1] in (" ", "\t"):
+        stop += 1
+    head[at:stop] = [new]
+rendered = "".join(lines[:1] + head + lines[end:])
+if check:
+    sys.exit(0 if rendered == text else 1)
+open(path, "w", encoding="utf-8").write(rendered)
+'
+
+apply_frontmatter() {
+  # $1 = skill dir, $2 = overrides as JSON, $3 = optional "check"
+  [[ "$2" != "{}" ]] || return 0
+  python3 -c "$FRONTMATTER_PY" "$1/SKILL.md" "$2" ${3:+"$3"}
+}
+
 manifest_records() {
   python3 -c "$READ_MANIFEST_PY" "$MANIFEST"
 }
@@ -160,7 +203,7 @@ print("\t".join(str(stamp.get(k, "")) for k in ("repo", "ref", "path", "commit")
 if [[ "$MODE" == "verify" ]]; then
   fail=0
   declare -A manifest_commit=()
-  while IFS=$'\t' read -r name repo ref path _license commit; do
+  while IFS=$'\t' read -r name repo ref path _license commit frontmatter; do
     [[ -n "$name" ]] || continue
     manifest_commit["$name"]="$commit"
     dir="$REPO_DIR/$name"
@@ -179,6 +222,12 @@ if [[ "$MODE" == "verify" ]]; then
       printf 'DRIFT    %s: manifest has %s %s %s %s, stamp has %s %s %s %s\n' "$name" \
         "$repo" "$ref" "$path" "${commit:0:12}" \
         "$s_repo" "$s_ref" "$s_path" "${s_commit:0:12}" >&2
+      fail=1
+      continue
+    fi
+    if ! apply_frontmatter "$dir" "$frontmatter" check; then
+      printf 'DRIFT    %s: SKILL.md frontmatter does not match %s — run scripts/vendor-skills.sh --only %s\n' \
+        "$name" "$(basename "$MANIFEST")" "$name" >&2
       fail=1
       continue
     fi
@@ -206,7 +255,7 @@ if [[ -n "$SUMMARY" ]]; then
   : >"$SUMMARY"
 fi
 
-while IFS=$'\t' read -r name repo ref path license commit; do
+while IFS=$'\t' read -r name repo ref path license commit frontmatter; do
   [[ -n "$name" ]] || continue
   if [[ -n "$ONLY" && "$ONLY" != "$name" ]]; then
     continue
@@ -236,6 +285,8 @@ while IFS=$'\t' read -r name repo ref path license commit; do
 
   if [[ "$head_sha" == "$commit" && -d "$target" && "$FORCE" -eq 0 ]]; then
     echo "    up to date at ${head_sha:0:12}"
+    # A changed override needs no new upstream commit to take effect.
+    [[ "$MODE" == "check" ]] || apply_frontmatter "$target" "$frontmatter"
     continue
   fi
 
@@ -273,6 +324,8 @@ while IFS=$'\t' read -r name repo ref path license commit; do
       printf 'vendor-skills: %s: license %s not found upstream\n' "$name" "$license" >&2
     fi
   fi
+
+  apply_frontmatter "$target" "$frontmatter"
 
   repo_web="${repo%.git}"
   upstream_url="$repo_web/tree/$head_sha/$path"

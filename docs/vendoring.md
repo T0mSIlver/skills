@@ -7,7 +7,8 @@ other skill.
 
 Pristine means exactly that: **never patch a vendored directory in-tree.** The
 next update overwrites it and your fix disappears. Send the fix upstream; the
-daily update PR brings it back.
+daily update PR brings it back. The one exception is frontmatter, which the
+manifest can override (see below).
 
 Vendored today:
 
@@ -22,8 +23,9 @@ Vendored today:
 - `vendor.toml` — the manifest: one `[[skills]]` table per vendored skill, with
   the upstream `repo`, `ref`, `path`, `license` path, and the pinned `commit`.
 - `scripts/vendor-skills.sh` — clones each upstream at its `ref`, copies
-  `path/` into `./<name>/`, drops the upstream license at `./<name>/LICENSE`,
-  writes the `./<name>/.vendored` stamp, and bumps `commit` in the manifest.
+  `path/` into `./<name>/`, applies the entry's `frontmatter` overrides, drops
+  the upstream license at `./<name>/LICENSE`, writes the `./<name>/.vendored`
+  stamp, and bumps `commit` in the manifest.
 - `.github/workflows/vendor-skills.yml` — runs the script daily and opens one
   PR per skill that moved.
 
@@ -53,6 +55,20 @@ Vendored today:
    `.claude-plugin/marketplace.json`, list it in the table above and in the
    README, then commit the manifest, the skill directory, and the stamp
    together.
+
+## Overriding frontmatter
+
+An entry's optional `frontmatter` table sets keys in the vendored `SKILL.md`
+frontmatter, replacing the upstream value or adding the key:
+
+```toml
+frontmatter = { disable-model-invocation = false }
+```
+
+Values must be scalars. After editing the table, run
+`scripts/vendor-skills.sh --only <name>` and commit the rewritten `SKILL.md`;
+no new upstream commit is needed. `--verify` fails if the committed `SKILL.md`
+does not match the manifest.
 
 ## Flags
 
@@ -116,9 +132,10 @@ land unvalidated. The `vendor` label must also exist in the repo
 
 ## Not possible
 
-- Local patches on top of an upstream skill. There is no patch series and no
-  three-way merge — the update is `rm -rf` plus a fresh copy. If you need a
-  changed version, fork it upstream and point `repo` at your fork.
+- Local patches to a skill's body. Only frontmatter can be overridden. There
+  is no patch series and no three-way merge — the update is `rm -rf` plus a
+  fresh copy. If you need a changed body, fork it upstream and point `repo` at
+  your fork.
 - Vendoring a subdirectory that is not a complete skill. The copied directory
   must contain its own `SKILL.md`, because `validate.yml` and the sync timer
   both discover skills by that file.
