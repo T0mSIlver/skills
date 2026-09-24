@@ -9,12 +9,13 @@
       "name": "cli-delegation",
       "source": "./",
       "strict": false,
-      "description": "Delegate reviewer, second-opinion, and edit-worker runs to the claude, codex, and opencode CLIs, and read-only repo exploration to fastcontext. Worktree-first edits, machine-readable capture, reviewer-after-worker.",
+      "description": "Delegate reviewer, second-opinion, and edit-worker runs to the claude, codex, and opencode CLIs, and read-only repo exploration to fastcontext. Worktree-first edits, machine-readable capture, reviewer-after-worker, and cross-vendor review of a finished change that runs while the author finishes.",
       "skills": [
         "./delegate-to-claude-code",
         "./delegate-to-codex",
         "./delegate-to-opencode",
-        "./fastcontext"
+        "./fastcontext",
+        "./cross-review"
       ],
       "author": {
         "name": "Tom Vaucourt"
@@ -59,7 +60,7 @@
       "name": "unnarrate",
       "source": "./",
       "strict": false,
-      "description": "Remove self-narrating meta-commentary from UI copy, docs, code comments, and PR text — text that describes the artifact it lives in or restates what the reader already sees. First-party companion to the vendored unslop skill: unnarrate deletes what shouldn't exist, unslop fixes how the rest sounds.",
+      "description": "Remove self-narrating meta-commentary from UI copy, docs, code comments, and PR text \u2014 text that describes the artifact it lives in or restates what the reader already sees. First-party companion to the vendored unslop skill: unnarrate deletes what shouldn't exist, unslop fixes how the rest sounds.",
       "skills": [
         "./unnarrate"
       ],
