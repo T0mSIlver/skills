@@ -14,6 +14,7 @@ the skill.
 | [`delegate-to-codex`](delegate-to-codex/SKILL.md) | Review and edit runs through `codex exec`, including the stdin wedge and the sandbox that `resume` drops |
 | [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | The same for GLM through `opencode run`, with the agent configs that flags can't express |
 | [`delegate-to-claude-code`](delegate-to-claude-code/SKILL.md) | The same for `claude`, as sessions I can watch and steer from claude.ai/code |
+| [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
 | [`unnarrate`](unnarrate/SKILL.md) | Deletes text that narrates itself: comments that repeat the code, tooltips that repeat the label, PR bullets that repeat the diff |
 | [`unslop`](unslop/SKILL.md) | Vendored from [cursor/plugins](https://github.com/cursor/plugins). Removes AI tells from prose |
