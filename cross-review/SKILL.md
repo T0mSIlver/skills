@@ -87,8 +87,9 @@ It reports P0/P1 only. One round; never loop.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives
   (`reference/sources.md`).
-- Findings on files outside the diff are dropped into `findings.json` under
-  `dropped_outside_diff`; read them only if one names a real break.
+- Findings whose lines fall outside the diff's hunks are dropped into
+  `findings.json` under `dropped_outside_diff`; read them only if one names a
+  real break.
 - Run directories live in `~/.cache/cross-review` (`CROSS_REVIEW_DIR`) and are
   pruned after 14 days. Each holds the prompt, raw events and stderr.
 

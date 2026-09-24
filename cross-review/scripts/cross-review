@@ -131,37 +131,56 @@ run_codex() {
 
 validate() {
   python3 - "$1" "$run" <<'PY'
-import json, sys, pathlib
+import json, re, sys, pathlib
 raw = pathlib.Path(sys.argv[1]).read_text()
 run = pathlib.Path(sys.argv[2])
 start, end = raw.find("{"), raw.rfind("}")
+def bad(msg):
+    print(f"cross-review: invalid reviewer output: {msg}", file=sys.stderr)
+    sys.exit(1)
 try:
     data = json.loads(raw[start:end + 1])
-    findings = data["findings"]
-    verdict = data["overall_correctness"]
 except Exception as e:
-    print(f"cross-review: invalid reviewer output: {e}", file=sys.stderr)
-    sys.exit(1)
-changed = set((run / "changed.txt").read_text().split("\n"))
-prefix = str(run / "tree") + "/"
+    bad(e)
+verdict = data.get("overall_correctness")
+findings = data.get("findings")
+if verdict not in ("patch is correct", "patch is incorrect") or not isinstance(findings, list):
+    bad("missing verdict or findings")
 for f in findings:
-    f["file"] = str(f.get("file", "")).removeprefix(prefix).removeprefix("./")
-kept = [f for f in findings if f.get("file") in changed]
-dropped = [f for f in findings if f.get("file") not in changed]
+    if not (isinstance(f, dict) and isinstance(f.get("file"), str) and isinstance(f.get("title"), str)
+            and isinstance(f.get("line_start"), int) and isinstance(f.get("line_end", f.get("line_start")), int)):
+        bad(f"malformed finding: {f!r}"[:300])
+# New-side line ranges of each file's hunks in the pinned patch.
+hunks, cur = {}, None
+for line in (run / "patch.diff").read_text(errors="replace").splitlines():
+    if line.startswith("+++ "):
+        cur = line[6:] if line.startswith("+++ b/") else None
+    elif line.startswith("@@") and cur:
+        m = re.match(r"@@ -\S+ \+(\d+)(?:,(\d+))? @@", line)
+        if m:
+            a = int(m.group(1)); n = int(m.group(2) or 1)
+            hunks.setdefault(cur, []).append((a, a + max(n, 1) - 1))
+prefix = str(run / "tree") + "/"
+kept, dropped = [], []
+for f in findings:
+    f["file"] = f["file"].removeprefix(prefix).removeprefix("./")
+    f["title"] = re.sub(r"^\[P\d\]\s*", "", f["title"])
+    lo, hi = f["line_start"], f.get("line_end", f["line_start"])
+    inside = any(a <= hi and lo <= b for a, b in hunks.get(f["file"], []))
+    (kept if inside else dropped).append(f)
 kept.sort(key=lambda f: (f.get("priority", 3), -f.get("confidence", 0)))
 (run / "findings.json").write_text(json.dumps({"findings": kept, "dropped_outside_diff": dropped,
     "overall_correctness": verdict, "overall_explanation": data.get("overall_explanation", "")}, indent=2))
 lines = [f"{verdict}: {data.get('overall_explanation', '')}", ""]
 for f in kept:
-    lines.append(f"[P{f.get('priority', '?')}] {f['file']}:{f.get('line_start')} {f['title']} (confidence {f.get('confidence')})")
-    lines.append(f"    {f['body']}")
+    lines.append(f"[P{f.get('priority', '?')}] {f['file']}:{f['line_start']} {f['title']} (confidence {f.get('confidence')})")
+    lines.append(f"    {f.get('body', '')}")
 if dropped:
     lines.append(f"({len(dropped)} findings outside the diff dropped; see findings.json)")
 (run / "summary.md").write_text("\n".join(lines) + "\n")
 PY
 }
 
-printf '%s\n' "$changed" > "$run/changed.txt"
 [ "$vendor" = auto ] && vendor=$(pick)
 [ "$vendor" != none ] || code=3 die "no reviewer headroom: GLM's 5-hour window and Codex are both spent"
 
