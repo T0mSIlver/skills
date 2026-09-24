@@ -33,7 +33,14 @@ brief=$(readlink -f "$brief")
 case "$vendor" in auto|glm|codex) ;; *) die "--vendor must be auto, glm or codex" ;; esac
 case "$effort" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
 
-skill_dir=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+# The sync installs this script on PATH as a copy, so the assets may not sit
+# next to it.
+skill_dir=""
+for d in "$(dirname "$(readlink -f "$0")")/.." "$HOME/.claude/skills/cross-review" \
+         "$HOME/.codex/skills/cross-review" "$HOME/.agents/skills/cross-review"; do
+  [ -f "$d/assets/rubric.md" ] && { skill_dir=$(cd "$d" && pwd); break; }
+done
+[ -n "$skill_dir" ] || die "cannot find the skill's assets/rubric.md"
 repo=$(git rev-parse --show-toplevel)
 cd "$repo"
 git diff --quiet HEAD -- || die "uncommitted changes: commit first, the review pins HEAD"
