@@ -141,14 +141,21 @@ validate() {
 import json, re, sys, pathlib
 raw = pathlib.Path(sys.argv[1]).read_text()
 run = pathlib.Path(sys.argv[2])
-start, end = raw.find("{"), raw.rfind("}")
 def bad(msg):
     print(f"cross-review: invalid reviewer output: {msg}", file=sys.stderr)
     sys.exit(1)
-try:
-    data = json.loads(raw[start:end + 1])
-except Exception as e:
-    bad(e)
+# Reviewers may write prose, braces included, before the JSON: take the last
+# object in the text that carries a verdict.
+decoder, data = json.JSONDecoder(), None
+for i in (m.start() for m in re.finditer(r"\{", raw)):
+    try:
+        obj, _ = decoder.raw_decode(raw, i)
+    except ValueError:
+        continue
+    if isinstance(obj, dict) and "overall_correctness" in obj:
+        data = obj
+if data is None:
+    bad("no JSON object with overall_correctness")
 verdict = data.get("overall_correctness")
 findings = data.get("findings")
 if verdict not in ("patch is correct", "patch is incorrect") or not isinstance(findings, list):
