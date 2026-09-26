@@ -77,9 +77,19 @@ One follow-up round; never loop.
 
 ## Gotchas
 
-- **Exit 2 is not a pass.** Timeout, empty or invalid output means nobody
-  reviewed the change. Say so in the PR; don't report it as clean. With
-  `--vendor auto` the script already tried each reviewer that had headroom.
+- **Exit 2 is not a pass.** Empty or invalid output, or a crash, means
+  nobody reviewed the change. Say so in the PR; don't report it as clean.
+  With `--vendor auto` the script already tried each reviewer that had
+  headroom.
+- **Exit 4 means the reviewer hit `--timeout` (default 30 minutes)**; the
+  script stops it rather than starting the next reviewer from scratch, and
+  prints its work so far: what it read or ran, and what it said. Continue
+  when that work is closing in on specific risks in the diff:
+  `cross-review --continue RUN_DIR [--timeout SECONDS]` resumes the same
+  session on the same frozen copy, and can be repeated. When it is
+  re-reading files, crawling code the diff doesn't touch, or said nothing
+  useful, don't continue: report the review as incomplete, or rerun with
+  another `--vendor`. Either way, exit 4 is not a pass.
 - **Exit 3 means no quota left** on any reviewer. Report it and ship
   without the review only if the repo allows that.
 - **Uncommitted changes abort the run**, because the review pins HEAD.
