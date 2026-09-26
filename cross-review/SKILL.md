@@ -45,10 +45,10 @@ before tests pass wastes the review on code that is about to change.
    ```
 
    Default range: merge-base with `origin/HEAD` to HEAD. `--base REF` changes
-   it. `--effort low|medium|high` sets Codex's reasoning effort and GLM's
-   opencode variant; Vibe stays at `high`, since the Mistral API only turns
-   reasoning on or off. Use `low` under ~100 lines, `high` for the risk
-   areas above.
+   it. `--effort low|medium|high` sets the reasoning effort of all three
+   reviewers (Vibe runs `medium` as `high`, the level below `high` that GLM
+   on the Mistral API accepts being `low`). Use `low` under ~100 lines,
+   `high` for the risk areas above.
 3. Carry on with the slow steps. Don't wait, poll or sleep: the harness
    notifies you when it exits.
 4. Do not mark the PR ready, merge, or report the work as done until the
