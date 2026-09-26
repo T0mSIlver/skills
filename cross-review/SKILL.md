@@ -82,9 +82,9 @@ It reports P0/P1 only. One round; never loop.
 - **The vendor order is deliberate.** GLM first, because its 5-hour window
   has no weekly cap and idle headroom is lost; then Mistral Vibe
   (`mistral-medium-3.5`), whose monthly plan credits also expire unused;
-  Codex last, because its weekly cap is the scarcest. `quota` can't read
-  Vibe's credits, so a spent Vibe plan shows up as a failed run and Codex
-  takes over. Don't override the order with `--vendor codex` to get a
+  Codex last, because its weekly cap is the scarcest. Vibe is skipped at
+  95% of its monthly credits; when `quota` has no Mistral line, a spent Vibe
+  plan shows up as a failed run and Codex takes over. Don't override the order with `--vendor codex` to get a
   "better" review.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives

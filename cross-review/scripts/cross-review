@@ -105,9 +105,9 @@ pct() {
 # Reviewers with headroom, in the order to try them.
 order() {
   if ! command -v quota >/dev/null || [ "$(pct zai 5h)" -lt 90 ] 2>/dev/null || [ -z "$(pct zai 5h)" ]; then echo glm; fi
-  # quota can't read the Vibe plan's monthly credits; a spent plan fails the
-  # run and the next reviewer takes over.
-  command -v vibe >/dev/null && echo vibe
+  # quota shows Vibe's monthly credits only when CodexBar has a Mistral cookie;
+  # without it, a spent plan fails the run and the next reviewer takes over.
+  if command -v vibe >/dev/null && { [ "$(pct mistral vibe)" -lt 95 ] 2>/dev/null || [ -z "$(pct mistral vibe)" ]; }; then echo vibe; fi
   codex_ok && echo codex
   true
 }
