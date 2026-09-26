@@ -1,6 +1,6 @@
 ---
 name: cross-review
-description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else GLM 5.3 on the Mistral API through Vibe, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a scoped re-review of fixes. Decides whether a review is worth running, when to launch it, and how to act on findings."
+description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else GLM 5.3 on the Mistral API through Vibe, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a follow-up review of fixes, which covers only the commits since the last review. Decides whether a review is worth running, when to launch it, and how to act on findings."
 ---
 
 # Cross-vendor review
@@ -66,9 +66,12 @@ Exit 0 prints the verdict and findings, most severe first. For each finding:
 - Put one line in the PR body: reviewer, number of findings, what you fixed,
   what you rejected and why.
 
-Re-review only when a fix is itself non-trivial (over ~30 lines, or in a
-risk area): `cross-review --since <reviewed-sha> --brief <brief-with-replies>`.
-It reports P0/P1 only. One round; never loop.
+Review the fixes again only when a fix is itself non-trivial (over ~30
+lines, or in a risk area). Rerun `cross-review` with a brief that replies to
+each finding: fixed, or rejected and why. The script finds the last completed
+review of the branch, even across a rebase, and sends only the commits since
+then, with the earlier findings; a HEAD already reviewed returns that review.
+One follow-up round; never loop.
 
 ## Gotchas
 
@@ -93,6 +96,11 @@ It reports P0/P1 only. One round; never loop.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives
   (`reference/sources.md`).
+- **A follow-up under 300 changed lines is capped**, because the reviewer's
+  reading, not the diff, is what costs: GLM stops after 20 steps and Codex
+  defaults to `low` effort. Pass `--full` only when the new
+  commits change what the earlier ones mean (a redesign, a reverted
+  approach); `--since SHA` sets the start by hand.
 - Findings whose lines fall outside the diff's hunks are dropped into
   `findings.json` under `dropped_outside_diff`; read them only if one names a
   real break.

@@ -3,8 +3,11 @@
 # headless and read-only, on a frozen copy of HEAD, so the author can keep
 # working while it runs.
 #
-#   cross-review --brief FILE [--base REF | --since SHA] [--vendor auto|glm|vibe|codex]
-#                [--effort low|medium|high] [--timeout SECONDS]
+#   cross-review --brief FILE [--base REF] [--since SHA | --full]
+#                [--vendor auto|glm|vibe|codex] [--effort low|medium|high] [--timeout SECONDS]
+#
+# After a completed review of the branch, the next run reviews only the
+# commits since then, with the earlier findings; --full reviews it all.
 #
 # Exit 0: review complete, findings in the printed summary (possibly none).
 # Exit 2: review incomplete (timeout, empty or invalid output). Not a pass.
@@ -13,14 +16,15 @@
 set -euo pipefail
 
 die() { echo "cross-review: $*" >&2; exit "${code:-1}"; }
-usage() { sed -n '5,12p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
-brief="" base="" since="" vendor=auto effort=medium timeout_s=1800
+brief="" base="" since="" full=0 vendor=auto effort="" timeout_s=1800
 while [ $# -gt 0 ]; do
   case "$1" in
     --brief) brief=$2; shift 2 ;;
     --base) base=$2; shift 2 ;;
     --since) since=$2; shift 2 ;;
+    --full) full=1; shift ;;
     --vendor) vendor=$2; shift 2 ;;
     --effort) effort=$2; shift 2 ;;
     --timeout) timeout_s=$2; shift 2 ;;
@@ -31,7 +35,7 @@ done
 [ -n "$brief" ] && [ -s "$brief" ] || die "--brief FILE is required: the task, its constraints, your claims"
 brief=$(readlink -f "$brief")
 case "$vendor" in auto|glm|vibe|codex) ;; *) die "--vendor must be auto, glm, vibe or codex" ;; esac
-case "$effort" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
+case "${effort:-medium}" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
 
 # The sync installs this script on PATH as a copy, so the assets may not sit
 # next to it.
@@ -46,24 +50,60 @@ cd "$repo"
 git diff --quiet HEAD -- || die "uncommitted changes: commit first, the review pins HEAD"
 head=$(git rev-parse HEAD)
 
-if [ -n "$since" ]; then
-  range_base=$(git rev-parse "$since")
-else
-  if [ -z "$base" ]; then
-    base=$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
-  fi
-  range_base=$(git merge-base HEAD "$base")
+[ -n "$base" ] || base=$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
+branch_base=$(git merge-base HEAD "$base")
+branch=$(git symbolic-ref -q --short HEAD || true)
+runs_root=${CROSS_REVIEW_DIR:-$HOME/.cache/cross-review}
+
+# The closest completed review of this branch: its head is an ancestor of
+# HEAD, or, after a rebase, it ran on the same branch and HEAD still carries
+# its commits under the same patch-ids. Only the commits after it need review.
+prior="" prior_since="" best=-1
+if [ -z "$since" ] && [ "$full" = 0 ]; then
+  for f in "$runs_root"/*/reviewed; do
+    [ -f "$f" ] || continue
+    read -r h b < "$f" || true
+    git cat-file -e "$h^{commit}" 2>/dev/null || continue
+    if git merge-base --is-ancestor "$h" HEAD; then
+      git merge-base --is-ancestor "$h" "$branch_base" && continue
+      n=$(git rev-list --count "$h..HEAD") s=$h
+    elif [ -n "$branch" ] && [ "$b" = "$branch" ]; then
+      marks=$(git cherry "$h" HEAD "$branch_base" | cut -c1 | tr -d '\n')
+      [[ $marks =~ ^-+\+*$ ]] || continue
+      n=$(tr -cd + <<< "$marks" | wc -c)
+      s=$(git cherry "$h" HEAD "$branch_base" | sed -n 's/^+ //p' | head -1)
+      s=$(git rev-parse "${s:-HEAD}^")
+    else
+      continue
+    fi
+    if [ "$best" -lt 0 ] || [ "$n" -lt "$best" ]; then best=$n prior=$(dirname "$f") prior_since=$s; fi
+  done
 fi
+if [ -n "$prior" ]; then
+  if [ "$best" = 0 ]; then
+    echo "cross-review: HEAD's changes were already reviewed; run dir: $prior"
+    cat "$prior/summary.md"
+    exit 0
+  fi
+  since=$prior_since
+  echo "cross-review: reviewing the $best commits since the review in $prior (--full reviews the whole branch)" >&2
+fi
+range_base=$(git rev-parse "${since:-$branch_base}")
 [ "$range_base" != "$head" ] || die "nothing to review between $range_base and HEAD"
 
 changed=$(git diff --name-only "$range_base" "$head")
 lines=$(git diff --numstat "$range_base" "$head" | awk '{a+=$1+$2} END {print a+0}')
+# Reading, not the diff, is what a review costs: cap it on a small follow-up.
+capped=0
+[ -n "$since" ] && [ "$lines" -lt 300 ] && capped=1
+[ "$capped" = 1 ] && [ -z "$effort" ] && effort=low
+effort=${effort:-medium}
 [ "$lines" -le 1500 ] || echo "cross-review: $lines changed lines; consider reviewing per commit range with --since" >&2
 
 slug="$(basename "$repo")-$(date +%Y%m%d-%H%M%S)-${head:0:8}"
-run="${CROSS_REVIEW_DIR:-$HOME/.cache/cross-review}/$slug"
-mkdir -p "$run"
-find "$(dirname "$run")" -mindepth 1 -maxdepth 1 -mtime +14 -exec rm -rf {} + 2>/dev/null || true
+mkdir -p "$runs_root"
+run=$(mktemp -d "$runs_root/$slug-XXXX")
+find "$runs_root" -mindepth 1 -maxdepth 1 -mtime +14 -exec rm -rf {} + 2>/dev/null || true
 tree="$run/tree"
 git worktree add --detach -q "$tree" "$head"
 cleanup() { git -C "$repo" worktree remove --force "$tree" 2>/dev/null || true; git -C "$repo" worktree prune; }
@@ -80,9 +120,18 @@ rules=$(printf '%s\n' "$changed" | while IFS= read -r f; do
 done | sed 's#^\./##' | sort -u || true)
 
 git diff -U10 "$range_base" "$head" > "$run/patch.diff"
+[ -z "$since" ] || git diff -U0 "$branch_base" "$head" > "$run/branch.diff"
 {
   cat "$skill_dir/assets/rubric.md"
-  [ -n "$since" ] && cat "$skill_dir/assets/rereview.md"
+  if [ -n "$since" ]; then
+    cat "$skill_dir/assets/rereview.md"
+    if [ -n "$prior" ]; then
+      printf '\n## Earlier findings\n\nFrom the review of %s.\n\n' "$(cut -d' ' -f1 "$prior/reviewed" | cut -c1-8)"
+      cat "$prior/summary.md"
+    fi
+    printf '\n## Files the whole branch changes\n\nFor orientation only; already reviewed except for the diff below.\n\n'
+    git diff --stat "$branch_base" "$head"
+  fi
   printf '\n## Task and constraints\n\nFrom the author. Treat its claims as unverified.\n\n'
   cat "$brief"
   printf '\n## Repository rules\n\nRead the parts relevant to the changed files:\n\n'
@@ -120,6 +169,8 @@ codex_ok() {
 run_glm() {
   mkdir -p "$tree/.opencode/agents"
   cp "$skill_dir/assets/cross-reviewer.md" "$tree/.opencode/agents/"
+  # After this many steps opencode forces the final answer.
+  [ "$capped" = 0 ] || sed -i '/^mode:/a steps: 20' "$tree/.opencode/agents/cross-reviewer.md"
   OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072 timeout --signal=TERM "$timeout_s" \
     opencode run --dir "$tree" --agent cross-reviewer -m zai-coding-plan/glm-5.3 \
     --format json --title "cross-review $slug" --auto "$(cat "$run/prompt.md")" \
@@ -203,23 +254,32 @@ for f in findings:
     if not (isinstance(f, dict) and isinstance(f.get("file"), str) and isinstance(f.get("title"), str)
             and isinstance(f.get("line_start"), int) and isinstance(f.get("line_end", f.get("line_start")), int)):
         bad(f"malformed finding: {f!r}"[:300])
-# New-side line ranges of each file's hunks in the pinned patch.
-hunks, cur = {}, None
-for line in (run / "patch.diff").read_text(errors="replace").splitlines():
-    if line.startswith("+++ "):
-        cur = line[6:] if line.startswith("+++ b/") else None
-    elif line.startswith("@@") and cur:
-        m = re.match(r"@@ -\S+ \+(\d+)(?:,(\d+))? @@", line)
-        if m:
-            a = int(m.group(1)); n = int(m.group(2) or 1)
-            hunks.setdefault(cur, []).append((a, a + max(n, 1) - 1))
+def hunks(name):
+    """New-side line ranges of each file's hunks in a patch of the run."""
+    out, cur, path = {}, None, run / name
+    if not path.exists():
+        return out
+    for line in path.read_text(errors="replace").splitlines():
+        if line.startswith("+++ "):
+            cur = line[6:] if line.startswith("+++ b/") else None
+        elif line.startswith("@@") and cur:
+            m = re.match(r"@@ -\S+ \+(\d+)(?:,(\d+))? @@", line)
+            if m:
+                a = int(m.group(1)); n = int(m.group(2) or 1)
+                out.setdefault(cur, []).append((a, a + max(n, 1) - 1))
+    return out
+def overlaps(h, f):
+    lo, hi = f["line_start"], f.get("line_end", f["line_start"])
+    return any(a <= hi and lo <= b for a, b in h.get(f["file"], []))
+# In a follow-up review, an urgent finding elsewhere in the branch's change
+# is an earlier finding left unfixed.
+new, branch = hunks("patch.diff"), hunks("branch.diff")
 prefix = str(run / "tree") + "/"
 kept, dropped = [], []
 for f in findings:
     f["file"] = f["file"].removeprefix(prefix).removeprefix("./")
     f["title"] = re.sub(r"^\[P\d\]\s*", "", f["title"])
-    lo, hi = f["line_start"], f.get("line_end", f["line_start"])
-    inside = any(a <= hi and lo <= b for a, b in hunks.get(f["file"], []))
+    inside = overlaps(new, f) or (f.get("priority", 3) <= 1 and overlaps(branch, f))
     (kept if inside else dropped).append(f)
 kept.sort(key=lambda f: (f.get("priority", 3), -f.get("confidence", 0)))
 (run / "findings.json").write_text(json.dumps({"findings": kept, "dropped_outside_diff": dropped,
@@ -249,5 +309,6 @@ for v in "${vendors[@]}"; do
 done
 [ -n "$used" ] || code=2 die "review incomplete (tried ${vendors[*]}); logs in $run"
 
+printf '%s %s\n' "$head" "$branch" > "$run/reviewed"
 echo "cross-review by $used of ${range_base:0:8}..${head:0:8} ($lines lines). Run dir: $run"
 cat "$run/summary.md"
