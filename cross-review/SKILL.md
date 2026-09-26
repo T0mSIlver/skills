@@ -45,8 +45,10 @@ before tests pass wastes the review on code that is about to change.
    ```
 
    Default range: merge-base with `origin/HEAD` to HEAD. `--base REF` changes
-   it. `--effort low|medium|high` applies to Codex only: use `low` under ~100
-   lines, `high` for the risk areas above.
+   it. `--effort low|medium|high` sets Codex's reasoning effort and GLM's
+   opencode variant; Vibe stays at `high`, since the Mistral API only turns
+   reasoning on or off. Use `low` under ~100 lines, `high` for the risk
+   areas above.
 3. Carry on with the slow steps. Don't wait, poll or sleep: the harness
    notifies you when it exits.
 4. Do not mark the PR ready, merge, or report the work as done until the
@@ -97,9 +99,10 @@ One follow-up round; never loop.
   comments, or for a full fix per finding, raises false positives
   (`reference/sources.md`).
 - **A follow-up under 300 changed lines reads less by default**, because the
-  reviewer's reading, not the diff, is what costs: `--steps 20` (GLM gives
-  its answer after 20 steps) and `--effort low` (Codex). These are defaults,
-  not limits: pass `--steps 0` (no limit) or `--effort medium|high` when the
+  reviewer's reading, not the diff, is what costs: `--tool-calls 20` and
+  `--effort low`. The budget is a line in the prompt, the same for every
+  reviewer, which the reviewer may exceed to settle a named risk; nothing cuts
+  it off. Pass `--tool-calls 0` (no budget) or `--effort medium|high` when the
   new commits touch a risk area or code the earlier review never opened. The
   summary's first line prints the values used. Pass `--full` only when the
   new commits change what the earlier ones mean (a redesign, a reverted

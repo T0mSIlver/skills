@@ -4,13 +4,16 @@
 # working while it runs.
 #
 #   cross-review --brief FILE [--base REF] [--since SHA | --full]
-#                [--vendor auto|glm|vibe|codex] [--effort low|medium|high] [--steps N]
+#                [--vendor auto|glm|vibe|codex] [--effort low|medium|high] [--tool-calls N]
 #                [--timeout SECONDS]
 #
 # After a completed review of the branch, the next run reviews only the
 # commits since then, with the earlier findings; --full reviews it all.
-# A follow-up under 300 changed lines defaults to --effort low and --steps 20;
-# otherwise the defaults are --effort medium and --steps 0 (no limit).
+# A follow-up under 300 changed lines defaults to --effort low and
+# --tool-calls 20; otherwise to --effort medium and --tool-calls 0 (no budget).
+# The budget is a line in the prompt, the same for every reviewer, which it
+# may exceed; nothing cuts a reviewer off. --effort sets Codex's reasoning
+# effort and GLM's opencode variant; Vibe stays at high.
 #
 # Exit 0: review complete, findings in the printed summary (possibly none).
 # Exit 2: review incomplete (timeout, empty or invalid output). Not a pass.
@@ -19,9 +22,9 @@
 set -euo pipefail
 
 die() { echo "cross-review: $*" >&2; exit "${code:-1}"; }
-usage() { sed -n '5,18p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '5,21p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
-brief="" base="" since="" full=0 vendor=auto effort="" steps="" timeout_s=1800
+brief="" base="" since="" full=0 vendor=auto effort="" calls="" timeout_s=1800
 while [ $# -gt 0 ]; do
   case "$1" in
     --brief) brief=$2; shift 2 ;;
@@ -30,7 +33,7 @@ while [ $# -gt 0 ]; do
     --full) full=1; shift ;;
     --vendor) vendor=$2; shift 2 ;;
     --effort) effort=$2; shift 2 ;;
-    --steps) steps=$2; shift 2 ;;
+    --tool-calls) calls=$2; shift 2 ;;
     --timeout) timeout_s=$2; shift 2 ;;
     -h|--help) usage ;;
     *) die "unknown argument: $1" ;;
@@ -40,7 +43,7 @@ done
 brief=$(readlink -f "$brief")
 case "$vendor" in auto|glm|vibe|codex) ;; *) die "--vendor must be auto, glm, vibe or codex" ;; esac
 case "${effort:-medium}" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
-[[ ${steps:-0} =~ ^[0-9]+$ ]] || die "--steps must be a number, 0 for no limit"
+[[ ${calls:-0} =~ ^[0-9]+$ ]] || die "--tool-calls must be a number, 0 for no budget"
 
 # The sync installs this script on PATH as a copy, so the assets may not sit
 # next to it.
@@ -104,9 +107,9 @@ lines=$(git diff --numstat "$range_base" "$head" | awk '{a+=$1+$2} END {print a+
 # Reading, not the diff, is what a review costs: a small follow-up reads less
 # by default. The flags override both.
 if [ -n "$since" ] && [ "$lines" -lt 300 ]; then
-  effort=${effort:-low} steps=${steps:-20}
+  effort=${effort:-low} calls=${calls:-20}
 fi
-effort=${effort:-medium} steps=${steps:-0}
+effort=${effort:-medium} calls=${calls:-0}
 [ "$lines" -le 1500 ] || echo "cross-review: $lines changed lines; consider reviewing per commit range with --since" >&2
 
 slug="$(basename "$repo")-$(date +%Y%m%d-%H%M%S)-${head:0:8}"
@@ -140,6 +143,9 @@ git diff -U10 "$range_base" "$head" > "$run/patch.diff"
     fi
     printf '\n## Files the whole branch changes\n\nFor orientation only; already reviewed except for the diff below.\n\n'
     git diff --stat "$branch_base" "$head"
+  fi
+  if [ "$calls" != 0 ]; then
+    printf '\n## Budget\n\nAim for about %s tool calls, then answer. Go past that only to settle a\nconcrete risk you have already named.\n' "$calls"
   fi
   printf '\n## Task and constraints\n\nFrom the author. Treat its claims as unverified.\n\n'
   cat "$brief"
@@ -178,10 +184,11 @@ codex_ok() {
 run_glm() {
   mkdir -p "$tree/.opencode/agents"
   cp "$skill_dir/assets/cross-reviewer.md" "$tree/.opencode/agents/"
-  # After this many steps opencode asks for the final answer.
-  [ "$steps" = 0 ] || sed -i "/^mode:/a steps: $steps" "$tree/.opencode/agents/cross-reviewer.md"
+  # medium is the model's default; it has no variant of that name.
+  local variant=()
+  [ "$effort" = medium ] || variant=(--variant "$effort")
   OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072 timeout --signal=TERM "$timeout_s" \
-    opencode run --dir "$tree" --agent cross-reviewer -m zai-coding-plan/glm-5.3 \
+    opencode run --dir "$tree" --agent cross-reviewer -m zai-coding-plan/glm-5.3 "${variant[@]}" \
     --format json --title "cross-review $slug" --auto "$(cat "$run/prompt.md")" \
     < /dev/null > "$run/glm.jsonl" 2> "$run/glm.stderr" || return 1
   jq -r 'select(.type=="step_finish") | .part.reason' "$run/glm.jsonl" | tail -1 | grep -qx stop || return 1
@@ -198,6 +205,8 @@ run_vibe() {
   local key=${MISTRAL_API_KEY:-$(sed -n 's/^MISTRAL_API_KEY=//p' "${VIBE_HOME:-$HOME/.vibe}/.env" 2>/dev/null | tr -d "\"'")}
   [ -n "$key" ] || { echo "no Mistral key: set MISTRAL_API_KEY or log in with vibe --setup" > "$run/vibe.stderr"; return 1; }
   mkdir -p "$home"
+  # The Mistral API has reasoning on or off, and Vibe's "low" turns it off, so
+  # --effort leaves Vibe at "high".
   cat > "$home/config.toml" <<'TOML'
 active_model = "glm-5.3"
 enable_telemetry = false
@@ -319,5 +328,5 @@ done
 [ -n "$used" ] || code=2 die "review incomplete (tried ${vendors[*]}); logs in $run"
 
 printf '%s %s %s\n' "$head" "${branch:--}" "$whole" > "$run/reviewed"
-echo "cross-review by $used of ${range_base:0:8}..${head:0:8} ($lines lines, --effort $effort --steps $steps). Run dir: $run"
+echo "cross-review by $used of ${range_base:0:8}..${head:0:8} ($lines lines, --effort $effort --tool-calls $calls). Run dir: $run"
 cat "$run/summary.md"
