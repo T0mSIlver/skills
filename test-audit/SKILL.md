@@ -22,7 +22,8 @@ Answer all four; a missing answer means don't add the test yet.
    happens".
 2. **Where is the expected value from?** A literal, a worked example, or the
    spec. Never the code under test or its helpers: `expect(f(x)).toBe(f(x))`
-   and `expect(add(a, b)).toBe(a + b)` pass by construction.
+   passes by construction. An expectation that re-derives the value with the
+   implementation's own formula shares that formula's bugs.
 3. **Why doesn't existing coverage catch it already?** Each contract has one
    owning test at its strongest boundary, usually the public interface. A
    second layer needs a risk the owner can't reach, such as a transport or
