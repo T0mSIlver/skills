@@ -1,6 +1,6 @@
 ---
 name: cross-review
-description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else GLM 5.3 through Mistral Vibe, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a scoped re-review of fixes. Decides whether a review is worth running, when to launch it, and how to act on findings."
+description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else GLM 5.3 on the Mistral API through Vibe, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a scoped re-review of fixes. Decides whether a review is worth running, when to launch it, and how to act on findings."
 ---
 
 # Cross-vendor review
@@ -79,15 +79,16 @@ It reports P0/P1 only. One round; never loop.
   without the review only if the repo allows that.
 - **Uncommitted changes abort the run**, because the review pins HEAD.
   Commit first; a WIP commit is fine.
-- **The vendor order is deliberate.** GLM first, because its 5-hour window
-  has no weekly cap and idle headroom is lost; Codex last, because its weekly
-  cap is the scarcest. Between them, `vibe` runs the same GLM 5.3 on the same
-  Z.ai plan through the Mistral Vibe harness, so it only covers an opencode
-  failure. Don't override the order with `--vendor codex` to get a "better"
-  review.
-- **Never review with Vibe's own model** (`mistral-medium-3.5`). The script
-  gives Vibe a private `VIBE_HOME` that points it at GLM 5.3 with the key
-  from opencode's `auth.json` (or `ZAI_API_KEY`); don't run `vibe` for a
+- **The vendor order is deliberate.** GLM on the Z.ai plan first, because
+  its 5-hour window has no weekly cap and idle headroom is lost; then GLM 5.3
+  on the Mistral API through Vibe, whose monthly plan credits also expire
+  unused; Codex last, because its weekly cap is the scarcest. Vibe is skipped
+  at 95% of its monthly credits; when `quota` has no Mistral line, a spent
+  Vibe plan shows up as a failed run and Codex takes over. Don't override the
+  order with `--vendor codex` to get a "better" review.
+- **Never review with Vibe's default model** (`mistral-medium-3.5`). The
+  script gives Vibe a private `VIBE_HOME` that pins `zai-glm-5-3`, with the
+  key from `~/.vibe/.env` (or `MISTRAL_API_KEY`); don't run `vibe` for a
   review outside the script.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives
