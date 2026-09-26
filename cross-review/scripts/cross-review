@@ -132,10 +132,32 @@ run_glm() {
 }
 
 run_vibe() {
+  # Vibe's default model is never used: a private VIBE_HOME pins GLM 5.3,
+  # which the Mistral API hosts and bills to the Vibe plan.
+  local home="$run/vibe-home"
+  local key=${MISTRAL_API_KEY:-$(sed -n 's/^MISTRAL_API_KEY=//p' "${VIBE_HOME:-$HOME/.vibe}/.env" 2>/dev/null | tr -d "\"'")}
+  [ -n "$key" ] || { echo "no Mistral key: set MISTRAL_API_KEY or log in with vibe --setup" > "$run/vibe.stderr"; return 1; }
+  mkdir -p "$home"
+  cat > "$home/config.toml" <<'TOML'
+active_model = "glm-5.3"
+enable_telemetry = false
+enable_update_checks = false
+
+[[models]]
+name = "zai-glm-5-3"
+provider = "mistral"
+alias = "glm-5.3"
+temperature = 1.0
+thinking = "high"
+input_price = 1.4
+output_price = 4.4
+cached_input_price = 0.26
+auto_compact_threshold = 800000
+TOML
   # setsid: with a prompt on stdin, vibe reopens /dev/tty, which would take
   # the caller's terminal. The harness Vibe rolls out by default has no grep
   # tool, so pin the legacy one.
-  setsid -w timeout --signal=TERM "$timeout_s" vibe -p --legacy-harness --agent plan \
+  MISTRAL_API_KEY=$key VIBE_HOME=$home setsid -w timeout --signal=TERM "$timeout_s" vibe -p --legacy-harness --agent plan \
     --enabled-tools read_file --enabled-tools grep --auto-approve \
     --max-price 5 --output json --workdir "$tree" --trust \
     < "$run/prompt.md" > "$run/vibe.json" 2> "$run/vibe.stderr" || return 1
@@ -215,7 +237,7 @@ PY
 if [ "$vendor" = auto ]; then
   quota_out=$(command -v quota >/dev/null && quota 2>/dev/null || true)
   mapfile -t vendors < <(order)
-  [ "${#vendors[@]}" -gt 0 ] || code=3 die "no reviewer headroom: GLM's 5-hour window and Codex are both spent, and vibe is not installed"
+  [ "${#vendors[@]}" -gt 0 ] || code=3 die "no reviewer headroom: GLM's 5-hour window, Vibe's credits and Codex are all spent"
 else
   vendors=("$vendor")
 fi
