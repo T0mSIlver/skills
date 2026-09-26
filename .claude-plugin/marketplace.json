@@ -41,7 +41,8 @@
       "skills": [
         "./unslop",
         "./herdr",
-        "./gh-stack"
+        "./gh-stack",
+        "./test-audit"
       ],
       "author": {
         "name": "Tom Vaucourt"
@@ -52,7 +53,8 @@
         "third-party",
         "writing",
         "herdr",
-        "stacked-prs"
+        "stacked-prs",
+        "testing"
       ],
       "category": "workflow"
     },

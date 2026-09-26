@@ -20,6 +20,7 @@ the skill.
 | [`unslop`](unslop/SKILL.md) | Vendored from [cursor/plugins](https://github.com/cursor/plugins). Removes AI tells from prose |
 | [`herdr`](herdr/SKILL.md) | Vendored from [herdrdev/herdr](https://github.com/herdrdev/herdr). Controls panes and other agents inside herdr |
 | [`gh-stack`](gh-stack/SKILL.md) | Vendored from [github/gh-stack](https://github.com/github/gh-stack). Stacked branches and PRs with the `gh stack` extension |
+| [`test-audit`](test-audit/SKILL.md) | Vendored from [openclaw/openclaw](https://github.com/openclaw/openclaw). A gate for new tests and an audit for low-value ones |
 | [`fastcontext`](fastcontext/SKILL.md) | Read-only repo exploration on a local model. Turned off on my machine because the GPU has other jobs |
 
 ## Why it's built this way
