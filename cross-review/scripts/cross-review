@@ -4,16 +4,14 @@
 # working while it runs.
 #
 #   cross-review --brief FILE [--base REF] [--since SHA | --full]
-#                [--vendor auto|glm|vibe|codex] [--effort low|medium|high] [--tool-calls N]
+#                [--vendor auto|glm|vibe|codex] [--effort low|medium|high]
 #                [--timeout SECONDS]
 #
 # After a completed review of the branch, the next run reviews only the
 # commits since then, with the earlier findings; --full reviews it all.
-# A follow-up under 300 changed lines defaults to --effort low and
-# --tool-calls 20; otherwise to --effort medium and --tool-calls 0 (no budget).
-# The budget is a line in the prompt, the same for every reviewer, which it
-# may exceed; nothing cuts a reviewer off. --effort sets Codex's reasoning
-# effort, GLM's opencode variant and Vibe's reasoning (low, else high).
+# --effort sets Codex's reasoning effort, GLM's opencode variant and Vibe's
+# reasoning (low, else high). It defaults to low for a follow-up under 300
+# changed lines, else medium. Nothing limits a reviewer's turns.
 #
 # Exit 0: review complete, findings in the printed summary (possibly none).
 # Exit 2: review incomplete (timeout, empty or invalid output). Not a pass.
@@ -22,9 +20,9 @@
 set -euo pipefail
 
 die() { echo "cross-review: $*" >&2; exit "${code:-1}"; }
-usage() { sed -n '5,21p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '5,19p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
-brief="" base="" since="" full=0 vendor=auto effort="" calls="" timeout_s=1800
+brief="" base="" since="" full=0 vendor=auto effort="" timeout_s=1800
 while [ $# -gt 0 ]; do
   case "$1" in
     --brief) brief=$2; shift 2 ;;
@@ -33,7 +31,6 @@ while [ $# -gt 0 ]; do
     --full) full=1; shift ;;
     --vendor) vendor=$2; shift 2 ;;
     --effort) effort=$2; shift 2 ;;
-    --tool-calls) calls=$2; shift 2 ;;
     --timeout) timeout_s=$2; shift 2 ;;
     -h|--help) usage ;;
     *) die "unknown argument: $1" ;;
@@ -43,7 +40,6 @@ done
 brief=$(readlink -f "$brief")
 case "$vendor" in auto|glm|vibe|codex) ;; *) die "--vendor must be auto, glm, vibe or codex" ;; esac
 case "${effort:-medium}" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
-[[ ${calls:-0} =~ ^[0-9]+$ ]] || die "--tool-calls must be a number, 0 for no budget"
 
 # The sync installs this script on PATH as a copy, so the assets may not sit
 # next to it.
@@ -104,12 +100,10 @@ range_base=$(git rev-parse "${since:-$branch_base}")
 
 changed=$(git diff --name-only "$range_base" "$head")
 lines=$(git diff --numstat "$range_base" "$head" | awk '{a+=$1+$2} END {print a+0}')
-# Reading, not the diff, is what a review costs: a small follow-up reads less
-# by default. The flags override both.
-if [ -n "$since" ] && [ "$lines" -lt 300 ]; then
-  effort=${effort:-low} calls=${calls:-20}
-fi
-effort=${effort:-medium} calls=${calls:-0}
+# Reading, not the diff, is what a review costs: a small follow-up defaults to
+# less reasoning.
+[ -n "$since" ] && [ "$lines" -lt 300 ] && effort=${effort:-low}
+effort=${effort:-medium}
 [ "$lines" -le 1500 ] || echo "cross-review: $lines changed lines; consider reviewing per commit range with --since" >&2
 
 slug="$(basename "$repo")-$(date +%Y%m%d-%H%M%S)-${head:0:8}"
@@ -143,9 +137,6 @@ git diff -U10 "$range_base" "$head" > "$run/patch.diff"
     fi
     printf '\n## Files the whole branch changes\n\nFor orientation only; already reviewed except for the diff below.\n\n'
     git diff --stat "$branch_base" "$head"
-  fi
-  if [ "$calls" != 0 ]; then
-    printf '\n## Budget\n\nAim for about %s tool calls, then answer. Go past that only to settle a\nconcrete risk you have already named.\n' "$calls"
   fi
   printf '\n## Task and constraints\n\nFrom the author. Treat its claims as unverified.\n\n'
   cat "$brief"
@@ -342,5 +333,5 @@ done
 [ -n "$used" ] || code=2 die "review incomplete (tried ${vendors[*]}); logs in $run"
 
 printf '%s %s %s\n' "$head" "${branch:--}" "$whole" > "$run/reviewed"
-echo "cross-review by $used of ${range_base:0:8}..${head:0:8} ($lines lines, --effort $effort --tool-calls $calls). Run dir: $run"
+echo "cross-review by $used of ${range_base:0:8}..${head:0:8} ($lines lines, --effort $effort). Run dir: $run"
 cat "$run/summary.md"

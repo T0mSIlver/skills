@@ -98,13 +98,11 @@ One follow-up round; never loop.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives
   (`reference/sources.md`).
-- **A follow-up under 300 changed lines reads less by default**, because the
-  reviewer's reading, not the diff, is what costs: `--tool-calls 20` and
-  `--effort low`. The budget is a line in the prompt, the same for every
-  reviewer, which the reviewer may exceed to settle a named risk; nothing cuts
-  it off. Pass `--tool-calls 0` (no budget) or `--effort medium|high` when the
-  new commits touch a risk area or code the earlier review never opened. The
-  summary's first line prints the values used. Pass `--full` only when the
+- **A follow-up under 300 changed lines defaults to `--effort low`**, because
+  the reviewer's reading, not the diff, is what costs. Effort is the only
+  control; nothing limits the reviewer's turns. Pass `--effort medium|high`
+  when the new commits touch a risk area or code the earlier review never
+  opened. The summary's first line prints the effort used. Pass `--full` only when the
   new commits change what the earlier ones mean (a redesign, a reverted
   approach); `--since SHA` sets the start by hand.
 - Findings whose lines fall outside the diff's hunks are dropped into
