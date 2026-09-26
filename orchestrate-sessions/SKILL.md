@@ -1,7 +1,7 @@
 ---
 name: orchestrate-sessions
 description: "Run a Claude Code desktop session as the orchestrator and scheduler for many parallel sessions on one repo: spawn one chip per independent issue, hand out slots on a scarce shared resource (a self-hosted runner, a GPU, a device), watch and steer sessions, merge their PRs without breaking main, archive finished sessions, and report to the owner. Use when the owner asks this session to split work across sessions, act as the scheduler, take other sessions under its umbrella, unblock or relaunch sessions, or archive finished ones."
-compatibility: Claude Code desktop app (Code tab). Needs the spawn_task, dismiss_task and ccd_session_mgmt tools (list_sessions, list_events, send_message, stop_session, archive_session), CronCreate, and gh.
+compatibility: Claude Code desktop app (Code tab). Needs the spawn_task, dismiss_task and ccd_session_mgmt tools (list_sessions, list_events, stop_session, archive_session), CronCreate, and gh.
 ---
 
 # Orchestrate sessions
@@ -93,12 +93,12 @@ rebase, fix, and ask again.
 - **`gh pr merge --delete-branch` fails when a worktree holds the branch**,
   after the remote merge succeeded. Check `gh pr view N --json state`, then
   `git push origin --delete <branch>`.
-- **Messaging.** `SendMessage` by title fails for sessions `ListAgents`
-  doesn't list. `send_message` with the `session_id` from `list_sessions`
-  reaches any local session. `delivery: queued` means a turn is running
-  there; it runs after that turn, so don't wait on it. Start each message
-  with "Scheduler:" so it doesn't read as the owner.
-- **To stop a wrong turn**, `send_message` the correction first, then
+- **Address sessions by id.** `SendMessage` to a session title fails for
+  sessions `ListAgents` doesn't list. Set `to` to the `local_…` id from
+  `list_sessions` (the older `send_message` takes the same id). `queued`
+  means a turn is running there and your message runs after it, so don't
+  wait on it.
+- **To stop a wrong turn**, send the correction first, then
   `stop_session`. The queued message runs next. A duplicate chip was stopped
   this way before it touched the shared GPU.
 - **Times.** state every time in UTC and write the offset when the owner's
