@@ -1,6 +1,6 @@
 ---
 name: cross-review
-description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else GLM 5.3 on the Mistral API through Vibe, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a scoped re-review of fixes. Decides whether a review is worth running, when to launch it, and how to act on findings."
+description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else GLM 5.3 on the Mistral API through Vibe, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a follow-up review of fixes, which covers only the commits since the last review. Decides whether a review is worth running, when to launch it, and how to act on findings."
 ---
 
 # Cross-vendor review
@@ -45,8 +45,10 @@ before tests pass wastes the review on code that is about to change.
    ```
 
    Default range: merge-base with `origin/HEAD` to HEAD. `--base REF` changes
-   it. `--effort low|medium|high` applies to Codex only: use `low` under ~100
-   lines, `high` for the risk areas above.
+   it. `--effort low|medium|high` sets the reasoning effort of all three
+   reviewers (Vibe runs `medium` as `high`, the level below `high` that GLM
+   on the Mistral API accepts being `low`). Use `low` under ~100 lines,
+   `high` for the risk areas above.
 3. Carry on with the slow steps. Don't wait, poll or sleep: the harness
    notifies you when it exits.
 4. Do not mark the PR ready, merge, or report the work as done until the
@@ -66,15 +68,28 @@ Exit 0 prints the verdict and findings, most severe first. For each finding:
 - Put one line in the PR body: reviewer, number of findings, what you fixed,
   what you rejected and why.
 
-Re-review only when a fix is itself non-trivial (over ~30 lines, or in a
-risk area): `cross-review --since <reviewed-sha> --brief <brief-with-replies>`.
-It reports P0/P1 only. One round; never loop.
+Review the fixes again only when a fix is itself non-trivial (over ~30
+lines, or in a risk area). Rerun `cross-review` with a brief that replies to
+each finding: fixed, or rejected and why. The script finds the last completed
+review of the branch, even across a rebase, and sends only the commits since
+then, with the earlier findings; a HEAD already reviewed returns that review.
+One follow-up round; never loop.
 
 ## Gotchas
 
-- **Exit 2 is not a pass.** Timeout, empty or invalid output means nobody
-  reviewed the change. Say so in the PR; don't report it as clean. With
-  `--vendor auto` the script already tried each reviewer that had headroom.
+- **Exit 2 is not a pass.** Empty or invalid output, or a crash, means
+  nobody reviewed the change. Say so in the PR; don't report it as clean.
+  With `--vendor auto` the script already tried each reviewer that had
+  headroom.
+- **Exit 4 means the reviewer hit `--timeout` (default 30 minutes)**; the
+  script stops it rather than starting the next reviewer from scratch, and
+  prints its work so far: what it read or ran, and what it said. Continue
+  when that work is closing in on specific risks in the diff:
+  `cross-review --continue RUN_DIR [--timeout SECONDS]` resumes the same
+  session on the same frozen copy, and can be repeated. When it is
+  re-reading files, crawling code the diff doesn't touch, or said nothing
+  useful, don't continue: report the review as incomplete, or rerun with
+  another `--vendor`. Either way, exit 4 is not a pass.
 - **Exit 3 means no quota left** on any reviewer. Report it and ship
   without the review only if the repo allows that.
 - **Uncommitted changes abort the run**, because the review pins HEAD.
@@ -93,6 +108,13 @@ It reports P0/P1 only. One round; never loop.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives
   (`reference/sources.md`).
+- **A follow-up under 300 changed lines defaults to `--effort low`**, because
+  the reviewer's reading, not the diff, is what costs. Effort is the only
+  control; nothing limits the reviewer's turns. Pass `--effort medium|high`
+  when the new commits touch a risk area or code the earlier review never
+  opened. The summary's first line prints the effort used. Pass `--full` only when the
+  new commits change what the earlier ones mean (a redesign, a reverted
+  approach); `--since SHA` sets the start by hand.
 - Findings whose lines fall outside the diff's hunks are dropped into
   `findings.json` under `dropped_outside_diff`; read them only if one names a
   real break.
