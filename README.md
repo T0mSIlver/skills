@@ -18,6 +18,7 @@ the skill.
 | [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: spawns a chip per issue, hands out slots on a shared runner or GPU, and checks each PR against current main before merging |
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
 | [`unnarrate`](unnarrate/SKILL.md) | Deletes text that narrates itself: comments that repeat the code, tooltips that repeat the label, PR bullets that repeat the diff |
+| [`test-audit`](test-audit/SKILL.md) | A gate for new tests and an audit for deleting low-value ones: tests of mocks, mirrored expected values, duplicate coverage |
 | [`unslop`](unslop/SKILL.md) | Vendored from [cursor/plugins](https://github.com/cursor/plugins). Removes AI tells from prose |
 | [`herdr`](herdr/SKILL.md) | Vendored from [herdrdev/herdr](https://github.com/herdrdev/herdr). Controls panes and other agents inside herdr |
 | [`gh-stack`](gh-stack/SKILL.md) | Vendored from [github/gh-stack](https://github.com/github/gh-stack). Stacked branches and PRs with the `gh stack` extension |
