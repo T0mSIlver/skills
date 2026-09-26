@@ -1,6 +1,6 @@
 ---
 name: cross-review
-description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a scoped re-review of fixes. Decides whether a review is worth running, when to launch it, and how to act on findings."
+description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else Mistral Vibe, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a scoped re-review of fixes. Decides whether a review is worth running, when to launch it, and how to act on findings."
 ---
 
 # Cross-vendor review
@@ -74,15 +74,17 @@ It reports P0/P1 only. One round; never loop.
 
 - **Exit 2 is not a pass.** Timeout, empty or invalid output means nobody
   reviewed the change. Say so in the PR; don't report it as clean. With
-  `--vendor auto` the script already retried once on Codex after a GLM
-  failure.
-- **Exit 3 means no quota left** on either reviewer. Report it and ship
+  `--vendor auto` the script already tried each reviewer that had headroom.
+- **Exit 3 means no quota left** on any reviewer. Report it and ship
   without the review only if the repo allows that.
 - **Uncommitted changes abort the run**, because the review pins HEAD.
   Commit first; a WIP commit is fine.
 - **The vendor order is deliberate.** GLM first, because its 5-hour window
-  has no weekly cap and idle headroom is lost; Codex only when that window is
-  over 90% or GLM failed. Don't override it with `--vendor codex` to get a
+  has no weekly cap and idle headroom is lost; then Mistral Vibe
+  (`mistral-medium-3.5`), whose monthly plan credits also expire unused;
+  Codex last, because its weekly cap is the scarcest. `quota` can't read
+  Vibe's credits, so a spent Vibe plan shows up as a failed run and Codex
+  takes over. Don't override the order with `--vendor codex` to get a
   "better" review.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives

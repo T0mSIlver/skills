@@ -3,7 +3,7 @@
 # headless and read-only, on a frozen copy of HEAD, so the author can keep
 # working while it runs.
 #
-#   cross-review --brief FILE [--base REF | --since SHA] [--vendor auto|glm|codex]
+#   cross-review --brief FILE [--base REF | --since SHA] [--vendor auto|glm|vibe|codex]
 #                [--effort low|medium|high] [--timeout SECONDS]
 #
 # Exit 0: review complete, findings in the printed summary (possibly none).
@@ -30,7 +30,7 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$brief" ] && [ -s "$brief" ] || die "--brief FILE is required: the task, its constraints, your claims"
 brief=$(readlink -f "$brief")
-case "$vendor" in auto|glm|codex) ;; *) die "--vendor must be auto, glm or codex" ;; esac
+case "$vendor" in auto|glm|vibe|codex) ;; *) die "--vendor must be auto, glm, vibe or codex" ;; esac
 case "$effort" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
 
 # The sync installs this script on PATH as a copy, so the assets may not sit
@@ -99,14 +99,17 @@ git diff -U10 "$range_base" "$head" > "$run/patch.diff"
   fi
 } > "$run/prompt.md"
 
-pct() { quota 2>/dev/null | awk -v a="$1" -v b="$2" '$1==a && $2==b {gsub("%","",$3); print $3; exit}'; }
-pick() {
-  command -v quota >/dev/null || { echo glm; return; }
-  local zai
-  zai=$(pct zai 5h)
-  if [ "${zai:-0}" -lt 90 ]; then echo glm
-  elif codex_ok; then echo codex
-  else echo none; fi
+pct() {
+  printf '%s\n' "$quota_out" | awk -v a="$1" -v b="$2" '$1==a && $2==b {gsub("%","",$3); print $3; exit}'
+}
+# Reviewers with headroom, in the order to try them.
+order() {
+  if ! command -v quota >/dev/null || [ "$(pct zai 5h)" -lt 90 ] 2>/dev/null || [ -z "$(pct zai 5h)" ]; then echo glm; fi
+  # quota can't read the Vibe plan's monthly credits; a spent plan fails the
+  # run and the next reviewer takes over.
+  command -v vibe >/dev/null && echo vibe
+  codex_ok && echo codex
+  true
 }
 codex_ok() {
   command -v codex >/dev/null || return 1
@@ -126,6 +129,20 @@ run_glm() {
   jq -rs '(map(.type) | rindex("step_start")) as $i | .[$i:] | map(select(.type=="text") | .part.text) | join("")' \
     "$run/glm.jsonl" > "$run/glm.out"
   validate "$run/glm.out"
+}
+
+run_vibe() {
+  # setsid: with a prompt on stdin, vibe reopens /dev/tty, which would take
+  # the caller's terminal. The harness Vibe rolls out by default has no grep
+  # tool, so pin the legacy one.
+  setsid -w timeout --signal=TERM "$timeout_s" vibe -p --legacy-harness --agent plan \
+    --enabled-tools read_file --enabled-tools grep --auto-approve \
+    --max-price 5 --output json --workdir "$tree" --trust \
+    < "$run/prompt.md" > "$run/vibe.json" 2> "$run/vibe.stderr" || return 1
+  jq -r '[.[] | select(.role == "assistant")] | last | .content
+         | if type == "string" then . else map(select(.type == "text") | .text) | join("") end' \
+    "$run/vibe.json" > "$run/vibe.out"
+  validate "$run/vibe.out"
 }
 
 run_codex() {
@@ -195,19 +212,20 @@ if dropped:
 PY
 }
 
-[ "$vendor" = auto ] && vendor=$(pick)
-[ "$vendor" != none ] || code=3 die "no reviewer headroom: GLM's 5-hour window and Codex are both spent"
-
-used=$vendor
-if ! "run_$vendor"; then
-  if [ "$vendor" = glm ] && codex_ok; then
-    echo "cross-review: GLM run failed (see $run/glm.stderr); retrying once with Codex" >&2
-    used=codex
-    run_codex || code=2 die "review incomplete on both vendors; logs in $run"
-  else
-    code=2 die "review incomplete ($vendor); logs in $run"
-  fi
+if [ "$vendor" = auto ]; then
+  quota_out=$(command -v quota >/dev/null && quota 2>/dev/null || true)
+  mapfile -t vendors < <(order)
+  [ "${#vendors[@]}" -gt 0 ] || code=3 die "no reviewer headroom: GLM's 5-hour window and Codex are both spent, and vibe is not installed"
+else
+  vendors=("$vendor")
 fi
+
+used=""
+for v in "${vendors[@]}"; do
+  if "run_$v"; then used=$v; break; fi
+  echo "cross-review: $v run failed (see $run/$v.stderr)" >&2
+done
+[ -n "$used" ] || code=2 die "review incomplete (tried ${vendors[*]}); logs in $run"
 
 echo "cross-review by $used of ${range_base:0:8}..${head:0:8} ($lines lines). Run dir: $run"
 cat "$run/summary.md"
