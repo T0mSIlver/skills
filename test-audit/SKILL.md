@@ -35,7 +35,9 @@ Answer all four; a missing answer means don't add the test yet.
    utilities.
 
 Then check it against the [junk patterns](reference/junk-patterns.md). A
-test that breaks under a behavior-preserving refactor is asserting
+match fails the gate unless the
+[retention bar](reference/junk-patterns.md#retention-bar) names the contract
+it independently guards. A test that breaks under a behavior-preserving refactor is asserting
 implementation; rewrite it at the owning boundary before landing it.
 
 Don't test the framework (asserting your router calls the handler you
@@ -47,8 +49,8 @@ cause a side effect.
 
 A regression test must fail on the pre-fix code, for the reason the bug
 describes, and pass after the fix. Run it against the old code to see it. An
-error (import failure, missing selector, crash in setup) is not the failure
-you need; fix the error until it fails on the assertion. A regression test
+error the bug doesn't cause (import failure, missing selector, broken setup)
+proves nothing; fix it until the test fails the way the bug does. A regression test
 that never failed proves the mock, not the fix. Write one, at the owning
 boundary; don't replay the same scenario at every layer it crosses.
 

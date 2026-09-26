@@ -2,9 +2,9 @@
 
 ## Junk patterns
 
-A new test that matches one fails the gate; an audit hunts for existing tests
-that do. A match is deletable only if the retention bar below names nothing
-it independently guards.
+A match fails the gate for a new test, and makes an existing test a deletion
+candidate, unless the retention bar below names a contract it independently
+guards.
 
 - Assertion-free coverage probes: the test can fail only through a crash,
   panic or missing selector.
