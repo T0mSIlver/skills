@@ -4,10 +4,13 @@
 # working while it runs.
 #
 #   cross-review --brief FILE [--base REF] [--since SHA | --full]
-#                [--vendor auto|glm|vibe|codex] [--effort low|medium|high] [--timeout SECONDS]
+#                [--vendor auto|glm|vibe|codex] [--effort low|medium|high] [--steps N]
+#                [--timeout SECONDS]
 #
 # After a completed review of the branch, the next run reviews only the
 # commits since then, with the earlier findings; --full reviews it all.
+# A follow-up under 300 changed lines defaults to --effort low and --steps 20;
+# otherwise the defaults are --effort medium and --steps 0 (no limit).
 #
 # Exit 0: review complete, findings in the printed summary (possibly none).
 # Exit 2: review incomplete (timeout, empty or invalid output). Not a pass.
@@ -16,9 +19,9 @@
 set -euo pipefail
 
 die() { echo "cross-review: $*" >&2; exit "${code:-1}"; }
-usage() { sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '5,18p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
-brief="" base="" since="" full=0 vendor=auto effort="" timeout_s=1800
+brief="" base="" since="" full=0 vendor=auto effort="" steps="" timeout_s=1800
 while [ $# -gt 0 ]; do
   case "$1" in
     --brief) brief=$2; shift 2 ;;
@@ -27,6 +30,7 @@ while [ $# -gt 0 ]; do
     --full) full=1; shift ;;
     --vendor) vendor=$2; shift 2 ;;
     --effort) effort=$2; shift 2 ;;
+    --steps) steps=$2; shift 2 ;;
     --timeout) timeout_s=$2; shift 2 ;;
     -h|--help) usage ;;
     *) die "unknown argument: $1" ;;
@@ -36,6 +40,7 @@ done
 brief=$(readlink -f "$brief")
 case "$vendor" in auto|glm|vibe|codex) ;; *) die "--vendor must be auto, glm, vibe or codex" ;; esac
 case "${effort:-medium}" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
+[[ ${steps:-0} =~ ^[0-9]+$ ]] || die "--steps must be a number, 0 for no limit"
 
 # The sync installs this script on PATH as a copy, so the assets may not sit
 # next to it.
@@ -96,11 +101,12 @@ range_base=$(git rev-parse "${since:-$branch_base}")
 
 changed=$(git diff --name-only "$range_base" "$head")
 lines=$(git diff --numstat "$range_base" "$head" | awk '{a+=$1+$2} END {print a+0}')
-# Reading, not the diff, is what a review costs: cap it on a small follow-up.
-capped=0
-[ -n "$since" ] && [ "$lines" -lt 300 ] && capped=1
-[ "$capped" = 1 ] && [ -z "$effort" ] && effort=low
-effort=${effort:-medium}
+# Reading, not the diff, is what a review costs: a small follow-up reads less
+# by default. The flags override both.
+if [ -n "$since" ] && [ "$lines" -lt 300 ]; then
+  effort=${effort:-low} steps=${steps:-20}
+fi
+effort=${effort:-medium} steps=${steps:-0}
 [ "$lines" -le 1500 ] || echo "cross-review: $lines changed lines; consider reviewing per commit range with --since" >&2
 
 slug="$(basename "$repo")-$(date +%Y%m%d-%H%M%S)-${head:0:8}"
@@ -172,8 +178,8 @@ codex_ok() {
 run_glm() {
   mkdir -p "$tree/.opencode/agents"
   cp "$skill_dir/assets/cross-reviewer.md" "$tree/.opencode/agents/"
-  # After this many steps opencode forces the final answer.
-  [ "$capped" = 0 ] || sed -i '/^mode:/a steps: 20' "$tree/.opencode/agents/cross-reviewer.md"
+  # After this many steps opencode asks for the final answer.
+  [ "$steps" = 0 ] || sed -i "/^mode:/a steps: $steps" "$tree/.opencode/agents/cross-reviewer.md"
   OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072 timeout --signal=TERM "$timeout_s" \
     opencode run --dir "$tree" --agent cross-reviewer -m zai-coding-plan/glm-5.3 \
     --format json --title "cross-review $slug" --auto "$(cat "$run/prompt.md")" \
@@ -313,5 +319,5 @@ done
 [ -n "$used" ] || code=2 die "review incomplete (tried ${vendors[*]}); logs in $run"
 
 printf '%s %s %s\n' "$head" "${branch:--}" "$whole" > "$run/reviewed"
-echo "cross-review by $used of ${range_base:0:8}..${head:0:8} ($lines lines). Run dir: $run"
+echo "cross-review by $used of ${range_base:0:8}..${head:0:8} ($lines lines, --effort $effort --steps $steps). Run dir: $run"
 cat "$run/summary.md"

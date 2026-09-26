@@ -96,10 +96,13 @@ One follow-up round; never loop.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives
   (`reference/sources.md`).
-- **A follow-up under 300 changed lines is capped**, because the reviewer's
-  reading, not the diff, is what costs: GLM stops after 20 steps and Codex
-  defaults to `low` effort. Pass `--full` only when the new
-  commits change what the earlier ones mean (a redesign, a reverted
+- **A follow-up under 300 changed lines reads less by default**, because the
+  reviewer's reading, not the diff, is what costs: `--steps 20` (GLM gives
+  its answer after 20 steps) and `--effort low` (Codex). These are defaults,
+  not limits: pass `--steps 0` (no limit) or `--effort medium|high` when the
+  new commits touch a risk area or code the earlier review never opened. The
+  summary's first line prints the values used. Pass `--full` only when the
+  new commits change what the earlier ones mean (a redesign, a reverted
   approach); `--since SHA` sets the start by hand.
 - Findings whose lines fall outside the diff's hunks are dropped into
   `findings.json` under `dropped_outside_diff`; read them only if one names a
