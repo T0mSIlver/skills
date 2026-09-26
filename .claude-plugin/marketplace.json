@@ -80,6 +80,29 @@
       "category": "workflow"
     },
     {
+      "name": "orchestrate-sessions",
+      "source": "./",
+      "strict": false,
+      "description": "Run one Claude Code desktop session as the orchestrator and scheduler for many parallel sessions on a repo: one chip per issue, slots on a scarce shared resource, merges that keep main green, and archiving finished sessions.",
+      "skills": [
+        "./orchestrate-sessions"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "orchestration",
+        "scheduler",
+        "parallel-sessions",
+        "claude-code",
+        "desktop",
+        "merge-queue"
+      ],
+      "category": "workflow"
+    },
+    {
       "name": "claude-rc-server",
       "source": "./claude-remote-control-server",
       "strict": false,
