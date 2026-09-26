@@ -41,8 +41,7 @@
       "skills": [
         "./unslop",
         "./herdr",
-        "./gh-stack",
-        "./test-audit"
+        "./gh-stack"
       ],
       "author": {
         "name": "Tom Vaucourt"
@@ -53,8 +52,7 @@
         "third-party",
         "writing",
         "herdr",
-        "stacked-prs",
-        "testing"
+        "stacked-prs"
       ],
       "category": "workflow"
     },
@@ -78,6 +76,28 @@
         "code-comments",
         "microcopy",
         "documentation"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "test-audit",
+      "source": "./",
+      "strict": false,
+      "description": "Decide which tests are worth having: a gate for every new test, and an audit workflow for deleting tests that mirror the code, test mocks, duplicate stronger coverage, or keep test-only production code alive.",
+      "skills": [
+        "./test-audit"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "testing",
+        "test-quality",
+        "mocks",
+        "regression-tests",
+        "code-review"
       ],
       "category": "workflow"
     },

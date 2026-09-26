@@ -17,7 +17,6 @@ Vendored today:
 | [`unslop`](../unslop/SKILL.md) | [`cursor/plugins`](https://github.com/cursor/plugins) `pstack/skills/unslop` | MIT, Lauren Tan |
 | [`herdr`](../herdr/SKILL.md) | [`herdrdev/herdr`](https://github.com/herdrdev/herdr) `skills/herdr` | Apache-2.0, herdr |
 | [`gh-stack`](../gh-stack/SKILL.md) | [`github/gh-stack`](https://github.com/github/gh-stack) `skills/gh-stack` | MIT, GitHub |
-| [`test-audit`](../test-audit/SKILL.md) | [`openclaw/openclaw`](https://github.com/openclaw/openclaw) `.agents/skills/test-audit` | MIT, OpenClaw Foundation |
 
 ## The moving parts
 

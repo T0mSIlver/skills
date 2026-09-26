@@ -35,13 +35,3 @@ ref = "main"
 path = "skills/gh-stack"
 license = "LICENSE"
 commit = "2bd699a544a09cb5c45a013d03416e0894b0454e"
-
-# OpenClaw's test-audit skill: an authoring gate and audit workflow for
-# low-value tests. Its validation steps name OpenClaw's own scripts.
-[[skills]]
-name = "test-audit"
-repo = "https://github.com/openclaw/openclaw"
-ref = "main"
-path = ".agents/skills/test-audit"
-license = "LICENSE"
-commit = "5f3781df412caf60e3258428cf0bb7e406f19a76"
