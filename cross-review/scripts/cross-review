@@ -105,9 +105,9 @@ pct() {
 # Reviewers with headroom, in the order to try them.
 order() {
   if ! command -v quota >/dev/null || [ "$(pct zai 5h)" -lt 90 ] 2>/dev/null || [ -z "$(pct zai 5h)" ]; then echo glm; fi
-  # quota shows Vibe's monthly credits only when CodexBar has a Mistral cookie;
-  # without it, a spent plan fails the run and the next reviewer takes over.
-  if command -v vibe >/dev/null && { [ "$(pct mistral vibe)" -lt 95 ] 2>/dev/null || [ -z "$(pct mistral vibe)" ]; }; then echo vibe; fi
+  # Vibe runs the same GLM 5.3 on the same Z.ai plan, so it only helps when
+  # opencode itself fails.
+  if command -v vibe >/dev/null && { ! command -v quota >/dev/null || [ "$(pct zai 5h)" -lt 90 ] 2>/dev/null || [ -z "$(pct zai 5h)" ]; }; then echo vibe; fi
   codex_ok && echo codex
   true
 }
@@ -132,12 +132,36 @@ run_glm() {
 }
 
 run_vibe() {
+  # Vibe's own model is never used: a private VIBE_HOME points it at GLM 5.3
+  # on the Z.ai coding plan, with the key opencode already stores.
+  local home="$run/vibe-home" auth="${XDG_DATA_HOME:-$HOME/.local/share}/opencode/auth.json"
+  local key=${ZAI_API_KEY:-$(jq -r '."zai-coding-plan".key // empty' "$auth" 2>/dev/null)}
+  [ -n "$key" ] || { echo "no Z.ai key: set ZAI_API_KEY or log opencode in to zai-coding-plan" > "$run/vibe.stderr"; return 1; }
+  mkdir -p "$home"
+  cat > "$home/config.toml" <<'TOML'
+active_model = "glm-5.3"
+enable_telemetry = false
+enable_update_checks = false
+
+[[providers]]
+name = "zai"
+api_base = "https://api.z.ai/api/coding/paas/v4"
+api_key_env_var = "ZAI_API_KEY"
+backend = "generic"
+
+[[models]]
+name = "glm-5.3"
+provider = "zai"
+alias = "glm-5.3"
+temperature = 1.0
+thinking = "high"
+TOML
   # setsid: with a prompt on stdin, vibe reopens /dev/tty, which would take
   # the caller's terminal. The harness Vibe rolls out by default has no grep
   # tool, so pin the legacy one.
-  setsid -w timeout --signal=TERM "$timeout_s" vibe -p --legacy-harness --agent plan \
+  ZAI_API_KEY=$key VIBE_HOME=$home setsid -w timeout --signal=TERM "$timeout_s" vibe -p --legacy-harness --agent plan \
     --enabled-tools read_file --enabled-tools grep --auto-approve \
-    --max-price 5 --output json --workdir "$tree" --trust \
+    --output json --workdir "$tree" --trust \
     < "$run/prompt.md" > "$run/vibe.json" 2> "$run/vibe.stderr" || return 1
   jq -r '[.[] | select(.role == "assistant")] | last | .content
          | if type == "string" then . else map(select(.type == "text") | .text) | join("") end' \
@@ -215,7 +239,7 @@ PY
 if [ "$vendor" = auto ]; then
   quota_out=$(command -v quota >/dev/null && quota 2>/dev/null || true)
   mapfile -t vendors < <(order)
-  [ "${#vendors[@]}" -gt 0 ] || code=3 die "no reviewer headroom: GLM's 5-hour window and Codex are both spent, and vibe is not installed"
+  [ "${#vendors[@]}" -gt 0 ] || code=3 die "no reviewer headroom: GLM's 5-hour window and Codex are both spent"
 else
   vendors=("$vendor")
 fi
