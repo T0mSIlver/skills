@@ -151,7 +151,8 @@ temperature = 1.0
 thinking = "high"
 input_price = 1.4
 output_price = 4.4
-cached_input_price = 0.14
+cached_input_price = 0.26
+auto_compact_threshold = 800000
 TOML
   # setsid: with a prompt on stdin, vibe reopens /dev/tty, which would take
   # the caller's terminal. The harness Vibe rolls out by default has no grep
