@@ -26,3 +26,21 @@ memory it wrote. Times are UTC.
 | Broadcast rule changes | 11:41 the owner switched reviews to GLM through Vibe (GLM quota nearly spent); 14:11 back to GLM when its window reset. Each switch went to every running session. |
 | Workers watch CI in the background | #674 and #692 sat idle on green drafts for an hour and more before the scheduler nudged them. From then on every go said to run the watcher with `run_in_background` and report when it ends. |
 | Keep a ledger | The scheduler compacted at 15:42. Its bookings, merge queue and session list survived because they were in `project-status.md`. |
+
+## 2026-09-27 (same repo, second day)
+
+| Rule | What happened |
+|---|---|
+| Session crons don't fire when idle; use background wake-ups and systemd timers | Nothing ran between 02:31 and 05:03 UTC although the one-shot crons were set; background tasks kept running. GitHub's own schedules also fired late or not at all that night (no nightly, no weekly eval). The next night used `orch-wakeat` and two dev-box systemd user timers that refuse outside the window. |
+| Merge ref lag; count landings from before the run | #806 and #845 were each green; together they broke main's test build (fixed by #866). #845 landed minutes before #806's run was created, and the run's merge ref didn't include it. |
+| Exclude the PR's own ancestors from "landed since" | After widening the window, the check flagged #866's own base commit as an overlap. `git log origin/main ^prN` fixed it. |
+| A combo goes stale when main moves | #797's combo on be00dfd0 passed, but the docs rework landed before the merge and touched the same files; a second combo on the new main was needed. |
+| Conflicting PRs get no runs | #806 sat with mac-lanes at its draft skip: ready and draft toggles started nothing because the branch conflicted with main. The evening before a night window, four of seven booked PRs conflicted with main on docs files. |
+| Stack PRs sharing files | #885 (docs rework) conflicted after #878 landed, #905 (menu bar marks) after #901 (needs-you sound): each cost a round trip through its session and a new CI run. Stacked on the PR ahead of it, each would have merged on its own run. |
+| Concurrency group replaces the pending run | The weekly eval on main was cancelled because a second dispatch (for #742) went pending behind it in the same group. Dispatch the next one only after the previous run has started. |
+| A dispatch uses the ref's workflow file | #742's eval hung because its branch predated the stall fail-fast in the workflow; merging main into the branch fixed it. |
+| A skipped must-run check reads as green | The scheduler told the owner a non-required check (`dogfood`) was required; it corrected this. The real trap is the other way: mac-lanes skips drafts, and GitHub counts that skip as passing, so the scripts require a real success. |
+| Peers misstate rules | A session said its PR had to wait for the owner's card move before merging. The owner's standing rule was merge on green, then route the card to his hand check; the scheduler merged and told the session. |
+| Archive deletes the worktree | The night plan pointed at a session's worktree for its runs; archiving that session removed it. The plan now fetches the PR head into a fresh worktree. |
+| zsh doesn't word-split | `for p in "a b" …; do script $p` passed "a b" as one argument and every pair tested the wrong thing. |
+| Scratchpad scripts are lost | The merge scripts lived in the session scratchpad; a successor would have had none. They moved into this skill with a per-repo config. |

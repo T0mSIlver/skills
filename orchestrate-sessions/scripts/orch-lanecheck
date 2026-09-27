@@ -1,0 +1,14 @@
+#!/bin/bash
+# orch-lanecheck <pr>: the LANE_STEPS results of the head's latest MUST_RUN job, and any
+# waiver in the PR body. Use it before removing a waits label: remove it only when that
+# lane passed or was waived on the current head, and comment why.
+. "$(dirname "$0")/orch-lib.sh"
+n=$1
+sha=$(gh api "repos/$REPO/pulls/$n" --jq .head.sha)
+echo "#$n head ${sha:0:8} labels: $(gh api "repos/$REPO/pulls/$n" --jq '[.labels[].name]|join(",")')"
+for job in $MUST_RUN_CHECKS; do
+  jid=$(gh api "repos/$REPO/commits/$sha/check-runs?check_name=$job" --jq '[.check_runs[]]|max_by(.started_at).id')
+  [ -n "$jid" ] && [ "$jid" != null ] || { echo "  $job: no run"; continue; }
+  gh api "repos/$REPO/actions/jobs/$jid" --jq ".steps[]|select(.name|test(\"${LANE_STEPS:-.}\"))|\"  \(.name): \(.conclusion)\""
+done
+gh api "repos/$REPO/pulls/$n" --jq .body | grep -oE "$WAIVER_PATTERN" | cut -c1-200

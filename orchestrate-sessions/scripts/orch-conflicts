@@ -1,0 +1,13 @@
+#!/bin/bash
+# orch-conflicts [pr...]: which open PRs no longer merge cleanly with BASE (default: all
+# open non-combo PRs), with the conflicting files. A conflicting PR gets no pull_request
+# workflow run at all: ready, draft toggles and pushes that keep the conflict start nothing.
+# Run it before a resource window, so every PR booked in it can actually run.
+. "$(dirname "$0")/orch-lib.sh"
+prs=${*:-$(gh api "repos/$REPO/pulls?state=open&per_page=100" --jq '.[]|select(.head.ref|startswith("combo/")|not)|.number')}
+git fetch -q origin "$BASE"
+for n in $prs; do
+  git fetch -q origin "+pull/$n/head:pr$n"
+  if out=$(git merge-tree --write-tree --name-only "origin/$BASE" "pr$n" 2>/dev/null); then echo "#$n clean"
+  else echo "#$n CONFLICT: $(echo "$out" | sed -n '2,/^$/p' | tr '\n' ' ')"; fi
+done
