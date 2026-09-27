@@ -85,7 +85,8 @@ main before deleting the parent branch, and clears the label.
   disjoint files and one task each. Before spawning, search the issue number
   in open PRs and in `list_sessions` titles, since work in progress often has
   no PR yet. Put `(#n)` in the title. The prompt stands alone:
-  - repo, issue, what to read first;
+  - repo, issue, what to read first; with no issue yet, the session opens
+    one before it starts (research included) and links it from its PR;
   - the proof its PR must carry;
   - the open PRs and sessions it may collide with, and whether to stack;
   - the resource rules, and "message the scheduler (this session's title)
