@@ -103,8 +103,9 @@ One follow-up round; never loop.
   order with `--vendor codex` to get a "better" review.
 - **Never review with Vibe's default model** (`mistral-medium-3.5`). The
   script gives Vibe a private `VIBE_HOME` that pins `zai-glm-5-3`, with the
-  key from `~/.vibe/.env` (or `MISTRAL_API_KEY`); don't run `vibe` for a
-  review outside the script.
+  Vibe plan key from `~/.vibe/.env` (or `VIBE_MISTRAL_API_KEY`), never an
+  exported `MISTRAL_API_KEY`; don't run `vibe` for a review outside the
+  script.
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives
   (`reference/sources.md`).
