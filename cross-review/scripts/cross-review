@@ -111,8 +111,10 @@ run_vibe() {
   # Vibe's default model is never used: a private VIBE_HOME pins GLM 5.3,
   # which the Mistral API hosts and bills to the Vibe plan.
   local home="$run/vibe-home"
-  local key=${MISTRAL_API_KEY:-$(sed -n 's/^MISTRAL_API_KEY=//p' "${VIBE_HOME:-$HOME/.vibe}/.env" 2>/dev/null | tr -d "\"'")}
-  [ -n "$key" ] || { echo "no Mistral key: set MISTRAL_API_KEY or log in with vibe --setup" > "$(log vibe stderr)"; return 1; }
+  # The Vibe plan key only: an exported MISTRAL_API_KEY is often the pay-per-call
+  # Studio key (live proofs, evals), which GLM traffic must not bill.
+  local key=${VIBE_MISTRAL_API_KEY:-$(sed -n 's/^MISTRAL_API_KEY=//p' "${VIBE_HOME:-$HOME/.vibe}/.env" 2>/dev/null | tr -d "\"'")}
+  [ -n "$key" ] || { echo "no Vibe key: log in with vibe --setup or set VIBE_MISTRAL_API_KEY" > "$(log vibe stderr)"; return 1; }
   mkdir -p "$home"
   # GLM 5.3 on the Mistral API takes reasoning_effort low, high or max, but
   # Vibe's Mistral backend sends "none" for low, which the API rejects. The
