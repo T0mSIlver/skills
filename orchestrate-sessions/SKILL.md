@@ -93,8 +93,10 @@ main before deleting the parent branch, and clears the label.
     before using the shared resource and before `gh pr ready`";
   - reviewer order, who merges, "kill only your own PIDs".
 - **Greenlight.** A session asks before marking ready. Say go with the
-  reason, or wait with a time in UTC. A PR whose checks don't use the scarce
-  part of the resource (no inference on a shared GPU runner) can go by day.
+  reason, or wait with a time in UTC. Ask which lanes the head will run
+  before you say go: a lane that uses the scarce part of the resource waits
+  for its window unless a waiver sits in both the PR body and the head
+  commit message (a merge commit without it re-arms the lane).
 - **Handoffs before long waits.** A session that would wait hours (a night
   window, the owner's review) posts a handoff comment on its PR: exact
   commands, prepared commits per outcome, decision rules. Then you archive
@@ -159,6 +161,10 @@ main before deleting the parent branch, and clears the label.
   post Command + letter key codes (layout positions: on AZERTY Cmd+A is
   Cmd+Q), and a safety check that refused stays refused.
 - **Times** in UTC, with the owner's offset when it differs.
+- **Shared version numbers collide.** Parallel PRs that each bump the same
+  constant (a plugin or hook version with a history table) all pick "next".
+  Four PRs claimed the same plugin version in one evening. Assign the
+  numbers yourself in merge order and tell every session.
 - **Waivers.** Accept a lane waiver when the lane can't observe the change
   (its inputs are byte-identical) and the reason says so in the PR. Refuse it
   when the change touches what the lane exists to prove.
