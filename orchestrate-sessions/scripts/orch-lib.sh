@@ -16,8 +16,9 @@ fi
 : "${OPTIONAL_CHECKS:=}" "${LANE_STEPS:=}" "${WAIVER_PATTERN:=\[skip-[a-z-]*: [^]]*\]}"
 : "${BOARD_OWNER:=}" "${BOARD_NUMBER:=}" "${BOARD_ID:=}" "${BOARD_STATUS_FIELD:=}" "${BOARD_REVIEW_OPTION:=}"
 
-# checks_of <sha> <space-separated names>: "name=conclusion ..." for the latest run of each.
+# checks_of <sha> <space-separated names>: "name=conclusion ..." for the latest run of each
+# (highest id: a queued run has no start time yet, and must win over an older success).
 checks_of() {
   local re; re="^($(echo $2 | tr " " "|"))$"
-  gh api "repos/$REPO/commits/$1/check-runs?per_page=100" --jq "[.check_runs[]|select(.name|test(\"$re\"))|{n:.name,c:(.conclusion // .status),t:.started_at}]|group_by(.n)|map(max_by(.t))|map(\"\(.n)=\(.c)\")|join(\" \")"
+  gh api "repos/$REPO/commits/$1/check-runs?per_page=100" --jq "[.check_runs[]|select(.name|test(\"$re\"))|{n:.name,c:(.conclusion // .status),i:.id}]|group_by(.n)|map(max_by(.i))|map(\"\(.n)=\(.c)\")|join(\" \")"
 }
