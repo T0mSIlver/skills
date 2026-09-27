@@ -1,0 +1,11 @@
+#!/bin/bash
+# orch-runwait <run-id>...: exit when the first listed Actions run completes; print each run.
+. "$(dirname "$0")/orch-lib.sh"
+while :; do
+  for id in "$@"; do
+    case "$(gh api "repos/$REPO/actions/runs/$id" --jq .status)" in completed)
+      for j in "$@"; do echo "$j $(gh api "repos/$REPO/actions/runs/$j" --jq '"\(.head_branch) \(.status) \(.conclusion) \(.updated_at[11:16])Z"')"; done
+      exit 0;; esac
+  done
+  sleep 120
+done

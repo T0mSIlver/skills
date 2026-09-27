@@ -1,0 +1,11 @@
+#!/bin/bash
+# orch-wtclean <worktree-path> <pr>: CLEAN when the worktree has no changes and its HEAD
+# is the PR's head, so archiving its session loses nothing. Anything else prints CHECK.
+. "$(dirname "$0")/orch-lib.sh"
+W=$1; n=$2
+d=$(git -C "$W" status --porcelain | wc -l)
+h=$(git -C "$W" rev-parse HEAD)
+p=$(gh api "repos/$REPO/pulls/$n" --jq .head.sha)
+st=$(git -C "$W" stash list | wc -l)
+if [ "$h" = "$p" ] && [ "$d" = 0 ]; then r=CLEAN; else r=CHECK; fi
+echo "$W dirty=$d head=${h:0:8} pr=${p:0:8} $r (repo stash entries: $st, shared by all worktrees)"

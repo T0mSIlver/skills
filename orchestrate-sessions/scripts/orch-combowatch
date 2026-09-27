@@ -1,0 +1,18 @@
+#!/bin/bash
+# orch-combowatch <combo-pr>: wait until every COMBO_CHECK finished on its head; print them.
+# Exit 0 when all passed, 2 when one failed or 80 minutes passed.
+. "$(dirname "$0")/orch-lib.sh"
+n=$1
+for _ in $(seq 1 40); do
+  sha=$(gh api "repos/$REPO/pulls/$n" --jq .head.sha)
+  s=$(checks_of "$sha" "$COMBO_CHECKS")
+  done=1
+  for c in $COMBO_CHECKS; do case " $s " in *" $c="*) ;; *) done=0;; esac; done
+  echo "$s" | grep -qE "=(queued|in_progress|pending|waiting|requested)" && done=0
+  if [ $done = 1 ]; then
+    echo "#$n $s"
+    echo "$s" | tr " " "\n" | grep -vqE "=success$" && exit 2 || exit 0
+  fi
+  sleep 120
+done
+echo "#$n timeout"; exit 2

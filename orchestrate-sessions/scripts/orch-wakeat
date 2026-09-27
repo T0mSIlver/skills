@@ -1,0 +1,6 @@
+#!/bin/bash
+# orch-wakeat "YYYY-MM-DD HH:MM" | HH:MM  (UTC): exit at that time, to wake the scheduler.
+# Run with run_in_background; its exit notification is the wake-up. Needs no config.
+case "$1" in *-*) t=$(date -u -d "$1" +%s);; *) t=$(date -u -d "today $1" +%s);; esac
+while [ "$(date -u +%s)" -lt "$t" ]; do sleep 60; done
+echo "wake $1 UTC${2:+: $2}"

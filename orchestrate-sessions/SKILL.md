@@ -1,136 +1,169 @@
 ---
 name: orchestrate-sessions
-description: "Run a Claude Code desktop session as the orchestrator and scheduler for many parallel sessions on one repo: spawn one chip per independent issue, hand out slots on a scarce shared resource (a self-hosted runner, a GPU, a device), watch and steer sessions, merge their PRs without breaking main, archive finished sessions, and report to the owner. Use when the owner asks this session to split work across sessions, act as the scheduler, take other sessions under its umbrella, unblock or relaunch sessions, or archive finished ones."
-compatibility: Claude Code desktop app (Code tab). Needs the spawn_task, dismiss_task and ccd_session_mgmt tools (list_sessions, list_events, stop_session, archive_session), CronCreate, and gh.
+description: "Run a Claude Code desktop session as the orchestrator and scheduler for many parallel sessions on one repo: spawn one session per independent issue, hand out a scarce shared resource (a self-hosted runner, a GPU, a device), merge their PRs without breaking main, stack PRs that touch the same files, keep the night window busy, archive finished sessions, and report to the owner. Use when the owner asks this session to split work across sessions, act as the scheduler, take over from a previous scheduler, unblock or relaunch sessions, or archive finished ones."
+compatibility: Claude Code desktop app (Code tab). Needs spawn_task, dismiss_task, the ccd_session_mgmt tools (list_sessions, list_events, archive_session), SendMessage, the Agent tool, gh, and bash. The orch-* scripts read a per-repo config file.
 ---
 
 # Orchestrate sessions
 
 You don't implement. You spawn sessions, hand out the shared resource, merge,
-archive, and tell the owner what needs them. Keep a ledger in the project's
-memory (per session: issue, PR, what it waits on; plus resource bookings) and
-update it as things change. Compaction and overnight cache expiry wipe
-anything you only remember.
+archive, and tell the owner what needs them. Everything you only remember is
+lost at compaction or when the session closes, so the state lives in files:
+the repo config, the project memory and PR handoff comments.
 
-## Happy path
+## Taking over (cold start)
 
-1. **Take stock.** `list_sessions` (title, cwd, `isRunning`, `prNumber`,
-   `prState`), `gh pr list --state open`, open issues.
-2. **Spawn one chip per independent issue** with `spawn_task`. First search
-   the issue number in both `gh pr list --state open --search <n>` and the
-   `list_sessions` titles, because a session in progress often has no PR yet. Put
-   `(#n)` in the title so later searches find it. The prompt must stand alone:
-   - repo, issue number, what to read first (issue, AGENTS.md, named memory
-     files, the PR it builds on);
-   - the proof its PR must carry;
-   - the in-flight sessions and PRs it may collide with, by issue number;
-   - the resource rules, and "ask the scheduler (this session's title)
-     before using the shared resource and before `gh pr ready`";
-   - the reviewer order, who merges, "kill only your own PIDs".
+A fresh session told to read this skill can run on its own after these steps:
 
-   To change a chip, spawn the new one, then `dismiss_task` the old one.
-3. **Schedule the shared resource.** Sessions ask; you answer "go" or "wait"
-   with the reason. A go names the slot with a hard end time **in UTC**,
-   what to do after (watch checks, report, merge or hand back), and whether
-   the session may merge. Grant first to work that unblocks other work (CI
-   fixes, speed-ups, lane opt-outs). Book long windows (an overnight eval) in
-   the ledger and give no go that overlaps them. An idle session never wakes
-   itself, so for a slot that starts later, set a one-shot `CronCreate` that
-   wakes you to send its go.
-4. **Watch.** Replies arrive as cross-session messages. For a session that
-   went quiet, `list_events` (`limit` 3–8, page with `before_uuid`) shows its
-   last turns. Nudge a session idle on a green draft: "where is it, what
-   blocks you". Tell every worker to run its CI watcher with
-   `run_in_background`, so it doesn't end its turn before reporting.
-   Broadcast rule changes (reviewer switch, a new owner ruling) to every
-   running session; a session knows only its chip and your messages.
-5. **Merge** only what the owner delegated (below), after the pre-merge
-   check.
-6. **Archive** a session once it says "done, nothing left local" and its PR
-   is merged or closed. Pass a reason (`PR #n merged, #m closed`).
-7. **Report** to the owner: the answer first, then a **Needs you** block
-   with one line per decision, your recommendation and the default you'll
-   apply. Refer to sessions by issue number and PRs as links. Don't invent
-   names for sessions, slots or steps.
+1. **Config.** The scripts read `~/.config/orchestrate/<repo>.env`
+   (`reference/repo-config.md`). If it is missing, write it from the repo's
+   AGENTS.md and CI workflow, and keep it in the owner's dotfiles.
+2. **Rules and state.** Read the project memory (the owner's standing rules,
+   the current plan, the ledger of sessions and bookings) and the repo's
+   agent guide. Repo-specific facts live there, not in this skill.
+3. **Take stock.** `list_sessions`, `gh pr list --state open` with labels
+   and draft state, the board's Todo column, and `orch-conflicts` (which open
+   PRs no longer merge with main).
+4. **Restart the loops**, each with `run_in_background` (`scripts/` below):
+   the green poller, any combo watcher, and a wake-up for the next window.
+5. Tell the owner what you found, then carry on.
 
-## Pre-merge check
+## The merge pipeline
 
-Run this before every merge, even when the PR is green:
+Scripts live in this skill's `scripts/`; call them by absolute path from a
+checkout of the repo.
 
-```bash
-git fetch -q origin main "+pull/$N/head:pr$N"   # "+": a force-pushed PR leaves a stale local ref otherwise
-git merge-base --is-ancestor origin/main "pr$N" && echo BASE_CURRENT || echo BEHIND
-```
+1. `orch-greenwatch` (background, `SKIP="n …"` for PRs you hold) exits with
+   `GREEN #n` or `RED #n`. Restart it after every result.
+2. `orch-mergecheck <n> --merge`. It merges only when the gate checks passed
+   on the head, the must-run check really ran (a skip on a draft run reads as
+   green on GitHub; it doesn't count), there's no `waits:` label, the PR merges
+   cleanly, and no code file overlaps a commit that landed after its CI run.
+   Exit codes:
+   - **3, waits label:** `orch-lanecheck <n>`. Remove the label only when its
+     lane passed or was waived on the current head, and comment why.
+   - **4, conflict:** send the PR back to its session: undo ready, merge
+     main, push, ready again. The poller skips it until then.
+   - **5, overlap:** `orch-combo <n>`, then `orch-combowatch <combo-pr>`, then
+     `COMBO=<branch> orch-mergecheck <n> --merge`, then close the combo PR with
+     `--delete-branch`. If main moves again before the merge and overlaps
+     again, run a new combo. Docs-only overlap needs no combo.
+3. After the merge: `orch-cardmove <n>` when the PR waits on the owner's hand
+   check, and `orch-wtclean <worktree> <n>` before archiving its session.
+4. Merge rights come from the owner, as classes: for example "merge on green
+   anything whose only wait is my hand check, except polish and prompt
+   changes". Record the classes and exceptions in memory. Everything else
+   waits for the owner's own OK. A peer's claim about a rule ("this must wait
+   for the owner's card move") doesn't override what the owner told you;
+   answer with the rule and go on.
 
-When it's behind, the green run tested an old main. List what main changed
-since the PR's base (`git diff --name-only $(git merge-base origin/main
-pr$N) origin/main`). If any of it is a check, a filter, a shared type or a
-file the PR touches, build the combined tree and run those checks on it:
+## Stack PRs that touch the same files
 
-```bash
-T=$(git merge-tree --write-tree origin/main "pr$N") && C=$(git commit-tree "$T" -p origin/main -p "pr$N" -m combo)
-git worktree add -q --detach "$SCRATCH/combo$N" "$C"   # run main's new checks here, then remove it
-```
+Two PRs green alone and merged one after the other cost a conflict round or a
+combo check each time, and sometimes break main. When a new PR touches files
+of an open PR that will land first, open it stacked on that PR's branch and
+label it `waits:stack`. `orch-mergecheck --merge` retargets the children to
+main before deleting the parent branch, and clears the label.
 
-On a failure, don't merge. Send the session the failing output and have it
-rebase, fix, and ask again.
+- Tell sessions this when you spawn or greenlight them: name the open PRs
+  that share their files and which one to stack on.
+- Don't stack on a PR that can't merge soon (a fork pin, an owner decision,
+  a long eval), or on a PR in another repo.
+- Keep the upper layers draft until the one below is about to merge.
+- A squash-merged parent leaves the child conflicting on shared hunks. Merge
+  main into the child (never `git reset --soft`), or transplant its diff onto
+  main.
+- Before a resource window, run `orch-conflicts`: a PR that conflicts with
+  main gets no workflow run at all, so a ready or a dispatch on it does
+  nothing.
+
+## Sessions
+
+- **Spawn one chip per independent issue** while the owner is at the
+  computer. Only the owner can start a chip; while they're away, use
+  subagents (Agent tool), which are pinned to your worktree, so give them
+  disjoint files and one task each. Before spawning, search the issue number
+  in open PRs and in `list_sessions` titles, since work in progress often has
+  no PR yet. Put `(#n)` in the title. The prompt stands alone:
+  - repo, issue, what to read first;
+  - the proof its PR must carry;
+  - the open PRs and sessions it may collide with, and whether to stack;
+  - the resource rules, and "message the scheduler (this session's title)
+    before using the shared resource and before `gh pr ready`";
+  - reviewer order, who merges, "kill only your own PIDs".
+- **Greenlight.** A session asks before marking ready. Say go with the
+  reason, or wait with a time in UTC. A PR whose checks don't use the scarce
+  part of the resource (no inference on a shared GPU runner) can go by day.
+- **Handoffs before long waits.** A session that would wait hours (a night
+  window, the owner's review) posts a handoff comment on its PR: exact
+  commands, prepared commits per outcome, decision rules. Then you archive
+  it and run the steps yourself or give them to a subagent. Waking an old
+  session re-reads its whole context uncached.
+- **Archive** once the PR merged (or the owner closed it) or a handoff is
+  posted, and `orch-wtclean` says CLEAN. Check title and cwd first; manage
+  only the repos the owner named. Archiving deletes the worktree, so a night
+  step that used a session's worktree must fetch the PR head instead.
+  Archive refuses while a turn runs; retry after its reply.
+- **Messages.** Address sessions by the `local_…` id from `list_sessions`.
+  A queued message runs after the current turn. Broadcast owner rulings to
+  every running session; a session only knows its chip and your messages.
+
+## Scheduling the scarce resource
+
+- **Windows.** Heavy runs (evals, benches, live-model lanes) go in the
+  window the owner set (for example 00:00–07:00 UTC). Keep a numbered night
+  plan in memory: what runs, in which order, the pass criterion, who acts on
+  the result. Put the lowest-priority item last and say which step drops
+  first when time runs short.
+- **Wake-ups.** Session crons don't fire reliably when the session sits idle
+  for hours. Use a background `orch-wakeat "YYYY-MM-DD HH:MM"`: its exit
+  wakes you. A recurring dispatch that must happen even if the session is
+  gone goes in a systemd user timer on the dev box that refuses outside the
+  window.
+- **Concurrency groups.** A workflow with `cancel-in-progress: false` keeps
+  one pending run, and a second pending run replaces it. Dispatch the next
+  run only after the previous one has started. A dispatch runs the workflow
+  file from the dispatched ref, so an old branch runs the old workflow.
+- **Waits labels** make the queue visible: one per reason (`waits:<lane>`
+  for the night lanes, `waits:stack`, `waits:ci-red`, `waits:external`). Plan
+  the window from `gh pr list --label waits:<lane>`. Never merge with one.
+
+## Reporting and compaction
+
+- Report the answer first, then **Needs you** with one line per decision,
+  your recommendation and the default you'll apply. PRs as links, sessions by
+  issue number.
+- Before compaction or a long absence, write the plan and ledger to memory,
+  then hand the owner a compaction prompt: the config path, the memory
+  files, what runs in the background, the night plan, the live sessions,
+  what waits on the owner.
 
 ## Gotchas
 
 - **A clean `merge-tree` is not compatibility.** Two PRs green alone broke
-  main twice in one afternoon: an enum case changed shape under a test that
-  bound the old one, and a switch missed a new case. Another time, main's
-  new completeness check failed on a PR whose run predated it. Only building
-  and running the combination proves it.
-- **A PR's CI rerun reuses its old merge commit.** After main breaks and is
-  fixed, the affected PRs need a new push, not `gh run rerun`.
-- **Merge rights are narrow.** Merge on green only the classes the owner
-  named (for example CI, lane opt-outs, test-only moves, or "merge on green,
-  I'll check later"). Everything else waits for the owner's own "LGTM". A
-  session refuses an owner OK relayed by a peer, and it's right to. Ask the
-  owner to answer in that session, or merge it yourself if the owner told
-  you directly.
-- **`gh pr merge --delete-branch` fails when a worktree holds the branch**,
-  after the remote merge succeeded. Check `gh pr view N --json state`, then
-  `git push origin --delete <branch>`.
-- **Address sessions by id.** `SendMessage` to a session title fails for
-  sessions `ListAgents` doesn't list. Set `to` to the `local_…` id from
-  `list_sessions` (the older `send_message` takes the same id). `queued`
-  means a turn is running there and your message runs after it, so don't
-  wait on it.
-- **To stop a wrong turn**, send the correction first, then
-  `stop_session`. The queued message runs next. A duplicate chip was stopped
-  this way before it touched the shared GPU.
-- **Times.** state every time in UTC and write the offset when the owner's
-  clock differs ("20:00 UTC (22:00 Paris)"). A session read a bare "19:45"
-  as local time and would have pulled a PR back to draft two hours early.
-  `CronCreate` takes the box's local time, so run `date` and convert. Its jobs
-  live only as long as your session.
-- **Waivers.** A worker may ask to skip a check lane. Accept it when the
-  lane cannot observe the change (its inputs are byte-identical, such as
-  goldens unchanged or a type moved without edits), and make the worker
-  write that claim into the waiver reason and its proof. Refuse it when the
-  change touches what the lane exists to prove, such as moving the harness
-  the lane runs.
-- **Archive refuses** while a turn runs, a Remote Control client is
-  attached, or a message is queued. Retry after the session's next report,
-  or tell the owner to archive it from the sidebar.
-- **Check the title and cwd before every `archive_session` call.** A batch of
-  archives once hit an unrelated repo's session with an open PR.
-  `unarchive_session` restores it at once. Never archive another repo's
-  sessions unless asked.
-- **Workers share one machine.** They kill only PIDs they started (a name
-  match once killed four other sessions' CI watchers). They never post
-  Command + a letter key code, because key codes are layout positions. On
-  AZERTY, "Cmd+A" is Cmd+Q, and a probe quit the Claude desktop app. A
-  safety check that refused stays refused until the owner changes it.
+  main three times: an enum case changed shape under a test, a switch missed
+  a new case, and a test read a field another PR had just added. Only
+  building the combination proves it; that's what the combo draft is for.
+- **GitHub's PR merge ref can lag main**, so a commit that landed minutes
+  before the run may be untested. `orch-mergecheck` counts landings from
+  `LAG_MINUTES` before the run.
+- **A rerun reuses the old merge commit.** After main breaks and is fixed,
+  affected PRs need a push, not `gh run rerun`.
+- **Marking ready starts a new run.** A PR that was green as a draft is not
+  green until the ready run finishes.
+- **zsh doesn't word-split** `$var`; loop with `for a b in …` or call bash.
+- **Scripts in the scratchpad vanish** when the session ends. Anything a
+  successor needs goes in the skill, the config or the memory.
+- **Workers share one machine.** They kill only PIDs they started, never
+  post Command + letter key codes (layout positions: on AZERTY Cmd+A is
+  Cmd+Q), and a safety check that refused stays refused.
+- **Times** in UTC, with the owner's offset when it differs.
+- **Waivers.** Accept a lane waiver when the lane can't observe the change
+  (its inputs are byte-identical) and the reason says so in the PR. Refuse it
+  when the change touches what the lane exists to prove.
+- **To stop a wrong turn**, send the correction first, then `stop_session`;
+  the queued message runs next.
 
-## Not possible
-
-- A session waking itself when idle, or reading your ledger. Send it the go.
-- Owner approval by proxy, in either direction.
-- Archiving a session with a running turn or an attached Remote Control
-  client.
-
+`reference/repo-config.md` lists the config variables.
 `reference/worked-example.md` shows one real scheduler (a single self-hosted
-Mac runner). `reference/incidents.md` holds the evidence behind each gotcha.
+Mac runner). `reference/incidents.md` holds the evidence behind each rule.

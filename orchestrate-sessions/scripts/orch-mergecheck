@@ -1,0 +1,52 @@
+#!/bin/bash
+# orch-mergecheck <pr> [--merge]
+# Before merging a ready PR: gate checks green (latest run of each), MUST_RUN checks
+# really ran, no waits label, merges cleanly, and no CODE_PATHS overlap with commits
+# that landed on BASE after (LAG_MINUTES before) its CI run. With COMBO=<branch> after a
+# green orch-combo, the combo's first parent replaces the run time.
+# --merge merges, retargets PRs stacked on it (clearing STACK_LABEL) and deletes the branch.
+# Exit: 0 ok/merged, 1 fetch, 2 not green, 3 waits label, 4 conflict, 5 overlap, 6 merge failed.
+. "$(dirname "$0")/orch-lib.sh"
+n=$1; doit=${2:-}
+git fetch -q origin "$BASE" "+pull/$n/head:pr$n" || exit 1
+sha=$(git rev-parse "pr$n")
+checks=$(checks_of "$sha" "$GATE_CHECKS $OPTIONAL_CHECKS")
+labels=$(gh api "repos/$REPO/pulls/$n" --jq '[.labels[].name]|join(",")')
+echo "#$n $checks labels=[$labels]"
+for c in $MUST_RUN_CHECKS; do
+  case " $checks " in *" $c=success "*) ;; *) echo "$c NOT PASSED (a skip does not count)"; exit 2;; esac
+done
+for c in $GATE_CHECKS; do case " $checks " in *" $c="*) ;; *) echo "$c MISSING"; exit 2;; esac; done
+bad=$(echo "$checks" | tr " " "\n" | grep -vE "=(success|skipped|neutral)$" | grep -c .)
+[ "$bad" = 0 ] || { echo "NOT GREEN"; exit 2; }
+case ",$labels," in *",$WAITS_PREFIX"*) echo "HAS WAITS LABEL"; exit 3;; esac
+git merge-tree --write-tree "origin/$BASE" "pr$n" >/dev/null || { echo "CONFLICT with $BASE"; exit 4; }
+mine=$(git diff --name-only "$(git merge-base "origin/$BASE" "pr$n")" "pr$n" | sort -u)
+if [ -n "${COMBO:-}" ]; then
+  git fetch -q origin "+refs/heads/$COMBO:combo$n" || exit 1
+  [ "$(git rev-parse "combo$n^2")" = "$sha" ] || { echo "COMBO tested another head"; exit 2; }
+  cs=$(checks_of "$(git rev-parse "combo$n")" "$COMBO_CHECKS")
+  echo "$cs" | tr " " "\n" | grep -vqE "=success$" && { echo "COMBO not green: $cs"; exit 2; }
+  since=$(git log -1 --format=%cI "combo$n^1"); echo "combo ok on $(git rev-parse --short "combo$n^1")"
+  landed=$(git diff --name-only "combo$n^1" "origin/$BASE" | sort -u)
+else
+  created=$(gh api "repos/$REPO/actions/runs?head_sha=$sha&per_page=30" --jq "[.workflow_runs[]|select(.name==\"$CI_WORKFLOW_NAME\")|.created_at]|max")
+  # The PR's merge ref can lag BASE, so a commit that landed just before the run may be untested.
+  since=$(date -u -d "$created - $LAG_MINUTES minutes" +%Y-%m-%dT%H:%M:%SZ)
+  landed=$(for c in $(git log --format=%h "origin/$BASE" ^"pr$n" --since="$since"); do git diff --name-only "$c~1" "$c"; done | sort -u)
+fi
+overlap=$(comm -12 <(echo "$mine") <(echo "$landed"))
+echo "since=$since landed: $(git log --format=%h "origin/$BASE" ^"pr$n" --since="$since" | tr '\n' ' ')"
+echo "overlap: ${overlap:-none}"
+code=$(echo "$overlap" | grep -E "$CODE_PATHS" || true)
+[ -z "$code" ] || { echo "CODE OVERLAP: run orch-combo $n"; exit 5; }
+[ "$doit" = --merge ] || { echo "OK to merge"; exit 0; }
+B=$(gh api "repos/$REPO/pulls/$n" --jq .head.ref)
+# Retarget stacked PRs first: deleting a base branch closes its children for good.
+kids=$(gh api "repos/$REPO/pulls?state=open&base=$B" --jq '.[].number')
+gh api -X PUT "repos/$REPO/pulls/$n/merge" -f merge_method="$MERGE_METHOD" --jq '"merged=\(.merged) \(.sha[0:8])"' || exit 6
+for s in $kids; do
+  gh api -X PATCH "repos/$REPO/pulls/$s" -f base="$BASE" --jq '"retargeted #\(.number)"'
+  gh api -X DELETE "repos/$REPO/issues/$s/labels/$STACK_LABEL" >/dev/null 2>&1 && echo "cleared $STACK_LABEL #$s"
+done
+git push -q origin --delete "$B" && echo "deleted $B"

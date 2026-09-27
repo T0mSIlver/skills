@@ -1,0 +1,15 @@
+#!/bin/bash
+# orch-combo <pr>: push BASE merged with the PR as combo/<pr>-on-<basesha> and open a
+# draft PR for it, so hosted CI tests the combination. Prints the combo PR's URL.
+# Then: orch-combowatch <combo-pr>, COMBO=<branch> orch-mergecheck <pr> --merge,
+# and close the combo PR with --delete-branch.
+. "$(dirname "$0")/orch-lib.sh"
+set -e
+n=$1
+git fetch -q origin "$BASE" "+pull/$n/head:pr$n"
+m=$(git rev-parse --short=8 "origin/$BASE")
+tree=$(git merge-tree --write-tree "origin/$BASE" "pr$n")
+c=$(git commit-tree "$tree" -p "origin/$BASE" -p "pr$n" -m "combo: #$n on $BASE $m")
+B="combo/$n-on-$m"
+git push -q origin "$c:refs/heads/$B"
+gh pr create --repo "$REPO" --draft --base "$BASE" --head "$B" --title "combo check: #$n on $BASE $m (do not merge)" --body "Hosted-only check of #$n merged with $BASE $m. Closed after the result."
