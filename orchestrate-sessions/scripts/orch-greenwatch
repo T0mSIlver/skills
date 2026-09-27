@@ -13,6 +13,8 @@ while [ "$(date +%s)" -lt "$end" ]; do
     ok=1
     for c in $GATE_CHECKS; do case " $s " in *" $c=success "*|*" $c=skipped "*|*" $c=neutral "*) ;; *) ok=0;; esac; done
     for c in $MUST_RUN_CHECKS; do case " $s " in *" $c=success "*) ;; *) ok=0;; esac; done
+    # An optional check still running holds the merge too (mergecheck would refuse it).
+    echo "$s" | tr " " "\n" | grep -qvE "=(success|skipped|neutral)$" && ok=0
     [ $ok = 1 ] && echo "GREEN #$n"
   done)
   [ -n "$out" ] && { echo "$out"; exit 0; }

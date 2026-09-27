@@ -159,6 +159,10 @@ main before deleting the parent branch, and clears the label.
   post Command + letter key codes (layout positions: on AZERTY Cmd+A is
   Cmd+Q), and a safety check that refused stays refused.
 - **Times** in UTC, with the owner's offset when it differs.
+- **Shared version numbers collide.** Parallel PRs that each bump the same
+  constant (a plugin or hook version with a history table) all pick "next".
+  Four PRs claimed the same plugin version in one evening. Assign the
+  numbers yourself in merge order and tell every session.
 - **Waivers.** Accept a lane waiver when the lane can't observe the change
   (its inputs are byte-identical) and the reason says so in the PR. Refuse it
   when the change touches what the lane exists to prove.
