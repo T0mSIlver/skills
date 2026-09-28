@@ -1,0 +1,42 @@
+#!/bin/bash
+# orch-queue <dir>: run the executables in <dir>/pending/ one at a time, in name order, while
+# the metered quota has room, so no quota window goes unused. Each task moves to done/ or
+# failed/; the log is <dir>/queue.log. Exits with "QUEUE EMPTY" when pending/ is empty: that
+# exit is the scheduler's cue to add tasks. Run it with run_in_background. Needs no config.
+# QUOTA_CMD prints "<window-used-%> <weekly-used-%> <window-resets-at-epoch> <credits>"
+# (default: orch-codexquota). The queue sleeps through a spent window, and at weekly 100%
+# runs QUOTA_SPEND_CMD (default: orch-codexquota --spend) while credits remain.
+# QUOTA_CMD=none runs the tasks back to back.
+Q=${1:?usage: orch-queue <dir>}
+here=$(dirname "$0")
+QUOTA_CMD=${QUOTA_CMD:-$here/orch-codexquota}
+QUOTA_SPEND_CMD=${QUOTA_SPEND_CMD:-$here/orch-codexquota --spend}
+mkdir -p "$Q/pending" "$Q/done" "$Q/failed"
+exec 9>"$Q/.lock"; flock -n 9 || { echo "another orch-queue runs on $Q"; exit 1; }
+log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$Q/queue.log"; }
+full() { [ "${1%.*}" -ge 100 ] 2>/dev/null; }
+while :; do
+  t=$(find "$Q/pending" -maxdepth 1 -type f -perm -u+x -printf '%f\n' | sort | head -1)
+  [ -n "$t" ] || { log "QUEUE EMPTY"; exit 0; }
+  if [ "$QUOTA_CMD" != none ]; then
+    read -r h w at c < <($QUOTA_CMD 2>/dev/null)
+    case "$h$w" in ''|*None*|*null*) log "quota unreadable; retry in 5 min"; sleep 300; continue;; esac
+    if full "$w"; then
+      [ "${c:-0}" -gt 0 ] 2>/dev/null && { log "weekly spent; spending a credit: $($QUOTA_SPEND_CMD 2>&1)"; continue; }
+      log "weekly spent, no credit; retry in 1 h"; sleep 3600; continue
+    fi
+    if full "$h"; then
+      s=$(( ${at:-0} - $(date +%s) + 60 )) 2>/dev/null || s=300
+      [ "$s" -ge 60 ] || s=60
+      log "window spent; sleeping ${s}s until it reopens"; sleep "$s"; continue
+    fi
+  fi
+  log "run $t (window=${h:-?}% weekly=${w:-?}%)"
+  if "$Q/pending/$t"; then mv "$Q/pending/$t" "$Q/done/"; log "done $t"; continue; fi
+  # A task that ran out of quota goes back in the queue; any other failure is final.
+  if [ "$QUOTA_CMD" != none ]; then
+    read -r h w _ _ < <($QUOTA_CMD 2>/dev/null)
+    if full "$h" || full "$w"; then log "$t hit the limit; requeued"; continue; fi
+  fi
+  mv "$Q/pending/$t" "$Q/failed/"; log "FAILED $t"
+done

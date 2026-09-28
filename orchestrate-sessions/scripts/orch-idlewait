@@ -1,0 +1,19 @@
+#!/bin/bash
+# orch-idlewait: exit once no RESOURCE_JOBS job (default: MUST_RUN_CHECKS) is queued or
+# running in REPO, so the scarce resource is free for the next step. Polls every 60 s.
+. "$(dirname "$0")/orch-lib.sh"
+jobs=${RESOURCE_JOBS:-$MUST_RUN_CHECKS}
+[ -n "$jobs" ] || { echo "set RESOURCE_JOBS in the config"; exit 1; }
+# A matrix job is named "<job> (<values>)".
+re="^($(echo "$jobs" | tr ' ' '|'))( \\\\(|$)"
+while :; do
+  busy=""
+  for s in queued in_progress waiting pending; do
+    for id in $(gh api "repos/$REPO/actions/runs?status=$s&per_page=100" --jq '.workflow_runs[].id'); do
+      j=$(gh api "repos/$REPO/actions/runs/$id/jobs" --jq "[.jobs[]|select((.name|test(\"$re\")) and .status!=\"completed\")|.name]|join(\",\")")
+      [ -n "$j" ] && busy="$busy $id:$j"
+    done
+  done
+  [ -z "$busy" ] && { echo "idle $(date -u +%H:%M)Z"; exit 0; }
+  sleep 60
+done
