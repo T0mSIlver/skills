@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Sourced by the orch-* scripts. Loads the repo's scheduler config.
 # Config: $ORCH_CONFIG, else ~/.config/orchestrate/<repo-name>.env for the repo
 # of the current directory. See reference/repo-config.md for every variable.
