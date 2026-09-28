@@ -10,7 +10,7 @@ while :; do
   busy=""
   for s in queued in_progress waiting pending; do
     for id in $(gh api "repos/$REPO/actions/runs?status=$s&per_page=100" --jq '.workflow_runs[].id'); do
-      j=$(gh api "repos/$REPO/actions/runs/$id/jobs" --jq "[.jobs[]|select((.name|test(\"$re\")) and .status!=\"completed\")|.name]|join(\",\")")
+      j=$(gh api "repos/$REPO/actions/runs/$id/jobs?per_page=100" --jq "[.jobs[]|select((.name|test(\"$re\")) and .status!=\"completed\")|.name]|join(\",\")")
       [ -n "$j" ] && busy="$busy $id:$j"
     done
   done
