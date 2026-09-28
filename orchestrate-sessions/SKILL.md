@@ -105,9 +105,9 @@ deletes a session's worktree, so a night step fetches the PR head instead.
 - Every change gets a cross-vendor review (`cross-review`); data-safety and
   trust-boundary PRs get two vendors at high effort.
 - **Metered review quota is a resource too.** Keep every window busy with
-  the strongest model on reviews and audits (the `quota` skill reads limits
-  and spends reset credits). A PR waiting on that review carries
-  `waits:deep-review`.
+  the strongest model on reviews and audits: queue them for `quota-queue`
+  in the background (the `quota` skill; `codex-limits` reads and spends
+  Codex limits). A PR waiting on that review carries `waits:deep-review`.
 - **Audits** of a bug class (data loss, dead code): two vendors read main in
   parallel, then one tracking issue, a sub-issue per finding, and one
   session per sub-issue.
