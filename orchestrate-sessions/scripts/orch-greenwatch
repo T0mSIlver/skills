@@ -1,13 +1,15 @@
 #!/bin/bash
 # orch-greenwatch: exits with "GREEN #n" when a ready PR has every GATE_CHECK passing
 # (MUST_RUN checks really run), or "RED #n: ..." when one fails. Polls every POLL_SECONDS
-# for up to 3 hours. SKIP="n n": PRs to ignore (held for a combo check or a known red).
-# Run it with run_in_background and restart it after each result.
+# for up to 3 hours. SKIP="n n": PRs to ignore (held for a combo check or a known red);
+# commas and "#" are accepted too. Run it with run_in_background; restart it after each result.
 . "$(dirname "$0")/orch-lib.sh"
+SKIP=$(echo "${SKIP:-}" | tr ',#' '  ')
+for n in $SKIP; do case "$n" in *[!0-9]*) echo "SKIP holds \"$n\", not a PR number"; exit 1;; esac; done
 end=$(( $(date +%s) + 3*3600 ))
 while [ "$(date +%s)" -lt "$end" ]; do
   out=$(gh api "repos/$REPO/pulls?state=open&per_page=100" --jq '.[]|select(.draft==false)|"\(.number) \(.head.sha)"' | while read -r n sha; do
-    case " ${SKIP:-} " in *" $n "*) continue;; esac
+    case " $SKIP " in *" $n "*) continue;; esac
     s=$(checks_of "$sha" "$GATE_CHECKS $OPTIONAL_CHECKS" 2>/dev/null)
     case " $s " in *=failure*|*=cancelled*|*=timed_out*) echo "RED #$n: $s"; continue;; esac
     ok=1

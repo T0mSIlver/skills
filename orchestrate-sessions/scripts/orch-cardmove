@@ -11,5 +11,11 @@ id=$(list ".items[]|select(.content.number==$n and .content.repository==\"$REPO\
 [ -n "$id" ] || { echo "#$n no card"; exit 1; }
 sleep 30
 gh project item-edit --project-id "$BOARD_ID" --id "$id" --field-id "$BOARD_STATUS_FIELD" --single-select-option-id "$opt" --format json --jq .id >/dev/null
-sleep 20
-echo "#$n $(list ".items[]|select(.id==\"$id\")|.status")"
+# The item list lags the edit, and the board's own automation can still move the card:
+# read it back until a status shows, and say so when none does.
+for _ in 1 2 3 4; do
+  sleep 20
+  st=$(list ".items[]|select(.id==\"$id\")|.status // empty")
+  [ -n "$st" ] && { echo "#$n $st"; exit 0; }
+done
+echo "#$n status unreadable; check the card"; exit 1
