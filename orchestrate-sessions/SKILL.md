@@ -16,7 +16,7 @@ and PR handoff comments.
 and CI workflow, and keep it in the owner's dotfiles), then the project
 memory and the repo's agent guide. Take stock with `list_sessions`,
 `gh pr list --state open` (labels, draft state) and `orch-conflicts`. Restart
-the background loops: green poller, combo watcher, quota queue, next wake-up.
+the background loops: green poller, combo watcher, next wake-up.
 
 ## The merge pipeline
 
@@ -104,11 +104,10 @@ deletes a session's worktree, so a night step fetches the PR head instead.
 
 - Every change gets a cross-vendor review (`cross-review`); data-safety and
   trust-boundary PRs get two vendors at high effort.
-- **Metered review quota is a resource too.** Fill every window with the
-  strongest model; spend reset credits only once the weekly limit is gone.
-  Run review and audit tasks through `orch-queue <dir>` in the background
-  (`reference/quota-queue.md`); "QUEUE EMPTY" is your cue to add work. A PR
-  waiting on that review carries `waits:deep-review`.
+- **Metered review quota is a resource too.** Keep every window busy with
+  the strongest model on reviews and audits (the `quota` skill reads limits
+  and spends reset credits). A PR waiting on that review carries
+  `waits:deep-review`.
 - **Audits** of a bug class (data loss, dead code): two vendors read main in
   parallel, then one tracking issue, a sub-issue per finding, and one
   session per sub-issue.
