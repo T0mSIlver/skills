@@ -22,7 +22,12 @@ while :; do
     read -r h w at c < <($QUOTA_CMD 2>/dev/null)
     case "$h$w" in ''|*None*|*null*) log "quota unreadable; retry in 5 min"; sleep 300; continue;; esac
     if full "$w"; then
-      [ "${c:-0}" -gt 0 ] 2>/dev/null && { log "weekly spent; spending a credit: $($QUOTA_SPEND_CMD 2>&1)"; continue; }
+      if [ "${c:-0}" -gt 0 ] 2>/dev/null; then
+        out=$($QUOTA_SPEND_CMD 2>&1); log "weekly spent; credit spend: $out"
+        # Anything but "reset" left the limit in place; don't spend again at once.
+        [ "$out" = reset ] && sleep 60 || sleep 3600
+        continue
+      fi
       log "weekly spent, no credit; retry in 1 h"; sleep 3600; continue
     fi
     if full "$h"; then
@@ -32,11 +37,15 @@ while :; do
     fi
   fi
   log "run $t (window=${h:-?}% weekly=${w:-?}%)"
-  if "$Q/pending/$t"; then mv "$Q/pending/$t" "$Q/done/"; log "done $t"; continue; fi
-  # A task that ran out of quota goes back in the queue; any other failure is final.
+  if "$Q/pending/$t"; then mv "$Q/pending/$t" "$Q/done/"; rm -f "$Q/.tries-$t"; log "done $t"; continue; fi
+  # A task that ran out of quota goes back in the queue, twice at most: a task that
+  # fails for its own reason while the window reads full would otherwise loop forever.
   if [ "$QUOTA_CMD" != none ]; then
     read -r h w _ _ < <($QUOTA_CMD 2>/dev/null)
-    if full "$h" || full "$w"; then log "$t hit the limit; requeued"; continue; fi
+    n=$(( $(cat "$Q/.tries-$t" 2>/dev/null || echo 0) + 1 ))
+    if { full "$h" || full "$w"; } && [ "$n" -le 2 ]; then
+      echo "$n" > "$Q/.tries-$t"; log "$t hit the limit; requeued ($n/2)"; continue
+    fi
   fi
-  mv "$Q/pending/$t" "$Q/failed/"; log "FAILED $t"
+  mv "$Q/pending/$t" "$Q/failed/"; rm -f "$Q/.tries-$t"; log "FAILED $t"
 done
