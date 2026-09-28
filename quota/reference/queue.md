@@ -6,8 +6,8 @@ audits on the strongest model.
 - Tasks are executables in `<dir>/pending/`, run in name order (`10-…`,
   `20-…`). Each writes its own result, for example to `<dir>/results/`.
   A task that exits 0 moves to `done/`, any other to `failed/`.
-- A task that fails while the window or the weekly limit reads 100% goes
-  back in the queue, twice at most, so a task that fails for its own reason
+- A task that fails while the window or the weekly limit reads 100%, or
+  while the quota can't be read, goes back in the queue, twice at most, so a task that fails for its own reason
   can't loop.
 - After a credit spend that printed anything but `reset`, it waits an hour
   before trying again.

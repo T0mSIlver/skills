@@ -44,8 +44,10 @@ while :; do
   if [ "$QUOTA_CMD" != none ]; then
     read -r h w _ _ < <($QUOTA_CMD 2>/dev/null)
     n=$(( $(cat "$Q/.tries-$t" 2>/dev/null || echo 0) + 1 ))
-    if { full "$h" || full "$w"; } && [ "$n" -le 2 ]; then
-      echo "$n" > "$Q/.tries-$t"; log "$t hit the limit; requeued ($n/2)"; continue
+    # An unreadable quota may hide a spent window, so it counts as a limit hit.
+    case "$h$w" in ''|*None*|*null*) why="quota unreadable";; *) why="hit the limit";; esac
+    if { [ "$why" = "quota unreadable" ] || full "$h" || full "$w"; } && [ "$n" -le 2 ]; then
+      echo "$n" > "$Q/.tries-$t"; log "$t failed, $why; requeued ($n/2)"; continue
     fi
   fi
   mv "$Q/pending/$t" "$Q/failed/"; rm -f "$Q/.tries-$t"; log "FAILED $t"
