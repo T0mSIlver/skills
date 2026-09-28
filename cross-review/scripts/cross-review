@@ -17,6 +17,10 @@
 # A reviewer that reaches the timeout is stopped, not replaced: its partial
 # review is printed and saved, and --continue resumes the same session.
 #
+# The script derives the verdict: "patch is incorrect" when a finding in the
+# diff has priority 0 or 1. An answer without valid findings gets one retry in
+# the same session, told what failed.
+#
 # Exit 0: review complete, findings in the printed summary (possibly none).
 # Exit 2: review incomplete (empty or invalid output, or a crash). Not a pass.
 # Exit 3: no reviewer has quota headroom left.
@@ -25,7 +29,7 @@
 set -euo pipefail
 
 die() { echo "cross-review: $*" >&2; exit "${code:-1}"; }
-usage() { sed -n '5,24p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '5,28p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
 brief="" base="" since="" full=0 vendor=auto effort="" timeout_s="" cont=""
 while [ $# -gt 0 ]; do
@@ -79,11 +83,30 @@ codex_ok() {
 
 # Each attempt (the first run, then each --continue) logs to its own files.
 log() { if [ "$attempt" = 1 ]; then echo "$run/$1.$2"; else echo "$run/$1-$attempt.$2"; fi; }
-# A reviewer command's status: 4 when the timeout stopped it.
+# A reviewer command's status: 4 when the timeout stopped it. validate
+# returns 3 for an answer without valid findings.
 status() { case $1 in 0) return 0 ;; 124) return 4 ;; *) return 1 ;; esac; }
 resume_prompt="You ran out of time before answering. Continue the review from where you
 stopped, without repeating work already done, then answer with the JSON object
 the first message specifies."
+
+# Run one reviewer. An invalid answer gets one retry in the same session,
+# with the reason; a second invalid answer is a failed run.
+review() {
+  local v=$1 rc=0
+  "run_$v" || rc=$?
+  [ "$rc" = 3 ] || return "$rc"
+  [ -n "$session" ] || return 1
+  echo "cross-review: asking $v once to fix its answer" >&2
+  attempt=$((attempt + 1)) rc=0
+  local resume_prompt
+  resume_prompt="Your answer failed validation: $(cat "$run/invalid")
+Answer again with only the JSON object the first message specifies. Keep your
+findings; don't review again."
+  "run_$v" || rc=$?
+  [ "$rc" = 3 ] && return 1
+  return "$rc"
+}
 
 run_glm() {
   mkdir -p "$tree/.opencode/agents"
@@ -187,31 +210,48 @@ import json, re, sys, pathlib
 raw = pathlib.Path(sys.argv[1]).read_text()
 run = pathlib.Path(sys.argv[2])
 def bad(msg):
+    # The caller sends the reason back to the reviewer.
+    (run / "invalid").write_text(msg)
     print(f"cross-review: invalid reviewer output: {msg}", file=sys.stderr)
-    sys.exit(1)
+    sys.exit(3)
 # Reviewers may write prose, braces included, before the JSON: take the last
-# object in the text that carries a verdict.
+# object in the text that carries findings.
 decoder, data = json.JSONDecoder(), None
 for i in (m.start() for m in re.finditer(r"\{", raw)):
     try:
         obj, _ = decoder.raw_decode(raw, i)
     except ValueError:
         continue
-    if isinstance(obj, dict) and "overall_correctness" in obj:
+    if isinstance(obj, dict) and "findings" in obj:
         data = obj
 if data is None:
-    bad("no JSON object with overall_correctness")
-verdict = data.get("overall_correctness")
-# Reviewers paraphrase the verdict ("patch is not correct").
-if verdict == "patch is not correct":
-    verdict = "patch is incorrect"
-findings = data.get("findings")
-if verdict not in ("patch is correct", "patch is incorrect") or not isinstance(findings, list):
-    bad("missing verdict or findings")
-for f in findings:
-    if not (isinstance(f, dict) and isinstance(f.get("file"), str) and isinstance(f.get("title"), str)
-            and isinstance(f.get("line_start"), int) and isinstance(f.get("line_end", f.get("line_start")), int)):
-        bad(f"malformed finding: {f!r}"[:300])
+    bad('no JSON object with a "findings" key')
+findings = data["findings"]
+if not isinstance(findings, list):
+    bad('"findings" must be a list')
+def is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+for n, f in enumerate(findings):
+    where = f"findings[{n}]"
+    if not isinstance(f, dict):
+        bad(f"{where} must be an object")
+    for k in ("title", "body", "file"):
+        if not isinstance(f.get(k), str) or not f[k].strip():
+            bad(f"{where}.{k} must be a non-empty string")
+    if not is_int(f.get("priority")) or not 0 <= f["priority"] <= 3:
+        bad(f"{where}.priority must be an integer from 0 to 3, got {f.get('priority')!r}"[:300])
+    for k in ("line_start", "line_end"):
+        if not is_int(f.get(k)) or f[k] < 1:
+            bad(f"{where}.{k} must be a positive integer, got {f.get(k)!r}"[:300])
+    if f["line_end"] < f["line_start"]:
+        bad(f"{where}.line_end is before line_start")
+    # Confidence only orders the findings.
+    if not isinstance(f.get("confidence"), (int, float)) or isinstance(f.get("confidence"), bool):
+        f["confidence"] = None
+# The reviewer's own verdict, if it still sends one, is ignored: reviewers
+# word it freely ("patch has issues").
+explanation = data.get("overall_explanation")
+explanation = explanation if isinstance(explanation, str) else ""
 def hunks(name):
     """New-side line ranges of each file's hunks in a patch of the run."""
     out, cur, path = {}, None, run / name
@@ -227,7 +267,7 @@ def hunks(name):
                 out.setdefault(cur, []).append((a, a + max(n, 1) - 1))
     return out
 def overlaps(h, f):
-    lo, hi = f["line_start"], f.get("line_end", f["line_start"])
+    lo, hi = f["line_start"], f["line_end"]
     return any(a <= hi and lo <= b for a, b in h.get(f["file"], []))
 # In a follow-up review, an urgent finding elsewhere in the branch's change
 # is an earlier finding left unfixed.
@@ -237,14 +277,16 @@ kept, dropped = [], []
 for f in findings:
     f["file"] = f["file"].removeprefix(prefix).removeprefix("./")
     f["title"] = re.sub(r"^\[P\d\]\s*", "", f["title"])
-    inside = overlaps(new, f) or (f.get("priority", 3) <= 1 and overlaps(branch, f))
+    inside = overlaps(new, f) or (f["priority"] <= 1 and overlaps(branch, f))
     (kept if inside else dropped).append(f)
-kept.sort(key=lambda f: (f.get("priority", 3), -f.get("confidence", 0)))
+kept.sort(key=lambda f: (f["priority"], -(f.get("confidence") or 0)))
+# Findings outside the diff don't count against the patch.
+verdict = "patch is incorrect" if any(f["priority"] <= 1 for f in kept) else "patch is correct"
 (run / "findings.json").write_text(json.dumps({"findings": kept, "dropped_outside_diff": dropped,
-    "overall_correctness": verdict, "overall_explanation": data.get("overall_explanation", "")}, indent=2))
-lines = [f"{verdict}: {data.get('overall_explanation', '')}", ""]
+    "overall_correctness": verdict, "overall_explanation": explanation}, indent=2))
+lines = [f"{verdict}: {explanation}", ""]
 for f in kept:
-    lines.append(f"[P{f.get('priority', '?')}] {f['file']}:{f['line_start']} {f['title']} (confidence {f.get('confidence')})")
+    lines.append(f"[P{f['priority']}] {f['file']}:{f['line_start']} {f['title']} (confidence {f.get('confidence')})")
     lines.append(f"    {f.get('body', '')}")
 if dropped:
     lines.append(f"({len(dropped)} findings outside the diff dropped; see findings.json)")
@@ -343,7 +385,7 @@ if [ -n "$cont" ]; then
   timeout_s=${t:-$timeout_s} tree="$run/tree" attempt=$((attempt + 1))
   cd "$repo"
   prepare_tree
-  rc=0; "run_$vendor" || rc=$?
+  rc=0; review "$vendor" || rc=$?
   case $rc in
     0) finish "$vendor"; exit 0 ;;
     4) timed_out "$vendor" ;;
@@ -461,7 +503,7 @@ else
 fi
 
 for v in "${vendors[@]}"; do
-  rc=0; session=""; "run_$v" || rc=$?
+  rc=0; session="" attempt=1; review "$v" || rc=$?
   [ "$rc" = 0 ] && { finish "$v"; exit 0; }
   # A timeout means the reviewer was working: keep its work, don't replace it.
   [ "$rc" = 4 ] && timed_out "$v"

@@ -1,7 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["findings", "overall_correctness", "overall_explanation"],
+  "required": ["findings", "overall_explanation"],
   "properties": {
     "findings": {
       "type": "array",
@@ -20,7 +20,6 @@
         }
       }
     },
-    "overall_correctness": {"type": "string", "enum": ["patch is correct", "patch is incorrect"]},
     "overall_explanation": {"type": "string"}
   }
 }

@@ -80,7 +80,7 @@ One follow-up round; never loop.
 - **Exit 2 is not a pass.** Empty or invalid output, or a crash, means
   nobody reviewed the change. Say so in the PR; don't report it as clean.
   With `--vendor auto` the script already tried each reviewer that had
-  headroom.
+  headroom, and asked each once to fix an invalid answer.
 - **Exit 4 means the reviewer hit `--timeout` (default 30 minutes)**; the
   script stops it rather than starting the next reviewer from scratch, and
   prints its work so far: what it read or ran, and what it said. Continue
