@@ -173,7 +173,7 @@ run_codex() {
     cmd=(exec resume "$session"); prompt="$run/resume.md"; echo "$resume_prompt" > "$prompt"
   fi
   (cd "$tree" && timeout --signal=TERM "$timeout_s" codex "${cmd[@]}" --ignore-user-config \
-    -m gpt-6-sol -c "model_reasoning_effort=\"$effort\"" -c 'sandbox_mode="read-only"' --json \
+    -m "${CROSS_REVIEW_CODEX_MODEL:-gpt-6-sol}" -c "model_reasoning_effort=\"$effort\"" -c 'sandbox_mode="read-only"' --json \
     --output-schema "$skill_dir/assets/schema.json" -o "$run/codex.out" \
     - < "$prompt" > "$(log codex jsonl)" 2> "$(log codex stderr)") || rc=$?
   session=$(jq -r 'select(.type == "thread.started") | .thread_id' "$run/codex.jsonl" 2>/dev/null | head -1)
