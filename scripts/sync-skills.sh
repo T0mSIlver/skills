@@ -40,6 +40,8 @@ HELPER_SPECS=(
   "claude-remote-control-server/scripts/install-claude-rc-server-service.sh:install-claude-rc-server-service.sh"
   "claude-remote-control-server/scripts/refresh-claude-rc-servers.sh:refresh-claude-rc-servers.sh"
   "cross-review/scripts/cross-review:cross-review"
+  "quota/scripts/codex-limits:codex-limits"
+  "quota/scripts/quota-queue:quota-queue"
   "scripts/skills-pr:skills-pr"
   "scripts/skills-toggle:skills-toggle"
   "scripts/skills-tui:skills-tui"

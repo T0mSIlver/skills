@@ -125,6 +125,28 @@
       "category": "workflow"
     },
     {
+      "name": "quota",
+      "source": "./",
+      "strict": false,
+      "description": "Read model usage windows with `quota` and schedule reviews around them: which vendor spends which window, a queue that keeps every Codex 5-hour window busy, and Codex reset credits spent only once the weekly limit is gone.",
+      "skills": [
+        "./quota"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "quota",
+        "rate-limits",
+        "codex",
+        "code-review",
+        "scheduling"
+      ],
+      "category": "workflow"
+    },
+    {
       "name": "claude-rc-server",
       "source": "./claude-remote-control-server",
       "strict": false,
