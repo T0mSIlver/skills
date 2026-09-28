@@ -105,9 +105,12 @@
       "name": "orchestrate-sessions",
       "source": "./",
       "strict": false,
-      "description": "Run one Claude Code desktop session as the orchestrator and scheduler for many parallel sessions on a repo: one chip per issue, slots on a scarce shared resource, merges that keep main green, and archiving finished sessions.",
+      "description": "Run one Claude Code desktop session as the orchestrator and scheduler for many parallel sessions on a repo: one chip per issue, slots on a scarce shared resource, merges that keep main green, archiving finished sessions, and a page for the owner's decisions. Four skills: orchestrate-sessions, merge-queue, scarce-resource, needs-you.",
       "skills": [
-        "./orchestrate-sessions"
+        "./orchestrate-sessions",
+        "./merge-queue",
+        "./scarce-resource",
+        "./needs-you"
       ],
       "author": {
         "name": "Tom Vaucourt"
