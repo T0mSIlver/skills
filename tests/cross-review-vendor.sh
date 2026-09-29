@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # cross-review reuses an earlier review of HEAD only when it came from the
-# vendor this call would use (#126). A stub codex stands in for the reviewer.
+# vendor and model this call would use (#126). A stub codex stands in for the reviewer.
 set -euo pipefail
 
 script=$(readlink -f "$(dirname "$0")/../cross-review/scripts/cross-review")
@@ -11,7 +11,10 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 mkdir "$tmp/bin"
 cat > "$tmp/bin/codex" <<'SH'
 #!/usr/bin/env bash
-while [ $# -gt 0 ]; do [ "$1" = -o ] && out=$2; shift; done
+while [ $# -gt 0 ]; do
+  case $1 in -o) out=$2 ;; -m) echo "$2" > "$CODEX_RAN.model" ;; esac
+  shift
+done
 echo '{"findings": [], "overall_explanation": "stub codex"}' > "$out"
 echo '{"type": "thread.started", "thread_id": "stub"}'
 touch "$CODEX_RAN"
@@ -60,13 +63,13 @@ fake_run glm-run "$head feature whole"
 xr --vendor auto
 [[ $out == *"summary of glm-run"* ]] || fail "--vendor auto did not reuse the old review: $out"
 
-# The same with the vendor recorded.
+# The same with the vendor and model recorded.
 runs=$tmp/runs3
-fake_run glm-run "$head feature whole glm"
+fake_run glm-run "$head feature whole glm zai-coding-plan/glm-5.3"
 xr --vendor codex
 [ -f "$CODEX_RAN" ] || fail "--vendor codex reused the GLM review: $out"
 runs=$tmp/runs4
-fake_run glm-run "$head feature whole glm"
+fake_run glm-run "$head feature whole glm zai-coding-plan/glm-5.3"
 xr --vendor auto
 [[ $out == *"summary of glm-run"* ]] || fail "--vendor auto did not reuse GLM's review: $out"
 
@@ -75,5 +78,18 @@ runs=$tmp/runs1
 xr --vendor codex
 [ ! -f "$CODEX_RAN" ] || fail "second --vendor codex ran codex again"
 [[ $out == *"already reviewed"*"stub codex"* ]] || fail "second --vendor codex did not reuse: $out"
+
+# Another Codex model does not reuse it, and its review is recorded as its own.
+CROSS_REVIEW_CODEX_MODEL=gpt-6-astra xr --vendor codex
+[ -f "$CODEX_RAN" ] || fail "gpt-6-astra reused gpt-6-sol's review: $out"
+[ "$(cat "$CODEX_RAN.model")" = gpt-6-astra ] || fail "codex ran $(cat "$CODEX_RAN.model"), not gpt-6-astra"
+CROSS_REVIEW_CODEX_MODEL=gpt-6-astra xr --vendor codex
+[ ! -f "$CODEX_RAN" ] || fail "second gpt-6-astra review ran codex again"
+
+# A review recorded with its vendor but not its model counts only for auto.
+runs=$tmp/runs5
+fake_run codex-run "$head feature whole codex"
+xr --vendor codex
+[ -f "$CODEX_RAN" ] || fail "--vendor codex reused a review of unknown model: $out"
 
 echo "cross-review vendor tests passed"
