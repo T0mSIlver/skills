@@ -83,7 +83,8 @@ deletes a session's worktree, so a night step fetches the PR head instead.
 - Long output buries questions. With a Needs You page (`needs-you`), each
   decision goes there and chat gets one line.
 - When the owner comes back: what happened, what went wrong, what needs
-  them now (hand checks as a linked list).
+  them now (hand checks: `gh pr list --state all --label <hand-check label>`,
+  as links).
 - Before compaction, write the plan and ledger to memory, then give the
   owner a compaction prompt: config path, memory files, background loops,
   night plan, live sessions, what waits on them.

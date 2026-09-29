@@ -15,7 +15,6 @@ fi
 : "${CI_WORKFLOW_NAME:=CI}" "${CODE_PATHS:=.}" "${WAITS_PREFIX:=waits:}" "${STACK_LABEL:=waits:stack}"
 : "${MERGE_METHOD:=squash}" "${LAG_MINUTES:=30}" "${POLL_SECONDS:=180}"
 : "${OPTIONAL_CHECKS:=}" "${LANE_STEPS:=}" "${WAIVER_PATTERN:=\[skip-[a-z-]*: [^]]*\]}"
-: "${BOARD_OWNER:=}" "${BOARD_NUMBER:=}" "${BOARD_ID:=}" "${BOARD_STATUS_FIELD:=}" "${BOARD_REVIEW_OPTION:=}"
 
 # checks_of <sha> <space-separated names>: "name=conclusion ..." for the latest run of each
 # (highest id: a queued run has no start time yet, and must win over an older success).
