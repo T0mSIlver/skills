@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""codex-limits [--spend]: read the Codex account's rate limits through `codex app-server`.
+
+Prints '<5h-used-%> <weekly-used-%> <5h-resets-at-epoch> <reset-credits>' (quota-queue's
+QUOTA_CMD). --spend consumes the reset credit that expires first and prints the outcome:
+reset | nothingToReset | noCredit | alreadyRedeemed. A spend cannot be undone.
+"""
+
+import json
+import signal
+import subprocess
+import sys
+import uuid
+
+signal.signal(signal.SIGALRM, lambda *_: sys.exit("codex app-server did not answer in 60 s"))
+signal.alarm(60)
+server = subprocess.Popen(
+    ["codex", "app-server"],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.DEVNULL,
+    text=True,
+    bufsize=1,
+)
+
+
+def send(msg):
+    server.stdin.write(json.dumps(msg) + "\n")
+    server.stdin.flush()
+
+
+def reply(msg_id):
+    for line in server.stdout:
+        try:
+            msg = json.loads(line)
+        except ValueError:
+            continue
+        if msg.get("id") == msg_id:
+            return msg
+    sys.exit("codex app-server closed")
+
+
+try:
+    send({"id": 1, "method": "initialize",
+          "params": {"clientInfo": {"name": "codex-limits", "version": "1"}}})
+    reply(1)
+    send({"method": "initialized"})
+    send({"id": 2, "method": "account/rateLimits/read"})
+    limits = reply(2).get("result") or {}
+    credits = limits.get("rateLimitResetCredits") or {}
+    if "--spend" not in sys.argv[1:]:
+        rl = limits.get("rateLimits") or {}
+        five, week = rl.get("primary") or {}, rl.get("secondary") or {}
+        print(five.get("usedPercent"), week.get("usedPercent"), five.get("resetsAt"),
+              credits.get("availableCount"))
+        sys.exit(0)
+    available = [c for c in credits.get("credits") or [] if c.get("status") == "available"]
+    if not available:
+        print("noCredit")
+        sys.exit(0)
+    soonest = min(available, key=lambda c: c.get("expiresAt") or 0)["id"]
+    send({"id": 3, "method": "account/rateLimitResetCredit/consume",
+          "params": {"creditId": soonest, "idempotencyKey": str(uuid.uuid4())}})
+    r = reply(3)
+    if "error" in r:
+        sys.exit(f"error: {r['error']}")
+    print(r["result"]["outcome"])
+finally:
+    server.terminate()

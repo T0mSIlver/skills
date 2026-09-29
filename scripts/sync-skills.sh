@@ -53,6 +53,8 @@ HELPER_SPECS=(
   "orchestrate-sessions/scripts/orch-dispatch:orch-dispatch"
   "orchestrate-sessions/scripts/orch-idlewait:orch-idlewait"
   "orchestrate-sessions/scripts/orch-runwait:orch-runwait"
+  "quota/scripts/codex-limits:codex-limits"
+  "quota/scripts/quota-queue:quota-queue"
   "scripts/skills-pr:skills-pr"
   "scripts/skills-toggle:skills-toggle"
   "scripts/skills-tui:skills-tui"
