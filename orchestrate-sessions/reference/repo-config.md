@@ -23,10 +23,11 @@ in its agent guide.
 | `STACK_LABEL` | label of a PR stacked on another | `waits:stack` |
 | `MERGE_METHOD` | `squash`, `merge` or `rebase` | `squash` |
 | `LAG_MINUTES` | how far before the CI run to count landings | `30` |
+| `RESOURCE_JOBS` | job names `orch-idlewait` waits on (default `MUST_RUN_CHECKS`) | `mac-lanes eval-e2e` |
 | `POLL_SECONDS` | poller interval; stay at one GitHub call a minute or less per PR | `180` |
 | `LANE_STEPS` | jq regex of the must-run job's step names that `orch-lanecheck` prints | `Integration tests \\(live STT\|Live herdr` |
 | `WAIVER_PATTERN` | grep -E pattern of lane waivers in PR bodies | `\[skip-[a-z-]*: [^]]*\]` |
-| `BOARD_OWNER`, `BOARD_NUMBER` | the project board | `T0mSIlver`, `1` |
+| `BOARD_OWNER`, `BOARD_NUMBER` | the project board, if the repo uses one; leave empty otherwise | `T0mSIlver`, `1` |
 | `BOARD_ID`, `BOARD_STATUS_FIELD`, `BOARD_REVIEW_OPTION` | node ids for `orch-cardmove` | from `gh project field-list` |
 
 Find the board ids with:

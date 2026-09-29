@@ -1,0 +1,19 @@
+#!/bin/bash
+# orch-dispatch <workflow> <ref> [-f key=value ...]: dispatch the workflow on the ref, then
+# exit once that run has left the queue (in_progress or completed); print "<run-id> <status>".
+# A concurrency group with cancel-in-progress: false keeps one pending run, and a second
+# dispatch replaces it, so chain dispatches: orch-dispatch a && orch-dispatch b.
+# Exit 1 when no run appears within 5 minutes, 2 when it is still queued after 12 hours.
+. "$(dirname "$0")/orch-lib.sh"
+wf=${1:?usage: orch-dispatch <workflow> <ref> [-f key=value ...]}; ref=${2:?}; shift 2
+t0=$(date -u -d '-5 seconds' +%Y-%m-%dT%H:%M:%SZ)
+gh workflow run "$wf" --repo "$REPO" --ref "$ref" "$@" || exit 1
+# Our run is the oldest dispatch of this workflow on the ref created after t0.
+mine='[.[]|select(.createdAt>="'"$t0"'")]|min_by(.createdAt)|select(.)|"\(.databaseId) \(.status)"'
+for i in $(seq 1 720); do
+  line=$(gh run list --repo "$REPO" --workflow "$wf" --branch "$ref" --event workflow_dispatch --limit 10 --json databaseId,status,createdAt --jq "$mine")
+  [ -z "$line" ] && [ "$i" -ge 5 ] && { echo "no $wf run on $ref appeared"; exit 1; }
+  case "$line" in *" in_progress"|*" completed") echo "$line"; exit 0;; esac
+  sleep 60
+done
+echo "$line still queued after 12h"; exit 2

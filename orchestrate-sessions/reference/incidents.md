@@ -44,3 +44,26 @@ memory it wrote. Times are UTC.
 | Archive deletes the worktree | The night plan pointed at a session's worktree for its runs; archiving that session removed it. The plan now fetches the PR head into a fresh worktree. |
 | zsh doesn't word-split | `for p in "a b" …; do script $p` passed "a b" as one argument and every pair tested the wrong thing. |
 | Scratchpad scripts are lost | The merge scripts lived in the session scratchpad; a successor would have had none. They moved into this skill with a per-repo config. |
+
+## 2026-09-28 (same repo, third day)
+
+| Rule | What happened |
+|---|---|
+| A data-loss report comes first, in this order | The owner's History went empty. The scheduler stopped other work and backed up the three store files before anything else could write them. It read the store read-only through a terminal pane on the owner's Mac, and restored 652 records from `sqlite3 .recover` only on the owner's go. Then it spawned the fix, ran two whole-repo audits (GLM and Codex), filed a tracking issue with five sub-issues, and installed hourly backups until the fix ships. |
+| A runner on the owner's machine runs as the owner | The self-hosted runner ran each PR's launch smoke as the owner's user, sharing the app's data store with the installed app. Schema changes from PR builds migrated that store back and forth. Night eval dispatches now wait for a fresh backup. |
+| Data-safety PRs get two reviewers | The owner: "Do a Codex review on top of the GLM review … spend some time on that so that we don't lose data anymore." |
+| Metered quota is a resource | The owner: "use the Codex 5-hour limits as soon as they're available with Astra … The goal is to not waste limits at all." A queue runner slept through a spent window and ran the reviews when it reopened; it is now `quota-queue` in the `quota` skill. |
+| Rewriting main needs the owner | A background agent wrote an AI co-author trailer by hand into its commits, and the squash merge copied it onto main's tip. On the owner's go, and after the owner deactivated the branch ruleset, the scheduler rewrote that commit's message and force-pushed with `--force-with-lease`; the tree stayed identical. |
+| Chips while the owner is present | The owner corrected "subagent" to "session" twice (2026-09-27 09:00: "I meant a session not subagent"; 2026-09-28 09:26: "spawn sessions, not subagents now that I'm back at the mac"). |
+| Clean up without being asked | The owner asked for an archive round six times in three days ("Archive sessions that are done", "archive sessions that can be", "Don't forget to archive sessions that can be archived"). |
+| Keep the pipeline full | 2026-09-27 16:07, the owner: "you're only orchestrating three sessions right now. So there's still stuff we could do. Spawn sessions for those." |
+| A night's latitude expires | 2026-09-27 22:29, the owner: "tonight merge everything that inference confirms. You have full latitude." Recorded as that night only. |
+| Fleet agent definitions | A fleet of five test-pruning subagents needed a fixed model and effort. `~/.claude/agents/test-pruner.md` pinned both. The scheduler's own `sonnet` alias still meant the previous Sonnet: it had started on an older Claude Code version. |
+| `orch-combowatch` takes the combo PR number | Given `combo/966-on-1049a3fd`, it polled `pulls/combo/…` (a 404) until stopped. It now resolves a branch and fails fast. |
+| `SKIP` is space-separated | A comma list is one token that matches no PR, so the poller held nothing. The script now accepts commas and refuses non-numbers. |
+| `orch-cardmove` read-back | It printed `#1001 ` with no status while the item list lagged the edit. It now re-reads and exits 1 if no status shows. |
+| Dispatch after the previous run started | Each night dispatch ran `gh workflow run` then `sleep 20; wait-started.sh`; without the sleep the helper read the previous, finished run. `orch-dispatch` dates its own run instead. |
+
+The project board: the owner keeps a browser tab of issues and PRs and
+doesn't open the board. The label stays the hand-check signal; the board
+steps stay optional (`BOARD_NUMBER` empty).

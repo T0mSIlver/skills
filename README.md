@@ -15,7 +15,10 @@ the skill.
 | [`delegate-to-opencode`](delegate-to-opencode/SKILL.md) | The same for GLM through `opencode run`, with the agent configs that flags can't express |
 | [`delegate-to-claude-code`](delegate-to-claude-code/SKILL.md) | The same for `claude`, as sessions I can watch and steer from claude.ai/code |
 | [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
-| [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: spawns a chip per issue, hands out slots on a shared runner or GPU, and checks each PR against current main before merging |
+| [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: spawns a chip per issue, briefs and greenlights them, takes handoffs, and archives finished sessions |
+| [`merge-queue`](merge-queue/SKILL.md) | Merges parallel PRs without breaking main: checks each against commits that landed after its CI run, builds the combination when they overlap, stacks PRs that share files |
+| [`scarce-resource`](scarce-resource/SKILL.md) | Books a shared runner or GPU into the owner's night window, one dispatch at a time, with wake-ups that fire while the session is idle |
+| [`needs-you`](needs-you/SKILL.md) | A page the owner keeps open for the decisions a long-running session needs, so they don't get lost in chat |
 | [`quota`](quota/SKILL.md) | What each usage window means, which model spends it, and a queue that fills every Codex window before it resets |
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
 | [`unnarrate`](unnarrate/SKILL.md) | Deletes text that narrates itself: comments that repeat the code, tooltips that repeat the label, PR bullets that repeat the diff |
