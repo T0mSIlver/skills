@@ -3,7 +3,7 @@
   "owner": {
     "name": "Tom Vaucourt"
   },
-  "description": "T0mSIlver's personal agent skills: delegating to other coding CLIs, Remote Control servers, and prose cleanup. Written here or vendored verbatim.",
+  "description": "T0mSIlver's personal agent skills: cross-vendor review, one session scheduling many, merging parallel PRs without breaking main, and prose cleanup. Written here or vendored verbatim.",
   "plugins": [
     {
       "name": "cli-delegation",

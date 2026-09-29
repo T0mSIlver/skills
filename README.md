@@ -12,7 +12,7 @@ the skill.
 | Skill | What it gives the agent |
 |-------|-------------------------|
 | [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
-| [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: spawns a chip per issue, briefs and greenlights them, takes handoffs, and archives finished sessions |
+| [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: starts a session per issue, briefs each one, takes handoffs, and archives finished sessions |
 | [`merge-queue`](merge-queue/SKILL.md) | Merges parallel PRs without breaking main: checks each against commits that landed after its CI run, builds the combination when they overlap, stacks PRs that share files |
 | [`scarce-resource`](scarce-resource/SKILL.md) | Books a shared runner or GPU into the owner's night window, one dispatch at a time, with wake-ups that fire while the session is idle |
 | [`needs-you`](needs-you/SKILL.md) | A page the owner keeps open for the decisions a long-running session needs, so they don't get lost in chat |
@@ -27,7 +27,7 @@ the skill.
 
 ## Why it's built this way
 
-- **Other CLIs instead of native subagents.** A spawned CLI session treats the
+- **Sessions instead of native subagents.** A spawned session treats the
   prompt as coming from its user and gets on with it. A native subagent stops
   to ask a user who isn't there. Every session can be resumed, read, watched,
   or handed to another session partway through, and each task can use a
@@ -53,7 +53,7 @@ npx skills add T0mSIlver/skills                  # choose skills interactively
 [docs/install.md](docs/install.md) covers the plugin names and what each skill
 needs installed. My own machines don't use either command: they run
 [a sync loop](docs/sync-system.md) that installs `origin/main` into every
-agent's skills folder. [docs/vendoring.md](docs/vendoring.md)
-explains how the vendored skills stay pinned to upstream.
+agent's skills folder. [docs/vendoring.md](docs/vendoring.md) explains how
+the vendored skills stay pinned to upstream.
 
 MIT. Each vendored skill keeps its upstream license.
