@@ -1,0 +1,54 @@
+#!/bin/bash
+# quota-queue <dir>: run the executables in <dir>/pending/ one at a time, in name order, while
+# the metered quota has room, so no quota window goes unused. Each task moves to done/ or
+# failed/; the log is <dir>/queue.log. Exits with "QUEUE EMPTY" when pending/ is empty: that
+# exit is the caller's cue to add tasks. Run it with run_in_background. Needs no config.
+# QUOTA_CMD prints "<window-used-%> <weekly-used-%> <window-resets-at-epoch> <credits>"
+# (default: codex-limits). The queue sleeps through a spent window, and at weekly 100%
+# runs QUOTA_SPEND_CMD (default: codex-limits --spend) while credits remain.
+# QUOTA_CMD=none runs the tasks back to back.
+Q=${1:?usage: quota-queue <dir>}
+# codex-limits sits next to this script in the skill and on PATH once synced.
+limits=$(dirname "$0")/codex-limits; [ -x "$limits" ] || limits=codex-limits
+QUOTA_CMD=${QUOTA_CMD:-$limits}
+QUOTA_SPEND_CMD=${QUOTA_SPEND_CMD:-$limits --spend}
+mkdir -p "$Q/pending" "$Q/done" "$Q/failed"
+exec 9>"$Q/.lock"; flock -n 9 || { echo "another quota-queue runs on $Q"; exit 1; }
+log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$Q/queue.log"; }
+full() { [ "${1%.*}" -ge 100 ] 2>/dev/null; }
+while :; do
+  t=$(find "$Q/pending" -maxdepth 1 -type f -perm -u+x -printf '%f\n' | sort | head -1)
+  [ -n "$t" ] || { log "QUEUE EMPTY"; exit 0; }
+  if [ "$QUOTA_CMD" != none ]; then
+    read -r h w at c < <($QUOTA_CMD 2>/dev/null)
+    case "$h$w" in ''|*None*|*null*) log "quota unreadable; retry in 5 min"; sleep 300; continue;; esac
+    if full "$w"; then
+      if [ "${c:-0}" -gt 0 ] 2>/dev/null; then
+        out=$($QUOTA_SPEND_CMD 2>&1); log "weekly spent; credit spend: $out"
+        # Anything but "reset" left the limit in place; don't spend again at once.
+        [ "$out" = reset ] && sleep 60 || sleep 3600
+        continue
+      fi
+      log "weekly spent, no credit; retry in 1 h"; sleep 3600; continue
+    fi
+    if full "$h"; then
+      s=$(( ${at:-0} - $(date +%s) + 60 )) 2>/dev/null || s=300
+      [ "$s" -ge 60 ] || s=60
+      log "window spent; sleeping ${s}s until it reopens"; sleep "$s"; continue
+    fi
+  fi
+  log "run $t (window=${h:-?}% weekly=${w:-?}%)"
+  if "$Q/pending/$t"; then mv "$Q/pending/$t" "$Q/done/"; rm -f "$Q/.tries-$t"; log "done $t"; continue; fi
+  # A task that ran out of quota goes back in the queue, twice at most: a task that
+  # fails for its own reason while the window reads full would otherwise loop forever.
+  if [ "$QUOTA_CMD" != none ]; then
+    read -r h w _ _ < <($QUOTA_CMD 2>/dev/null)
+    n=$(( $(cat "$Q/.tries-$t" 2>/dev/null || echo 0) + 1 ))
+    # An unreadable quota may hide a spent window, so it counts as a limit hit.
+    case "$h$w" in ''|*None*|*null*) why="quota unreadable";; *) why="hit the limit";; esac
+    if { [ "$why" = "quota unreadable" ] || full "$h" || full "$w"; } && [ "$n" -le 2 ]; then
+      echo "$n" > "$Q/.tries-$t"; log "$t failed, $why; requeued ($n/2)"; continue
+    fi
+  fi
+  mv "$Q/pending/$t" "$Q/failed/"; rm -f "$Q/.tries-$t"; log "FAILED $t"
+done

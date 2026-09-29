@@ -16,6 +16,7 @@ the skill.
 | [`delegate-to-claude-code`](delegate-to-claude-code/SKILL.md) | The same for `claude`, as sessions I can watch and steer from claude.ai/code |
 | [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
 | [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: spawns a chip per issue, hands out slots on a shared runner or GPU, and checks each PR against current main before merging |
+| [`quota`](quota/SKILL.md) | What each usage window means, which model spends it, and a queue that fills every Codex window before it resets |
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
 | [`unnarrate`](unnarrate/SKILL.md) | Deletes text that narrates itself: comments that repeat the code, tooltips that repeat the label, PR bullets that repeat the diff |
 | [`test-audit`](test-audit/SKILL.md) | A gate for new tests and an audit for deleting low-value ones: tests of mocks, mirrored expected values, duplicate coverage |
