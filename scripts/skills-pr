@@ -7,7 +7,7 @@ shopt -s nullglob
 # ~/.config/opencode/skills, ~/.pi/agent/skills).
 #
 # Typical use, right after fixing a mistake in an installed skill:
-#   skills-pr -m "delegate-to-codex: fix resume example"
+#   skills-pr -m "cross-review: fix a gotcha"
 #
 # The sync HOLDS locally edited skills (it never overwrites them), so the
 # edits stay live while the PR is reviewed; once it merges as-is the sync

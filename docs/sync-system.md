@@ -130,14 +130,14 @@ stays live (held) in the meantime, and everything reconverges on merge.
 
 ```bash
 # after editing the installed copy in place:
-skills-pr -m "delegate-to-codex: fix resume example"
+skills-pr -m "cross-review: fix a gotcha"
 # ... then tell the owner to review the PR it prints.
 
 # preview without pushing or opening a PR:
 skills-pr --dry-run
 
 # throw the local edits away and reinstall the repo version:
-skills-pr --discard delegate-to-codex
+skills-pr --discard cross-review
 ```
 
 It diffs the installed copies against `origin/main`, applies the drift in a

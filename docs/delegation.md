@@ -1,8 +1,8 @@
 # Delegating to another coding CLI
 
-The `delegate-to-codex`, `delegate-to-opencode` and `delegate-to-claude-code`
-skills follow the same rules. Each skill's SKILL.md covers the gotchas
-specific to its CLI. This page covers what applies to all three.
+These rules apply to any run handed to another CLI: `delegate-to-claude-code`,
+`cross-review`, and the read-only Codex tasks in `quota-queue`. Codex and GLM
+only review and research; Claude Code implements.
 
 ## Conventions
 
@@ -23,7 +23,7 @@ specific to its CLI. This page covers what applies to all three.
   Claude in a detached tmux session with Remote Control on and sends the
   prompt. You can then open the session from claude.ai/code.
 
-## Gotchas across all three
+## Gotchas
 
 - A branch can be checked out in only one worktree at a time.
 - A fresh worktree doesn't contain ignored files such as `.env`. Copy only
