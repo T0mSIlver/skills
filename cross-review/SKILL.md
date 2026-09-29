@@ -73,6 +73,7 @@ lines, or in a risk area). Rerun `cross-review` with a brief that replies to
 each finding: fixed, or rejected and why. The script finds the last completed
 review of the branch, even across a rebase, and sends only the commits since
 then, with the earlier findings; a HEAD already reviewed returns that review.
+With `--vendor`, only that vendor's reviews count.
 One follow-up round; never loop.
 
 ## Gotchas

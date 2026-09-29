@@ -361,7 +361,7 @@ timed_out() {
 }
 
 finish() {
-  printf '%s %s %s\n' "$head" "${branch:--}" "$whole" > "$run/reviewed"
+  printf '%s %s %s %s\n' "$head" "${branch:--}" "$whole" "$1" > "$run/reviewed"
   rm -f "$run/state"
   echo "cross-review by $1 of ${range_base:0:8}..${head:0:8} ($lines lines, --effort $effort). Run dir: $run"
   cat "$run/summary.md"
@@ -405,12 +405,15 @@ runs_root=${CROSS_REVIEW_DIR:-$HOME/.cache/cross-review}
 # The closest completed review of this branch: its head is an ancestor of
 # HEAD, or, after a rebase, it ran on the same branch and HEAD still carries
 # its commits under the same patch-ids. Only the commits after it need review.
+# An explicit --vendor reuses only that vendor's reviews; files written before
+# the vendor was recorded match only --vendor auto.
 prior="" prior_since="" best=-1 whole=part
 [ -n "$since" ] || whole=whole
 if [ -z "$since" ] && [ "$full" = 0 ]; then
   for f in "$runs_root"/*/reviewed; do
     [ -f "$f" ] || continue
-    read -r h b w < "$f" || true
+    read -r h b w rv < "$f" || true
+    [ "$vendor" = auto ] || [ "$rv" = "$vendor" ] || continue
     # A review started by hand with --since left earlier commits unreviewed.
     [ "$w" = whole ] || continue
     git cat-file -e "$h^{commit}" 2>/dev/null || continue
