@@ -47,7 +47,6 @@ HELPER_SPECS=(
   "orchestrate-sessions/scripts/orch-combo:orch-combo"
   "orchestrate-sessions/scripts/orch-combowatch:orch-combowatch"
   "orchestrate-sessions/scripts/orch-conflicts:orch-conflicts"
-  "orchestrate-sessions/scripts/orch-cardmove:orch-cardmove"
   "orchestrate-sessions/scripts/orch-wtclean:orch-wtclean"
   "orchestrate-sessions/scripts/orch-wakeat:orch-wakeat"
   "orchestrate-sessions/scripts/orch-dispatch:orch-dispatch"

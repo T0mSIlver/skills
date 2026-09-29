@@ -26,8 +26,9 @@ usage.
    - **5, overlap:** `orch-combo <n>` prints a combo PR; `orch-combowatch
      <combo-pr-number>`; `COMBO=<combo-branch> orch-mergecheck <n> --merge`;
      close the combo PR with `--delete-branch`. Docs-only overlap needs none.
-3. After the merge, `orch-cardmove <n>` if the repo has a board and the PR
-   waits on the owner's hand check; otherwise its hand-check label stays.
+3. After the merge, a PR's hand-check label stays until the owner reports
+   the check done; then remove it. The owner's view is the label search
+   (`is:pr label:<hand-check label>`), so never move board cards for it.
 4. Merge rights come from the owner as classes ("merge on green anything
    whose only wait is my hand check, except prompt changes"); record them in
    memory. A latitude granted for one night expires; ask again. A peer's

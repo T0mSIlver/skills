@@ -61,9 +61,9 @@ memory it wrote. Times are UTC.
 | Fleet agent definitions | A fleet of five test-pruning subagents needed a fixed model and effort. `~/.claude/agents/test-pruner.md` pinned both. The scheduler's own `sonnet` alias still meant the previous Sonnet: it had started on an older Claude Code version. |
 | `orch-combowatch` takes the combo PR number | Given `combo/966-on-1049a3fd`, it polled `pulls/combo/…` (a 404) until stopped. It now resolves a branch and fails fast. |
 | `SKIP` is space-separated | A comma list is one token that matches no PR, so the poller held nothing. The script now accepts commas and refuses non-numbers. |
-| `orch-cardmove` read-back | It printed `#1001 ` with no status while the item list lagged the edit. It now re-reads and exits 1 if no status shows. |
 | Dispatch after the previous run started | Each night dispatch ran `gh workflow run` then `sleep 20; wait-started.sh`; without the sleep the helper read the previous, finished run. `orch-dispatch` dates its own run instead. |
 
-The project board: the owner keeps a browser tab of issues and PRs and
-doesn't open the board. The label stays the hand-check signal; the board
-steps stay optional (`BOARD_NUMBER` empty).
+The project board: the owner keeps a browser tab of issues and PRs, doesn't
+open the board, and won't move cards by hand (2026-09-29). The board's
+auto-add took issues only, so its PR cards existed only where a script had
+added them. The hand-check label, searched in that tab, replaced the card.
