@@ -37,9 +37,9 @@ For each finding give:
 - the file path relative to the repository root and the shortest line range
   (under 10 lines) that shows it, overlapping the diff.
 
-End with a verdict: "patch is correct" means existing code and tests won't
-break and nothing blocking is wrong.
+End with overall_explanation: in a few sentences, what you checked and what
+holds.
 
 Answer with one JSON object and nothing else, no code fences:
 
-{"findings":[{"title":"","body":"","priority":1,"confidence":0.8,"file":"","line_start":1,"line_end":1}],"overall_correctness":"patch is correct","overall_explanation":""}
+{"findings":[{"title":"","body":"","priority":1,"confidence":0.8,"file":"","line_start":1,"line_end":1}],"overall_explanation":""}
