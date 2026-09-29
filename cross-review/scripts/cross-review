@@ -81,6 +81,16 @@ codex_ok() {
   [ "$(pct codex 5h)" -lt 95 ] 2>/dev/null && [ "$(pct codex week)" -lt 95 ] 2>/dev/null
 }
 
+codex_model=${CROSS_REVIEW_CODEX_MODEL:-gpt-6-sol}
+# The model each reviewer runs; a review is reused only by the same model.
+model_of() {
+  case $1 in
+    glm) echo zai-coding-plan/glm-5.3 ;;
+    vibe) echo zai-glm-5-3 ;;
+    codex) echo "$codex_model" ;;
+  esac
+}
+
 # Each attempt (the first run, then each --continue) logs to its own files.
 log() { if [ "$attempt" = 1 ]; then echo "$run/$1.$2"; else echo "$run/$1-$attempt.$2"; fi; }
 # A reviewer command's status: 4 when the timeout stopped it. validate
@@ -118,7 +128,7 @@ run_glm() {
   if [ "$attempt" -gt 1 ]; then resume=(--session "$session"); prompt=$resume_prompt; fi
   out=$(log glm jsonl)
   OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX=131072 timeout --signal=TERM "$timeout_s" \
-    opencode run --dir "$tree" --agent cross-reviewer -m zai-coding-plan/glm-5.3 "${variant[@]}" "${resume[@]}" \
+    opencode run --dir "$tree" --agent cross-reviewer -m "$(model_of glm)" "${variant[@]}" "${resume[@]}" \
     --format json --title "cross-review $(basename "$run")" --auto "$prompt" \
     < /dev/null > "$out" 2> "$(log glm stderr)" || rc=$?
   session=$(jq -r '.sessionID // empty' "$run/glm.jsonl" 2>/dev/null | head -1)
@@ -158,7 +168,7 @@ backend = "generic"
 api_style = "openai"
 
 [[models]]
-name = "zai-glm-5-3"
+name = "$(model_of vibe)"
 provider = "$provider"
 alias = "glm-5.3"
 temperature = 1.0
@@ -196,7 +206,7 @@ run_codex() {
     cmd=(exec resume "$session"); prompt="$run/resume.md"; echo "$resume_prompt" > "$prompt"
   fi
   (cd "$tree" && timeout --signal=TERM "$timeout_s" codex "${cmd[@]}" --ignore-user-config \
-    -m "${CROSS_REVIEW_CODEX_MODEL:-gpt-6-sol}" -c "model_reasoning_effort=\"$effort\"" -c 'sandbox_mode="read-only"' --json \
+    -m "$codex_model" -c "model_reasoning_effort=\"$effort\"" -c 'sandbox_mode="read-only"' --json \
     --output-schema "$skill_dir/assets/schema.json" -o "$run/codex.out" \
     - < "$prompt" > "$(log codex jsonl)" 2> "$(log codex stderr)") || rc=$?
   session=$(jq -r 'select(.type == "thread.started") | .thread_id' "$run/codex.jsonl" 2>/dev/null | head -1)
@@ -349,7 +359,7 @@ timed_out() {
   local v=$1 k
   [ -n "$session" ] || code=2 die "$v timed out before it started a session; nothing to continue. Logs in $run"
   vendor=$v
-  for k in vendor session attempt effort timeout_s head branch whole range_base lines repo; do
+  for k in vendor codex_model session attempt effort timeout_s head branch whole range_base lines repo; do
     printf '%s=%q\n' "$k" "${!k}"
   done > "$run/state"
   partial "$v" > "$run/partial.md"
@@ -361,7 +371,7 @@ timed_out() {
 }
 
 finish() {
-  printf '%s %s %s\n' "$head" "${branch:--}" "$whole" > "$run/reviewed"
+  printf '%s %s %s %s %s\n' "$head" "${branch:--}" "$whole" "$1" "$(model_of "$1")" > "$run/reviewed"
   rm -f "$run/state"
   echo "cross-review by $1 of ${range_base:0:8}..${head:0:8} ($lines lines, --effort $effort). Run dir: $run"
   cat "$run/summary.md"
@@ -405,12 +415,15 @@ runs_root=${CROSS_REVIEW_DIR:-$HOME/.cache/cross-review}
 # The closest completed review of this branch: its head is an ancestor of
 # HEAD, or, after a rebase, it ran on the same branch and HEAD still carries
 # its commits under the same patch-ids. Only the commits after it need review.
+# An explicit --vendor reuses only reviews by that vendor and its current
+# model; files written before both were recorded match only --vendor auto.
 prior="" prior_since="" best=-1 whole=part
 [ -n "$since" ] || whole=whole
 if [ -z "$since" ] && [ "$full" = 0 ]; then
   for f in "$runs_root"/*/reviewed; do
     [ -f "$f" ] || continue
-    read -r h b w < "$f" || true
+    read -r h b w rv rm < "$f" || true
+    [ "$vendor" = auto ] || { [ "$rv" = "$vendor" ] && [ "$rm" = "$(model_of "$vendor")" ]; } || continue
     # A review started by hand with --since left earlier commits unreviewed.
     [ "$w" = whole ] || continue
     git cat-file -e "$h^{commit}" 2>/dev/null || continue

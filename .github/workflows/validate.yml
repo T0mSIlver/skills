@@ -63,6 +63,9 @@ jobs:
           printf '  %s\n' "${files[@]}"
           "$shellcheck" --severity=warning --color=always -- "${files[@]}"
 
+      - name: Test scripts
+        run: for t in tests/*.sh; do "$t"; done
+
       - name: Validate plugin marketplace
         run: |
           npm install -g @anthropic-ai/claude-code@2.1.215
