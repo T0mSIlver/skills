@@ -25,7 +25,7 @@ obra/superpowers, Trail of Bits' second-opinion and differential-review skills, 
 17. **Converge on re-review.** A re-review covers only the fix range and reports new Important/P0-P1 findings only. Cap it at one or two rounds; never loop a Stop hook. *(REVIEW.md convergence rule; superpowers scoped re-review; codex-plugin-cc gate warning; Claude Code's 8-block cap)*
 18. **The reviewer does not delegate.** One reviewer process per review; no sub-reviewers unless the skill orchestrates them on purpose. *(Codex review-agent; superpowers "You Do Not Dispatch Subagents")*
 19. **Use a reviewer from another vendor.** It avoids the self-preference bias, which is worst when the judge made the same mistake as the author. If you add a second vendor, report where they agree and disagree without treating agreement as proof. *(arXiv 2404.13076, 2504.03846; ToB second-opinion)*
-20. **Make the invocation explicit.** Pass model and effort on every call. Superpowers saw 17 dispatches silently inherit the expensive model when this was left to prose. Default to GLM 5.3 or gpt-6-sol per your table, and don't copy ToB's `gpt-5.6-sol` default. *(superpowers design doc; ToB codex-invocation.md)*
+20. **Make the invocation explicit.** Pass model and effort on every call. Superpowers saw 17 dispatches silently inherit the expensive model when this was left to prose. Default to GLM 5.3 or gpt-6.1-sol per your table, and don't copy ToB's `gpt-5.6-sol` default. *(superpowers design doc; ToB codex-invocation.md)*
 
 ## Source list
 

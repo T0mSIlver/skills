@@ -81,7 +81,7 @@ codex_ok() {
   [ "$(pct codex 5h)" -lt 95 ] 2>/dev/null && [ "$(pct codex week)" -lt 95 ] 2>/dev/null
 }
 
-codex_model=${CROSS_REVIEW_CODEX_MODEL:-gpt-6-sol}
+codex_model=${CROSS_REVIEW_CODEX_MODEL:-gpt-6.1-sol}
 # The model each reviewer runs; a review is reused only by the same model.
 model_of() {
   case $1 in
