@@ -9,9 +9,8 @@
       "name": "cli-delegation",
       "source": "./",
       "strict": false,
-      "description": "Cross-vendor review of a finished change that runs while the author finishes, Claude Code sessions as delegated workers, and read-only repo exploration to fastcontext.",
+      "description": "Cross-vendor review of a finished change that runs while the author finishes, and read-only repo exploration to fastcontext.",
       "skills": [
-        "./delegate-to-claude-code",
         "./fastcontext",
         "./cross-review"
       ],

@@ -11,7 +11,6 @@ the skill.
 
 | Skill | What it gives the agent |
 |-------|-------------------------|
-| [`delegate-to-claude-code`](delegate-to-claude-code/SKILL.md) | Review and edit runs through `claude`, as sessions I can watch and steer from claude.ai/code |
 | [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
 | [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: spawns a chip per issue, briefs and greenlights them, takes handoffs, and archives finished sessions |
 | [`merge-queue`](merge-queue/SKILL.md) | Merges parallel PRs without breaking main: checks each against commits that landed after its CI run, builds the combination when they overlap, stacks PRs that share files |
@@ -54,8 +53,7 @@ npx skills add T0mSIlver/skills                  # choose skills interactively
 [docs/install.md](docs/install.md) covers the plugin names and what each skill
 needs installed. My own machines don't use either command: they run
 [a sync loop](docs/sync-system.md) that installs `origin/main` into every
-agent's skills folder. [docs/delegation.md](docs/delegation.md) has the rules for
-delegating to another CLI, and [docs/vendoring.md](docs/vendoring.md)
+agent's skills folder. [docs/vendoring.md](docs/vendoring.md)
 explains how the vendored skills stay pinned to upstream.
 
 MIT. Each vendored skill keeps its upstream license.
