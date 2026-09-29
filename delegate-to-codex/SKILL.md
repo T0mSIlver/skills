@@ -7,7 +7,7 @@ compatibility: Requires the OpenAI Codex CLI (codex) installed and authenticated
 # Delegate to Codex (CLI)
 
 Run `codex exec` non-interactively for a second opinion, review, or a delegated
-edit worker. Model default: `gpt-6-sol` at `-c model_reasoning_effort='"medium"'`.
+edit worker. Model default: `gpt-6.1-sol` at `-c model_reasoning_effort='"medium"'`.
 `high` only for contract/design turns, or when the usage window has headroom
 that would otherwise expire (`codexbar usage --provider codex`); `low` for
 mechanical work.
@@ -43,7 +43,7 @@ mechanical work.
 
    ```bash
    codex exec -C "$PWD" \
-     -m gpt-6-sol -c model_reasoning_effort='"medium"' \
+     -m gpt-6.1-sol -c model_reasoning_effort='"medium"' \
      -s read-only --json -o "$run_dir/final.md" \
      - < "$run_dir/prompt.md" > "$run_dir/events.jsonl"
    ```
@@ -84,7 +84,7 @@ mechanical work.
   takes `sandbox_mode` from `~/.codex/config.toml` — a run launched
   `-s read-only` resumes with whatever the config says, up to
   `danger-full-access`. Re-assert it through `-c`, which is accepted:
-  `codex exec resume "$thread_id" -m gpt-6-sol -c sandbox_mode='"read-only"'
+  `codex exec resume "$thread_id" -m gpt-6.1-sol -c sandbox_mode='"read-only"'
   --json -o resume.md "..." < /dev/null`. Re-pass `-m` too, or the resume runs
   on the config's model.
 - **Resume by id, not `--last`.** `--last` picks the newest recorded session in

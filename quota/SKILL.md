@@ -47,7 +47,7 @@ mistral vibe   37%  €93.66 / €255.00 · €161.34 left
 ## Who spends what
 
 1. **Per-change reviews** (`cross-review`): GLM 5.3 through opencode, then
-   GLM 5.3 through Vibe, then Codex (gpt-6-sol) only when both are spent or
+   GLM 5.3 through Vibe, then Codex (gpt-6.1-sol) only when both are spent or
    failed. GLM goes first because its window has no weekly cap; Vibe's
    credits are lost at month end if unused.
 2. **A window about to reset with room left goes first.** A zai window with

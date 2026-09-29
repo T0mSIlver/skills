@@ -81,7 +81,7 @@ xr --vendor codex
 
 # Another Codex model does not reuse it, and its review is recorded as its own.
 CROSS_REVIEW_CODEX_MODEL=gpt-6-astra xr --vendor codex
-[ -f "$CODEX_RAN" ] || fail "gpt-6-astra reused gpt-6-sol's review: $out"
+[ -f "$CODEX_RAN" ] || fail "gpt-6-astra reused the default model's review: $out"
 [ "$(cat "$CODEX_RAN.model")" = gpt-6-astra ] || fail "codex ran $(cat "$CODEX_RAN.model"), not gpt-6-astra"
 CROSS_REVIEW_CODEX_MODEL=gpt-6-astra xr --vendor codex
 [ ! -f "$CODEX_RAN" ] || fail "second gpt-6-astra review ran codex again"
