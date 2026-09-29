@@ -8,8 +8,7 @@ compatibility: Linux with user systemd and lingering; the claude CLI logged in v
 
 Each repo gets one user systemd service running
 `claude remote-control --spawn worktree`, so claude.ai/code and the Claude app
-can start sessions in it, each in its own git worktree. Prompted runs you
-delegate yourself use `claude-rc-spawn` instead.
+can start sessions in it, each in its own git worktree.
 
 ## Install or change a server
 

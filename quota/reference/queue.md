@@ -29,6 +29,19 @@ git -C /path/to/repo fetch -q origin pull/986/head &&
     --effort high --brief /path/to/brief-986.md > /path/to/results/pr986.txt 2>&1
 ```
 
+An audit reviews no diff, so it runs `codex exec` directly. Feed the prompt
+from a file: under a harness stdin never closes, and `codex exec` waits on it
+forever at 0% CPU otherwise.
+
+```bash
+#!/bin/bash
+# 30-audit-locking: read-only audit of main for one bug class.
+cd /path/to/scratch/main-checkout && git pull -q --ff-only &&
+  codex exec -C "$PWD" -m gpt-6-astra -c model_reasoning_effort='"high"' \
+    -s read-only -o /path/to/results/audit-locking.md \
+    - < /path/to/brief-locking.md > /dev/null
+```
+
 ## What to queue, in order
 
 1. Reviews of PRs waiting on a strongest-model review (orchestrate-sessions

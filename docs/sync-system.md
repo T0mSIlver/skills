@@ -26,7 +26,7 @@ directory containing a `SKILL.md` into the four native locations. If GitHub
 fetching fails because credentials or the network are unavailable, the sync
 still updates the native folders from the current local checkout. It updates
 only skills managed by this repo and leaves unrelated local skills alone. It
-also installs skill-managed helper commands, such as `claude-rc-spawn` and
+also installs skill-managed helper commands, such as `cross-review` and
 `install-claude-rc-server-service.sh`, into `~/.local/bin`.
 
 The timer, `skills-toggle`, `skills-tui`, and `skills-pr` all run `scripts/sync-skills.sh`
@@ -83,7 +83,7 @@ machines are unaffected. One rule per line:
 
 ```text
 fastcontext                       # off for every agent
-claude:delegate-to-claude-code    # off for Claude Code only
+claude:cross-review               # off for Claude Code only
 codex:claude-remote-control-server
 ```
 
@@ -97,7 +97,7 @@ space toggle · a row · w apply · r reload · q quit
 
 SKILL                          claude    codex    opencode    pi
 claude-remote-control-server     on        off       off       off
-delegate-to-claude-code          off       on        on        on
+cross-review                     off       on        on        on
 fastcontext                      off*      on        on        on
 
 1 unapplied change — w to apply · rules: ~/.config/skills-sync/disabled
@@ -130,14 +130,14 @@ stays live (held) in the meantime, and everything reconverges on merge.
 
 ```bash
 # after editing the installed copy in place:
-skills-pr -m "delegate-to-codex: fix resume example"
+skills-pr -m "cross-review: fix a gotcha"
 # ... then tell the owner to review the PR it prints.
 
 # preview without pushing or opening a PR:
 skills-pr --dry-run
 
 # throw the local edits away and reinstall the repo version:
-skills-pr --discard delegate-to-codex
+skills-pr --discard cross-review
 ```
 
 It diffs the installed copies against `origin/main`, applies the drift in a

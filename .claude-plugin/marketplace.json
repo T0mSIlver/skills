@@ -9,11 +9,8 @@
       "name": "cli-delegation",
       "source": "./",
       "strict": false,
-      "description": "Delegate reviewer, second-opinion, and edit-worker runs to the claude, codex, and opencode CLIs, and read-only repo exploration to fastcontext. Worktree-first edits, machine-readable capture, reviewer-after-worker, and cross-vendor review of a finished change that runs while the author finishes.",
+      "description": "Cross-vendor review of a finished change that runs while the author finishes, and read-only repo exploration to fastcontext.",
       "skills": [
-        "./delegate-to-claude-code",
-        "./delegate-to-codex",
-        "./delegate-to-opencode",
         "./fastcontext",
         "./cross-review"
       ],
