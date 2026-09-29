@@ -31,8 +31,8 @@ the skill.
   prompt as coming from its user and gets on with it. A native subagent stops
   to ask a user who isn't there. Every session can be resumed, read, watched,
   or handed to another session partway through, and each task can use a
-  different model and harness. The price is that I run the orchestration
-  myself.
+  different model and harness. One scheduler session orchestrates the others,
+  through Claude Code's session messaging or through herdr.
 - **Another model reviews the code.** I don't read agent output line by line.
   A model from another vendor, in another harness, reviews the diff, and I act
   on what it finds.
