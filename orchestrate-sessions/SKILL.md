@@ -93,11 +93,9 @@ deletes a session's worktree, so a night step fetches the PR head instead.
   recommendation and default. PRs as links, sessions by issue number.
 - Long output buries questions. With a Needs You page (`needs-you`), each
   decision goes there and chat gets one line.
-- **Between tool calls, write only what changes what the owner would do:**
-  a merge, a red run, a session that needs them, a finding. Don't narrate
-  checks, reads or plans. Before a long stretch, write one line of intent;
-  the end-of-turn reply carries the rest. Opus 5.5 writes a progress note
-  between tool calls by default, so this has to be said.
+- **Between tool calls, write only what changes what the owner would do**
+  (a merge, a red run, a session that needs them); never narrate checks or
+  plans. Opus 5.5 writes a progress note there by default.
 - When the owner comes back: what happened, what went wrong, what needs
   them now (hand checks: `gh pr list --state all --label <hand-check label>`,
   as links).

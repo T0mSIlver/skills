@@ -69,4 +69,9 @@ The project board: the owner keeps a browser tab of issues and PRs, doesn't
 open the board, and won't move cards by hand (2026-09-29). The board's
 auto-add took issues only, so its PR cards existed only where a script had
 added them. The hand-check label, searched in that tab, replaced the card.
+
+## 2026-10-02
+
+| Rule | What happened |
+|---|---|
 | Quiet between tool calls | 2026-10-02: the orchestrator narrated each check ("Checking…", "Now loading…") between tool calls. The owner, who follows it from a phone: "say less between tool calls, only the important things, since you're the orchestrator". Anthropic's Opus 5.5 prompting guide says the model writes a progress update between tool calls unless the prompt sets their frequency. |
