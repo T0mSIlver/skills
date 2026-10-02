@@ -1,6 +1,6 @@
 ---
 name: orchestrate-sessions
-description: "Run a Claude Code desktop session as the orchestrator for many parallel sessions on one repo: spawn one session per independent issue while the owner is present (subagents while away), brief and greenlight them, take handoffs, keep the pipeline full, archive finished sessions and clean up, and report to the owner. Pairs with merge-queue, scarce-resource, needs-you and quota. Use when the owner asks this session to split work across sessions, act as the scheduler, take over from a previous scheduler, unblock or relaunch sessions, or archive finished ones."
+description: "Run a Claude Code desktop session as the orchestrator for many parallel sessions on one repo: spawn one session per independent issue (chips only the owner can start; subagents only explore, on Sonnet), brief and greenlight them, take handoffs, keep the pipeline full, archive finished sessions and clean up, and report to the owner. Pairs with merge-queue, scarce-resource, needs-you and quota. Use when the owner asks this session to split work across sessions, act as the scheduler, take over from a previous scheduler, unblock or relaunch sessions, or archive finished ones."
 compatibility: Claude Code desktop app (Code tab). Needs spawn_task, dismiss_task, the ccd_session_mgmt tools (list_sessions, list_events, archive_session), SendMessage, the Agent tool, gh, and bash. The orch-* scripts read a per-repo config file.
 ---
 
@@ -15,9 +15,9 @@ and PR handoff comments.
 (`reference/repo-config.md`; if missing, write it from the repo's AGENTS.md
 and CI workflow, and keep it in the owner's dotfiles), then the project
 memory and the repo's agent guide. Take stock with `list_sessions`,
-`gh pr list --state open` (labels, draft state) and `orch-conflicts`. Restart
-the background loops: green poller, combo watcher, next wake-up, quota
-queue.
+`gh pr list --state open` (labels, draft state) and `orch-conflicts`. Run
+`orch-iam`, then restart the background loops: green poller, combo watcher,
+idle watcher, next wake-up, quota queue.
 
 ## The other skills
 
@@ -33,9 +33,12 @@ them from a checkout of the repo.
 
 ## Sessions
 
-- **Owner present: chips. Owner away: subagents.** Only the owner can start
-  a chip, and clicking it is their OK on the brief. Switch back to chips as
-  soon as the owner writes again; owners had to correct this twice.
+- **Work goes to chips**, which only the owner can start; the click is
+  their OK. While the owner is away, queue the briefs, batching related
+  small fixes into one (each session pays 50–75k tokens to start).
+  Subagents and fleets only explore, read-only, on a full Sonnet model ID,
+  never waiting on a build, CI, a review or the owner: their cache lasts
+  5 minutes, so each return from a longer wait re-sends the whole context.
 - **Before spawning,** search the issue number in open PRs and in
   `list_sessions` titles (work in progress often has no PR). Title with
   `(#n)`. The prompt stands alone: issue (none yet: open one first), what to
@@ -49,13 +52,21 @@ them from a checkout of the repo.
   (`scarce-resource`).
 - **Handoffs before long waits.** A session that would wait hours posts a
   handoff comment (exact commands, a prepared commit per outcome, decision
-  rules); archive it and run the steps yourself or through a subagent.
-  Waking an old session re-reads its whole context uncached.
-- **Fleets.** For many subagents on one task, write
-  `~/.claude/agents/<name>.md` with a full model ID in `model:` and an
-  `effort:`; aliases resolve differently per Claude Code version.
+  rules); archive it and run the steps yourself, or queue them for a chip.
 - **Messages** go to the `local_…` id from `list_sessions`. Broadcast owner
   rulings to every running session.
+
+## Usage
+
+The owner's weekly Claude limit runs out first. Run at `/effort low`.
+
+- **Idle sessions.** `orch-idlewatch`, under Monitor, names each session
+  idle 50 minutes, before its 1-hour cache expires. Nudge it with its next
+  step if one is due within the hour; otherwise have it post a handoff and
+  archive it.
+- **Yourself.** The `orchestrator-cache` mod (owner's dotfiles) sends you a
+  keepalive at 50 idle minutes, or compacts you, as the owner switches it.
+  On a keepalive, do only steps that are due; else answer "warm".
 
 ## Archiving and cleanup
 

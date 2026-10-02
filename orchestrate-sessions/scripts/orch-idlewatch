@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""orch-idlewatch: print one line per Claude Code session on this machine that
+has sat idle IDLE_MINUTES (default 50), while its prompt cache (1 hour) is still
+warm. Run it under Monitor: each line wakes the orchestrator, which keeps the
+session (a nudge refreshes its cache) or has it hand off and archives it.
+
+Reads the transcripts in ~/.claude/projects. Skips subagents, sessions idle
+longer than the cache lasts, and the orchestrator itself (orch-iam). Polls
+every 60 s; a session is reported again only after it has been active since.
+
+  orch-idlewatch [--once] [--match <substring of the session's cwd>]
+"""
+import argparse, glob, json, os, time
+from datetime import datetime
+
+IDLE = float(os.environ.get("IDLE_MINUTES", "50")) * 60
+TTL = 3600
+ROOT = os.path.expanduser("~/.claude/projects")
+MARK = os.path.expanduser("~/.local/state/orchestrate/orchestrator")
+parser = argparse.ArgumentParser(description="Report sessions idle IDLE_MINUTES before their cache expires.")
+parser.add_argument("--once", action="store_true", help="scan once and exit")
+parser.add_argument("--match", default="", help="only sessions whose cwd contains this")
+opts = parser.parse_args()
+once, match = opts.once, opts.match
+
+
+def tail_state(path):
+    """Last assistant timestamp, its context size, the session's title and cwd."""
+    last, ctx, title, cwd = None, 0, "", ""
+    with open(path, "rb") as f:
+        f.seek(0, 2)
+        f.seek(max(0, f.tell() - 2_000_000))
+        lines = f.read().decode("utf-8", "ignore").splitlines()
+    for line in lines:
+        if '"custom-title"' in line or '"ai-title"' in line:
+            try:
+                d = json.loads(line)
+                title = d.get("customTitle") or d.get("aiTitle") or title
+            except ValueError:
+                pass
+        if '"type":"assistant"' not in line and '"type": "assistant"' not in line:
+            continue
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        u = (d.get("message") or {}).get("usage")
+        if not u or d.get("isSidechain"):
+            continue
+        last = datetime.fromisoformat(d["timestamp"].replace("Z", "+00:00")).timestamp()
+        ctx = u.get("input_tokens", 0) + u.get("cache_creation_input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+        cwd = d.get("cwd") or cwd
+    return last, ctx, title, cwd
+
+
+reported = {}
+while True:
+    me = open(MARK).read().strip() if os.path.exists(MARK) else ""
+    now = time.time()
+    for path in glob.glob(f"{ROOT}/*/*.jsonl"):
+        sid = os.path.basename(path)[:-6]
+        mtime = os.path.getmtime(path)
+        if sid == me or not IDLE <= now - mtime < TTL:
+            continue
+        last, ctx, title, cwd = tail_state(path)
+        if last is None or match not in cwd or not IDLE <= now - last < TTL:
+            continue
+        if reported.get(sid) == last:
+            continue
+        reported[sid] = last
+        mins = int((now - last) // 60)
+        cold = time.strftime("%H:%MZ", time.gmtime(last + TTL))
+        print(f"idle {mins}m: \"{title or '(untitled)'}\" ctx={ctx // 1000}k cache cold at {cold} "
+              f"session={sid} cwd={cwd}", flush=True)
+    if once:
+        break
+    time.sleep(60)

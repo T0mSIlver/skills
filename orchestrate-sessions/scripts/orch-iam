@@ -1,0 +1,8 @@
+#!/bin/bash
+# orch-iam: mark the calling Claude Code session as the orchestrator: orch-idlewatch
+# never reports it, and the orchestrator-cache mod keeps it warm or compacts it.
+set -eu
+: "${CLAUDE_CODE_SESSION_ID:?run from a Bash tool call inside the orchestrator session}"
+mkdir -p ~/.local/state/orchestrate
+printf '%s\n' "$CLAUDE_CODE_SESSION_ID" > ~/.local/state/orchestrate/orchestrator
+echo "orchestrator: $CLAUDE_CODE_SESSION_ID"
