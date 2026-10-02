@@ -32,7 +32,8 @@ mistral vibe   37%  €93.66 / €255.00 · €161.34 left
   weekly limit used up.
 - **codex** has a 5-hour window inside a weekly limit. Each `reset credit`
   line is one credit and its expiry date. A credit is a full reset. It
-  clears the weekly and the 5-hour window at once.
+  clears the weekly and the 5-hour window at once, and restarts the weekly
+  timer: the next reset moves to 7 days after the spend.
 - **zai** is GLM 5.3 through opencode. It has a 5-hour window and no weekly
   cap, so headroom in one window is gone at the next.
 - **mistral api** is the plan's included La Plateforme API allowance. Reviews
@@ -42,7 +43,9 @@ mistral vibe   37%  €93.66 / €255.00 · €161.34 left
   1st.
 - **claude** is Tom's Claude subscription, which this session and its
   subagents spend. It is not a reviewer. A weekly row near 100% means fewer or cheaper subagents
-  (Sonnet), not a different reviewer.
+  (Sonnet), not a different reviewer. A Claude reset refills the
+  percentage but keeps the reset date, so the refill is lost at that date
+  unless spent.
 
 ## Who spends what
 
@@ -62,6 +65,9 @@ mistral vibe   37%  €93.66 / €255.00 · €161.34 left
 4. **Reset credits only once the weekly limit is at 100%**, the credit that
    expires first. At 5-hour 100% with weekly room, wait for the 5-hour
    reset, because a credit spent then clears a weekly limit that still had room.
+   At weekly 100% with the natural weekly reset under a day away, wait for
+   it unless the credit expires first: the spend pushes the next reset 7
+   days out, so it buys only the hours until the natural one.
 
 ## Helpers on PATH
 
