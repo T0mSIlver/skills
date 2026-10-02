@@ -64,8 +64,9 @@ The owner's weekly Claude limit runs out first. Run at `/effort low`.
   idle 50 minutes, before its 1-hour cache expires. Nudge it with its next
   step if one is due within the hour; otherwise have it post a handoff and
   archive it.
-- **Long sessions.** Past ~300k of context, a chip posts a handoff and
-  gets a fresh session; every call re-reads all of it.
+- **Yourself.** The `orchestrator-cache` mod (owner's dotfiles) sends you a
+  keepalive at 50 idle minutes, or compacts you, as the owner switches it.
+  On a keepalive, do only steps that are due; else answer "warm".
 
 ## Archiving and cleanup
 
