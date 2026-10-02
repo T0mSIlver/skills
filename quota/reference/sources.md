@@ -11,6 +11,12 @@
 - **A credit clears both windows**: CodexBar's credit record, 2026-09-29:
   `"title": "Full reset (Weekly + 5 hr)"`, `"reset_type":
   "codex_rate_limits"`.
+- **A Codex reset restarts the weekly timer; a Claude reset keeps the
+  date**: Theo (t3.gg), "If you have a Claude sub, watch this", 2026-10-02,
+  at 26:20 (https://youtu.be/D8PikZ1KhUo?t=1580): "When Codex does a reset,
+  it resets your weekly entirely … your reset is now 7 days off", and for
+  Claude "all of these numbers become 100% again, the dates and times all
+  stay the same". Not yet checked against `codex-limits` after a spend.
 - **The Mistral rows**: CodexBar labels the `api` row `Included API` (€25.50
   a month) and the `vibe` row `mistral-monthly-plan` (€255). Both
   `resetsAt` the 1st of the month.
