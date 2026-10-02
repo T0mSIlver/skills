@@ -49,6 +49,8 @@ HELPER_SPECS=(
   "orchestrate-sessions/scripts/orch-wtclean:orch-wtclean"
   "orchestrate-sessions/scripts/orch-wakeat:orch-wakeat"
   "orchestrate-sessions/scripts/orch-dispatch:orch-dispatch"
+  "orchestrate-sessions/scripts/orch-idlewatch:orch-idlewatch"
+  "orchestrate-sessions/scripts/orch-iam:orch-iam"
   "orchestrate-sessions/scripts/orch-idlewait:orch-idlewait"
   "orchestrate-sessions/scripts/orch-runwait:orch-runwait"
   "quota/scripts/codex-limits:codex-limits"
