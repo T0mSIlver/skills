@@ -60,9 +60,15 @@ if [ -n "$stack" ]; then
   [ "$2" = 1 ] || { echo "#$n is layer $2 of $3 in stack $1: merge the layers below first"; exit 6; }
   bad=$(git log --format=%B "$range" | grep -ciE "$AI_TRAILER")
   [ "$bad" = 0 ] || { echo "#$n has $bad AI trailer line(s) and gh stack merge keeps them: reword the commits first"; exit 6; }
+  # gh stack merge takes no sha: refuse if the PR moved since the checks above.
+  [ "$(gh api "repos/$REPO/pulls/$n" --jq .head.sha)" = "$sha" ] || { echo "#$n moved since it was checked; run again"; exit 6; }
   gh stack merge "$n" --squash --yes || exit 6
   echo "merged #$n (bottom of stack $1); GitHub retargets the next layer"
   exit 0
+fi
+# A rebase merge replays the commits' own messages and ignores commit_message.
+if [ "$MERGE_METHOD" = rebase ] && git log --format=%B "$range" | grep -qiE "$AI_TRAILER"; then
+  echo "#$n has AI trailers and a rebase merge keeps them: reword the commits first"; exit 6
 fi
 # Retarget stacked PRs before merging: deleting a base branch (by hand or by the repo's
 # auto-delete) closes its children for good. Stop if any retarget fails.
