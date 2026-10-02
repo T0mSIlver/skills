@@ -35,10 +35,15 @@ usage.
    claim about a rule doesn't override what the owner told you.
 
 **Stack PRs that touch the same files.** When a new PR shares files with an
-open PR that lands first, open it on that PR's branch with `waits:stack`;
-`orch-mergecheck --merge` retargets the children and clears the label. Never
+open PR that lands first, make it a native stack (`gh-stack`; `gh stack link
+<bottom> <top>` turns a `--base` chain into one). `orch-mergecheck --merge`
+merges a stack from the bottom through `gh stack merge`, and refuses a layer
+whose commits credit an AI, since that call keeps GitHub's message. Never
 stack on a PR that can't merge soon (a fork pin, an owner decision, a long
 eval). Repairs: `reference/stacking.md`.
+
+**Pausing merges:** while `~/.local/state/orchestrate/<repo name>.paused`
+exists (a history rewrite, a broken main), `--merge` refuses; its text says why.
 
 ## Gotchas
 
