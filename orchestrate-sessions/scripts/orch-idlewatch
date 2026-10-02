@@ -10,16 +10,18 @@ every 60 s; a session is reported again only after it has been active since.
 
   orch-idlewatch [--once] [--match <substring of the session's cwd>]
 """
-import glob, json, os, sys, time
+import argparse, glob, json, os, time
 from datetime import datetime
 
 IDLE = float(os.environ.get("IDLE_MINUTES", "50")) * 60
 TTL = 3600
 ROOT = os.path.expanduser("~/.claude/projects")
 MARK = os.path.expanduser("~/.local/state/orchestrate/orchestrator")
-args = sys.argv[1:]
-once = "--once" in args
-match = args[args.index("--match") + 1] if "--match" in args else ""
+parser = argparse.ArgumentParser(description="Report sessions idle IDLE_MINUTES before their cache expires.")
+parser.add_argument("--once", action="store_true", help="scan once and exit")
+parser.add_argument("--match", default="", help="only sessions whose cwd contains this")
+opts = parser.parse_args()
+once, match = opts.once, opts.match
 
 
 def tail_state(path):
