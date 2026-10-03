@@ -7,9 +7,9 @@
 # --merge retargets PRs stacked on it to BASE (clearing STACK_LABEL), merges the checked
 # head only (the API refuses if the PR moved) with a squash message that credits no AI
 # (title, then each commit, trailers like Co-Authored-By: Claude dropped), and deletes
-# the branch. A layer of a native gh stack merges only as the bottom one, through
-# `gh stack merge`; that call can't set the message, so a layer whose commits carry an
-# AI trailer is refused until they are reworded.
+# the branch. A layer of a native gh stack merges through `gh stack merge`, only once
+# every layer below it has merged; that call can't set the message, so a layer whose
+# commits carry an AI trailer is refused until they are reworded.
 # Merges stop while ~/.local/state/orchestrate/<repo name>.paused exists (its text says why).
 # Exit: 0 ok/merged, 1 fetch, 2 not green, 3 waits label, 4 conflict, 5 overlap,
 # 6 merge failed or refused, 7 paused.
@@ -54,16 +54,21 @@ pause=~/.local/state/orchestrate/${REPO##*/}.paused
 AI_TRAILER='^(co-authored-by:.*(claude|anthropic|codex|openai|chatgpt|copilot|glm|z\.ai)|claude-session:|.*generated (with|by) .*(claude|codex|copilot))'
 B=$(gh api "repos/$REPO/pulls/$n" --jq .head.ref)
 range="$(git merge-base "origin/$BASE" "pr$n")..pr$n"
-stack=$(gh api "repos/$REPO/pulls/$n" --jq 'if .stack then "\(.stack.number) \(.stack.position) \(.stack.size)" else "" end')
+stack=$(gh api "repos/$REPO/pulls/$n" --jq '.stack.number // empty')
 if [ -n "$stack" ]; then
-  set -- $stack
-  [ "$2" = 1 ] || { echo "#$n is layer $2 of $3 in stack $1: merge the layers below first"; exit 6; }
+  # .stack.position keeps its old value after the layers below merge, so read the
+  # stack's PRs (bottom first) and refuse only while one below #n is unmerged:
+  # gh stack merge would merge it too, unchecked.
+  below=$(gh api "repos/$REPO/stacks/$stack" --jq "[.pull_requests[].number] as \$p | (\$p | index($n)) as \$i
+    | if \$i == null then \"missing\" else [.pull_requests[:\$i][] | select(.merged_at == null) | \"#\\(.number)\"] | join(\" \") end") || exit 1
+  [ "$below" != missing ] || { echo "#$n is not in stack $stack"; exit 6; }
+  [ -z "$below" ] || { echo "#$n sits above unmerged $below in stack $stack: merge those first"; exit 6; }
   bad=$(git log --format=%B "$range" | grep -ciE "$AI_TRAILER")
   [ "$bad" = 0 ] || { echo "#$n has $bad AI trailer line(s) and gh stack merge keeps them: reword the commits first"; exit 6; }
   # gh stack merge takes no sha: refuse if the PR moved since the checks above.
   [ "$(gh api "repos/$REPO/pulls/$n" --jq .head.sha)" = "$sha" ] || { echo "#$n moved since it was checked; run again"; exit 6; }
   gh stack merge "$n" --squash --yes || exit 6
-  echo "merged #$n (bottom of stack $1); GitHub retargets the next layer"
+  echo "merged #$n (lowest unmerged layer of stack $stack); GitHub retargets the next layer"
   exit 0
 fi
 # A rebase merge replays the commits' own messages and ignores commit_message.
