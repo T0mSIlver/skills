@@ -3,8 +3,8 @@
   "repo": "https://github.com/github/gh-stack",
   "ref": "main",
   "path": "skills/gh-stack",
-  "commit": "cb357d8d68f7e4f44247eb784eba9a1fc3710798",
-  "upstream": "https://github.com/github/gh-stack/tree/cb357d8d68f7e4f44247eb784eba9a1fc3710798/skills/gh-stack",
-  "vendored_at": "2026-10-02",
+  "commit": "d4ab7ab47e5b3e3708a27c8c42abcdf4bc321419",
+  "upstream": "https://github.com/github/gh-stack/tree/d4ab7ab47e5b3e3708a27c8c42abcdf4bc321419/skills/gh-stack",
+  "vendored_at": "2026-10-03",
   "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
 }
