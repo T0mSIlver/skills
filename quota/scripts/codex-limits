@@ -12,6 +12,11 @@ import subprocess
 import sys
 import uuid
 
+if sys.argv[1:] not in ([], ["--spend"]):
+    # --spend is irreversible: any other argv (--help included) prints usage and spends nothing.
+    print(__doc__.strip(), file=sys.stderr)
+    sys.exit(2)
+
 signal.signal(signal.SIGALRM, lambda *_: sys.exit("codex app-server did not answer in 60 s"))
 signal.alarm(60)
 server = subprocess.Popen(
