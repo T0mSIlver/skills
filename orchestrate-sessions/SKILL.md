@@ -47,7 +47,8 @@ them from a checkout of the repo.
   using the resource and before `gh pr ready`", reviewers, who merges.
 - **Keep the pipeline full.** When a session finishes, spawn or propose the
   next well-defined issue. At each wake-up, `list_events` on sessions idle
-  on a question or a green draft, and answer or nudge them.
+  on a question or a green draft, and answer or nudge those idle under an
+  hour. Archive the rest (Idle sessions).
 - **Greenlight** each `gh pr ready` by the lanes the head will run
   (`scarce-resource`).
 - **Handoffs before long waits.** A session that would wait hours posts a
@@ -63,7 +64,11 @@ The owner's weekly Claude limit runs out first. Run at `/effort low`.
 - **Idle sessions.** `orch-idlewatch`, under Monitor, names each session
   idle 50 minutes, before its 1-hour cache expires. Nudge it with its next
   step if one is due within the hour; otherwise have it post a handoff and
-  archive it.
+  archive it. Past the hour the session is cold: archive it, never message
+  it. A message re-sends its whole context at the cache-write rate (2x
+  input), and a fresh session that reads the handoff costs less. The one
+  exception is a session that holds what no handoff, PR or issue has, which
+  the handoff before every long wait rules out.
 - **Yourself.** The `orchestrator-cache` mod (owner's dotfiles) sends you a
   keepalive at 50 idle minutes, or compacts you, as the owner switches it.
   On a keepalive, do only steps that are due; else answer "warm".
