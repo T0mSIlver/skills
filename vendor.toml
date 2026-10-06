@@ -35,3 +35,14 @@ ref = "main"
 path = "skills/gh-stack"
 license = "LICENSE"
 commit = "d4ab7ab47e5b3e3708a27c8c42abcdf4bc321419"
+
+# Starbridge's own skill: how an agent asks its owner through the Starbridge
+# app. While the repo is private the daily update cannot clone it and its
+# job fails; update by hand with `scripts/vendor-skills.sh --only starbridge`.
+[[skills]]
+name = "starbridge"
+repo = "https://github.com/T0mSIlver/starbridge"
+ref = "main"
+path = "plugin/skills/starbridge"
+license = "LICENSE"
+commit = "c56b9b785ff71b68c620108957cd401c32508b0d"

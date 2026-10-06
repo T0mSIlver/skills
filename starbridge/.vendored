@@ -1,0 +1,10 @@
+{
+  "name": "starbridge",
+  "repo": "https://github.com/T0mSIlver/starbridge",
+  "ref": "main",
+  "path": "plugin/skills/starbridge",
+  "commit": "c56b9b785ff71b68c620108957cd401c32508b0d",
+  "upstream": "https://github.com/T0mSIlver/starbridge/tree/c56b9b785ff71b68c620108957cd401c32508b0d/plugin/skills/starbridge",
+  "vendored_at": "2026-10-06",
+  "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
+}
