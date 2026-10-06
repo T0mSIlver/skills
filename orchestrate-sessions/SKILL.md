@@ -85,15 +85,18 @@ deletes a session's worktree, so a night step fetches the PR head instead.
 ## Reaching the owner
 
 The owner answers from their phone. When `starbridge status` shows a
-pairing, all that needs them is a card (the `starbridge` skill), from you
-and from every session: decisions, work waiting on them (a build to test, a
-PR to approve), reports they must act on. Without it, use `needs-you`.
+pairing, the `starbridge` skill covers you and every session; without it,
+use `needs-you`. Chips post their own decisions; you post the PR-to-approve
+and build-to-test cards, and a card for the report of what needs the owner.
 
-- **Follow every answer:** `starbridge answers --all --follow` under
-  Monitor. Act on your own cards; for a session's, check with `list_events`
-  that it got the answer, and send it the line if not.
-- **Chip prompts carry the rule:** "Decisions and work waiting on the owner
-  go through `starbridge ask` (the starbridge skill), never chat."
+- **Follow every answer:** `starbridge answers --all --follow --since <your
+  start or the last handoff>` under Monitor; the first lines are history.
+  Your own answers also come back as prompts: act once. For a session's,
+  check with `list_events` that it got the answer; if not, send it the line
+  while it is warm, else act on it yourself. Find it by `sessionTitle`.
+- **Chip prompts carry the rule:** "Decisions for the owner go through
+  `starbridge ask` (the starbridge skill), never chat; ready PRs go to the
+  scheduler, which posts the card."
 
 ## Reporting
 
