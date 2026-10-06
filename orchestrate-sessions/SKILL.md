@@ -94,6 +94,11 @@ and build-to-test cards, and a card for the report of what needs the owner.
   Your own answers also come back as prompts: act once. For a session's,
   check with `list_events` that it got the answer; if not, send it the line
   while it is warm, else act on it yourself. Find it by `sessionTitle`.
+- **One asker per question:** the session that owns the work asks; send it
+  your context instead of asking about its work. Before asking anything,
+  check `starbridge decisions --open`. When a session says it asked, wait
+  for that answer in the feed. A duplicate's second asker withdraws its
+  card at once: `starbridge settle <id> --outcome withdrawn`.
 - **Chip prompts carry the rule:** "Decisions for the owner go through
   `starbridge ask` (the starbridge skill), never chat; ready PRs go to the
   scheduler, which posts the card."
