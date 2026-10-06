@@ -1,6 +1,6 @@
 ---
 name: orchestrate-sessions
-description: "Run a Claude Code desktop session as the orchestrator for many parallel sessions on one repo: spawn one session per independent issue (chips only the owner can start; subagents only explore, on Sonnet), brief and greenlight them, take handoffs, keep the pipeline full, archive finished sessions and clean up, and report to the owner. Pairs with merge-queue, scarce-resource, needs-you and quota. Use when the owner asks this session to split work across sessions, act as the scheduler, take over from a previous scheduler, unblock or relaunch sessions, or archive finished ones."
+description: "Run a Claude Code desktop session as the orchestrator for many parallel sessions on one repo: spawn one session per independent issue (chips only the owner can start; subagents only explore, on Sonnet), brief and greenlight them, take handoffs, keep the pipeline full, archive finished sessions and clean up, and report to the owner. Pairs with merge-queue, scarce-resource, starbridge, needs-you and quota. Use when the owner asks this session to split work across sessions, act as the scheduler, take over from a previous scheduler, unblock or relaunch sessions, or archive finished ones."
 compatibility: Claude Code desktop app (Code tab). Needs spawn_task, dismiss_task, the ccd_session_mgmt tools (list_sessions, list_events, archive_session), SendMessage, the Agent tool, gh, and bash. The orch-* scripts read a per-repo config file.
 ---
 
@@ -17,19 +17,11 @@ and CI workflow, and keep it in the owner's dotfiles), then the project
 memory and the repo's agent guide. Take stock with `list_sessions`,
 `gh pr list --state open` (labels, draft state) and `orch-conflicts`. Run
 `orch-iam`, then restart the background loops: green poller, combo watcher,
-idle watcher, next wake-up, quota queue.
+idle watcher, answer feed, next wake-up, quota queue.
 
-## The other skills
-
-- **Merging:** `merge-queue` (poll for green, check against main, combos,
-  stacking, `waits:` labels, merge classes).
-- **The shared resource:** `scarce-resource` (night window, wake-ups,
-  dispatch order, greenlighting lanes).
-- **Owner decisions:** `needs-you`, a page the owner keeps open.
-- **Review quota:** `quota`; `quota-queue` keeps every window busy.
-
-The `orch-*` scripts are on `PATH`, else in this skill's `scripts/`; run
-them from a checkout of the repo.
+Merging: `merge-queue`. The shared resource: `scarce-resource`. Review
+quota: `quota`. The `orch-*` scripts are on `PATH`, else in this skill's
+`scripts/`; run them from a checkout of the repo.
 
 ## Sessions
 
@@ -44,7 +36,8 @@ them from a checkout of the repo.
   `(#n)`. The prompt stands alone: issue (none yet: open one first), what to
   read, the proof its PR carries, the open PRs it may collide with and
   whether to stack, "message the scheduler (this session's title) before
-  using the resource and before `gh pr ready`", reviewers, who merges.
+  using the resource and before `gh pr ready`", reviewers, who merges, and
+  the owner rule below.
 - **Keep the pipeline full.** When a session finishes, spawn or propose the
   next well-defined issue. At each wake-up, `list_events` on sessions idle
   on a question or a green draft, and answer or nudge those idle under an
@@ -62,13 +55,10 @@ them from a checkout of the repo.
 The owner's weekly Claude limit runs out first. Run at `/effort low`.
 
 - **Idle sessions.** `orch-idlewatch`, under Monitor, names each session
-  idle 50 minutes, before its 1-hour cache expires. Nudge it with its next
-  step if one is due within the hour; otherwise have it post a handoff and
-  archive it. Past the hour the session is cold: archive it, never message
-  it. A message re-sends its whole context at the cache-write rate (2x
-  input), and a fresh session that reads the handoff costs less. The one
-  exception is a session that holds what no handoff, PR or issue has, which
-  the handoff before every long wait rules out.
+  idle 50 minutes, before its 1-hour cache expires. Nudge it if its next
+  step is due within the hour; otherwise have it post a handoff and archive
+  it. Past the hour it is cold: archive it, never message it, since a
+  message re-sends its whole context at the cache-write rate (2x input).
 - **Yourself.** The `orchestrator-cache` mod (owner's dotfiles) sends you a
   keepalive at 50 idle minutes, or compacts you, as the owner switches it.
   On a keepalive, do only steps that are due; else answer "warm".
@@ -92,15 +82,26 @@ deletes a session's worktree, so a night step fetches the PR head instead.
   parallel, then one tracking issue, a sub-issue per finding, and one
   session per sub-issue.
 
+## Reaching the owner
+
+The owner answers from their phone. When `starbridge status` shows a
+pairing, all that needs them is a card (the `starbridge` skill), from you
+and from every session: decisions, work waiting on them (a build to test, a
+PR to approve), reports they must act on. Without it, use `needs-you`.
+
+- **Follow every answer:** `starbridge answers --all --follow` under
+  Monitor. Act on your own cards; for a session's, check with `list_events`
+  that it got the answer, and send it the line if not.
+- **Chip prompts carry the rule:** "Decisions and work waiting on the owner
+  go through `starbridge ask` (the starbridge skill), never chat."
+
 ## Reporting
 
 - Answer first, then **Needs you**: one line per decision with your
   recommendation and default. PRs as links, sessions by issue number.
-- Long output buries questions. With a Needs You page (`needs-you`), each
-  decision goes there and chat gets one line.
 - **Between tool calls, write only what changes what the owner would do**
   (a merge, a red run, a session that needs them); never narrate checks or
-  plans. Opus 5.5 writes a progress note there by default.
+  plans, as Opus 5.5 does by default.
 - When the owner comes back: what happened, what went wrong, what needs
   them now (hand checks: `gh pr list --state all --label <hand-check label>`,
   as links).
@@ -127,4 +128,4 @@ deletes a session's worktree, so a night step fetches the PR head instead.
 
 `reference/worked-example.md` shows one real scheduler (a single self-hosted
 Mac runner); `reference/incidents.md` holds the evidence behind the rules of
-all four skills.
+all four skills; `reference/starbridge.md` that behind Reaching the owner.

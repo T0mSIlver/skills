@@ -1,6 +1,6 @@
 ---
 name: needs-you
-description: "Put the decisions a long-running session needs from its owner on a private artifact page the owner keeps open, instead of burying them in chat: publish the page once, add each question as one database write with options, a recommendation and a default, and act when the owner saves an answer, which wakes the session. Use when the owner says questions get lost in the output, asks for a decision page, or when an orchestrator or other long-running session will need many owner decisions."
+description: "Put the decisions a long-running session needs from its owner on a private artifact page the owner keeps open, instead of burying them in chat: publish the page once, add each question as one database write with options, a recommendation and a default, and act when the owner saves an answer, which wakes the session. Use when the owner says questions get lost in the output, asks for a decision page, or when an orchestrator or other long-running session will need many owner decisions, and Starbridge is not set up on the machine (with it, use the starbridge skill)."
 compatibility: Claude Code with the Artifact and ArtifactData tools and artifact runtime capabilities (db, comments).
 ---
 
@@ -10,6 +10,10 @@ A long-running session's output buries the questions the owner must answer. The
 Needs You page is a private artifact the owner keeps open: each decision is
 a card with options, a recommendation and a default, and the owner answers
 in place.
+
+When `starbridge status` shows the machine paired, ask with `starbridge ask`
+instead: the owner answers those cards from their phone, and this page is
+the fallback without Starbridge.
 
 ## Set up once per owner
 
