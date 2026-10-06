@@ -38,7 +38,8 @@
       "skills": [
         "./unslop",
         "./herdr",
-        "./gh-stack"
+        "./gh-stack",
+        "./starbridge"
       ],
       "author": {
         "name": "Tom Vaucourt"
@@ -49,7 +50,8 @@
         "third-party",
         "writing",
         "herdr",
-        "stacked-prs"
+        "stacked-prs",
+        "starbridge"
       ],
       "category": "workflow"
     },
