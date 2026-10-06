@@ -85,23 +85,18 @@ deletes a session's worktree, so a night step fetches the PR head instead.
 ## Reaching the owner
 
 The owner answers from their phone. When `starbridge status` shows a
-pairing, the `starbridge` skill covers you and every session; without it,
-use `needs-you`. Chips post their own decisions; you post the PR-to-approve
-and build-to-test cards, and a card for the report of what needs the owner.
+pairing, the `starbridge` skill covers you and every session (else
+`needs-you`). You post only the PR, build and report cards.
 
-- **Follow every answer:** `starbridge answers --all --follow --since <your
-  start or the last handoff>` under Monitor; the first lines are history.
-  Your own answers also come back as prompts: act once. For a session's,
-  check with `list_events` that it got the answer; if not, send it the line
-  while it is warm, else act on it yourself. Find it by `sessionTitle`.
 - **One asker per question:** the session that owns the work asks; send it
-  your context instead of asking about its work. Before asking anything,
-  check `starbridge decisions --open`. When a session says it asked, wait
-  for that answer in the feed. A duplicate's second asker withdraws its
-  card at once: `starbridge settle <id> --outcome withdrawn`.
-- **Chip prompts carry the rule:** "Decisions for the owner go through
-  `starbridge ask` (the starbridge skill), never chat; ready PRs go to the
-  scheduler, which posts the card."
+  your context instead. Check `starbridge decisions --open` before asking.
+  A duplicate's second asker withdraws it (`settle <id> --outcome withdrawn`).
+- **Follow every answer:** `starbridge answers --all --follow --since <your
+  start>` under Monitor. Act once on your own. For a session's, check with
+  `list_events` that it got it; if not, send it the line while it is warm,
+  else act yourself. Match sessions by `sessionTitle`.
+- **Chip prompts say:** "Decisions for the owner: `starbridge ask` (the
+  starbridge skill), never chat. Ready PRs go to the scheduler."
 
 ## Reporting
 
