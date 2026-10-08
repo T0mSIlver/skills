@@ -1,6 +1,6 @@
 ---
 name: orchestrate-sessions
-description: "Run a Claude Code desktop session as the orchestrator for many parallel sessions on one repo: spawn one session per independent issue (chips only the owner can start; subagents only explore, on Sonnet), brief and greenlight them, take handoffs, keep the pipeline full, archive finished sessions and clean up, and report to the owner. Pairs with merge-queue, scarce-resource, needs-you and quota. Use when the owner asks this session to split work across sessions, act as the scheduler, take over from a previous scheduler, unblock or relaunch sessions, or archive finished ones."
+description: "Run a Claude Code desktop session as the orchestrator for many parallel sessions on one repo: spawn one session per independent issue (chips only the owner can start; subagents only explore, on Sonnet), brief and greenlight them, take handoffs, keep the pipeline full, archive finished sessions and clean up, and report to the owner. Pairs with merge-queue, scarce-resource, starbridge and quota. Use when the owner asks this session to split work across sessions, act as the scheduler, take over from a previous scheduler, unblock or relaunch sessions, or archive finished ones."
 compatibility: Claude Code desktop app (Code tab). Needs spawn_task, dismiss_task, the ccd_session_mgmt tools (list_sessions, list_events, archive_session), SendMessage, the Agent tool, gh, and bash. The orch-* scripts read a per-repo config file.
 ---
 
@@ -25,7 +25,7 @@ idle watcher, next wake-up, quota queue.
   stacking, `waits:` labels, merge classes).
 - **The shared resource:** `scarce-resource` (night window, wake-ups,
   dispatch order, greenlighting lanes).
-- **Owner decisions:** `needs-you`, a page the owner keeps open.
+- **Owner decisions:** `starbridge`, cards on the owner's phone (else `needs-you`).
 - **Review quota:** `quota`; `quota-queue` keeps every window busy.
 
 The `orch-*` scripts are on `PATH`, else in this skill's `scripts/`; run
@@ -59,7 +59,7 @@ them from a checkout of the repo.
 
 ## Usage
 
-The owner's weekly Claude limit runs out first. Run at `/effort low`.
+The owner's weekly Claude limit runs out first. Run at `/effort medium`.
 
 - **Idle sessions.** `orch-idlewatch`, under Monitor, names each session
   idle 50 minutes, before its 1-hour cache expires. Nudge it with its next
@@ -96,8 +96,8 @@ deletes a session's worktree, so a night step fetches the PR head instead.
 
 - Answer first, then **Needs you**: one line per decision with your
   recommendation and default. PRs as links, sessions by issue number.
-- Long output buries questions. With a Needs You page (`needs-you`), each
-  decision goes there and chat gets one line.
+- Long output buries questions: each decision is its own `starbridge ask`
+  card, chat gets one line, and a turn that waits on the owner ends on one.
 - **Between tool calls, write only what changes what the owner would do**
   (a merge, a red run, a session that needs them); never narrate checks or
   plans. Opus 5.5 writes a progress note there by default.
