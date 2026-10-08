@@ -34,7 +34,7 @@ repo = "https://github.com/github/gh-stack"
 ref = "main"
 path = "skills/gh-stack"
 license = "LICENSE"
-commit = "d4ab7ab47e5b3e3708a27c8c42abcdf4bc321419"
+commit = "fc2b03d34528917574b41d4d749a477263a6afc5"
 
 # Starbridge's own skill: how an agent asks its owner through the Starbridge
 # app. While the repo is private the daily update cannot clone it and its
