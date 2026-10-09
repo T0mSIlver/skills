@@ -1,6 +1,6 @@
 ---
 name: starbridge
-description: "Reach your user through Starbridge: a card on their phone that they answer with one tap, sent back into this session. Use it, instead of asking in chat or with AskUserQuestion, whenever you need a decision that is theirs, and before ending a turn on work that waits on them (a PR to review or merge, a failure only they can fix). Wrap in `starbridge run`, unasked, any command that blocks them or that their instructions ask you to report."
+description: "Reach your user through Starbridge: a card on their phone that they answer with one tap, sent back into this session. Use it, instead of asking in chat, whenever you need a decision that is theirs, and before ending a turn on work that waits on them (a PR to review or merge, a failure only they can fix). In Claude Code, a quick question may use AskUserQuestion, which reaches their devices too. Wrap in `starbridge run`, unasked, any command that blocks them or that their instructions ask you to report."
 compatibility: The `starbridge` CLI on PATH, paired with `starbridge pair`.
 ---
 
@@ -23,8 +23,10 @@ their phone; they read it cold, between other things, and tap an option.
   report: wrap it in `starbridge run` (below).
 
 Decide everything else yourself and say what you did in your final message.
-Ask one question in one place: never also in the terminal or with
-`AskUserQuestion`. Ask in the terminal only when `starbridge` fails (not
+Ask one question in one place, never also in the terminal. In Claude Code,
+`AskUserQuestion` reaches their devices too, so a quick question may use it;
+post a card for a decision they will read cold, or that needs links or
+images. Ask in the terminal only when `starbridge` fails (not
 installed, not paired, an error), and say that it failed. A card cannot
 approve an action your guidelines say needs the user's yes in this chat
 (account settings, external messages, purchases, deleting data), since its
@@ -128,3 +130,8 @@ starbridge run --title 'Mac e2e' --reason 'takes over your screen and keyboard' 
 
 Wrap the whole command, chained or not. `--reason` is required: what it
 blocks, or the rule it matches. Output and exit code are the command's own.
+
+In Codex, ask to run `starbridge run` outside the sandbox on the first call
+(escalated permissions, justified by the network the report needs). In the
+sandbox the command runs but no device hears of it, and it runs again once
+the escalation is approved.
