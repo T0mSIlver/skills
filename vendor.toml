@@ -25,7 +25,7 @@ repo = "https://github.com/herdrdev/herdr"
 ref = "master"
 path = "skills/herdr"
 license = "LICENSE"
-commit = "4dc23bb15d4a2fd2c093abfb509f903c3015bf56"
+commit = "2563803dca97c040beaf3dc3acdcb5a3221b4238"
 
 # GitHub's skill for its gh-stack CLI extension, from the extension's repo.
 [[skills]]
