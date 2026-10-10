@@ -98,10 +98,9 @@ mistral vibe   37%  €93.66 / €255.00 · €161.34 left
   task, not when you queue it, because it may run hours later.
 - **`codex-limits` printed `None`.** The account is logged out or the
   app-server changed its reply. `quota-queue` reads that as unreadable and
-  retries every 5 minutes; tell Tom instead of spending.
+  retries every 5 minutes; post Tom a card instead of spending.
 - **A credit will expire before the weekly limit can run out.** Tom
-  decides. Put it in a Needs you line with the expiry date. Don't spend
-  it early.
+  decides: post a card with the expiry date. Don't spend it early.
 
 ## Not possible
 

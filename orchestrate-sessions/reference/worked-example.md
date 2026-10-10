@@ -64,7 +64,7 @@ green or red. Avoid 20:00–20:45 UTC; the Mac is booked.
 | 21:45–22:30 | #709's replay |
 | 00:00 (02:00 Paris) | The owner's Nemotron bench |
 
-**Needs you:** keep the Mac awake until the bench is done.
+**Card for the owner:** keep the Mac awake until the bench is done.
 
 Each row after the first had a one-shot cron that woke the scheduler to
 check the previous slot had ended and then send the next session its go.

@@ -75,3 +75,9 @@ added them. The hand-check label, searched in that tab, replaced the card.
 | Rule | What happened |
 |---|---|
 | Quiet between tool calls | 2026-10-02: the orchestrator narrated each check ("Checking…", "Now loading…") between tool calls. The owner, who follows it from a phone: "say less between tool calls, only the important things, since you're the orchestrator". Anthropic's Opus 5.5 prompting guide says the model writes a progress update between tool calls unless the prompt sets their frequency. |
+
+## Audits
+
+An audit of a bug class (data loss, dead code): two vendors read main in
+parallel, then one tracking issue, a sub-issue per finding, and one session
+per sub-issue.

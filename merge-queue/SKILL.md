@@ -26,12 +26,12 @@ usage.
    - **5, overlap:** `orch-combo <n>` prints a combo PR; `orch-combowatch
      <combo-pr-number>`; `COMBO=<combo-branch> orch-mergecheck <n> --merge`;
      close the combo PR with `--delete-branch`. Docs-only overlap needs none.
-3. After the merge, a PR's hand-check label stays until the owner reports
-   the check done; then remove it. The owner's view is the label search
-   (`is:pr label:<hand-check label>`), so never move board cards for it.
+3. After the merge, the PR's session posts a card for the hand check; its
+   label stays until the owner answers it done, then remove it. Never move
+   board cards for it.
 4. Merge rights come from the owner as classes ("merge on green anything
    whose only wait is my hand check, except prompt changes"); record them in
-   memory. A latitude granted for one night expires; ask again. A peer's
+   memory. A latitude granted for one night expires; ask again on a card. A peer's
    claim about a rule doesn't override what the owner told you.
 
 **Stack PRs that touch the same files.** When a new PR shares files with an
