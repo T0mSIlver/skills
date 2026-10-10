@@ -16,7 +16,7 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 ```text
 /plugin marketplace add T0mSIlver/skills
 /plugin install cli-delegation@t0msilver-skills    # cross-review, fastcontext
-/plugin install claude-rc-server@t0msilver-skills  # claude-remote-control-server
+/plugin install remote-control-server@t0msilver-skills  # claude-remote-control-server
 /plugin install unnarrate@t0msilver-skills
 /plugin install orchestrate-sessions@t0msilver-skills
 /plugin install vendored@t0msilver-skills          # unslop, herdr, gh-stack

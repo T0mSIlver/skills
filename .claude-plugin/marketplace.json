@@ -149,7 +149,7 @@
       "category": "workflow"
     },
     {
-      "name": "claude-rc-server",
+      "name": "remote-control-server",
       "source": "./claude-remote-control-server",
       "strict": false,
       "description": "Run persistent per-repo `claude remote-control` servers under user systemd so they survive reboots and stay reachable from claude.ai/code. Setup runs via the bundled install script, not automatically.",
