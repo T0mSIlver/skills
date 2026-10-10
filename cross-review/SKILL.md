@@ -91,8 +91,9 @@ One follow-up round; never loop.
   re-reading files, crawling code the diff doesn't touch, or said nothing
   useful, don't continue: report the review as incomplete, or rerun with
   another `--vendor`. Either way, exit 4 is not a pass.
-- **Exit 3 means no quota left** on any reviewer. Report it and ship
-  without the review only if the repo allows that.
+- **Exit 3 means no quota left** on any reviewer. Shipping unreviewed is
+  Tom's call: post a card (ship now, or wait for the reset time `quota`
+  prints).
 - **Uncommitted changes abort the run**, because the review pins HEAD.
   Commit first; a WIP commit is fine.
 - **The vendor order is deliberate.** GLM on the Z.ai plan first, because

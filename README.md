@@ -15,7 +15,6 @@ the skill.
 | [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: starts a session per issue, briefs each one, takes handoffs, and archives finished sessions |
 | [`merge-queue`](merge-queue/SKILL.md) | Merges parallel PRs without breaking main: checks each against commits that landed after its CI run, builds the combination when they overlap, stacks PRs that share files |
 | [`scarce-resource`](scarce-resource/SKILL.md) | Books a shared runner or GPU into the owner's night window, one dispatch at a time, with wake-ups that fire while the session is idle |
-| [`needs-you`](needs-you/SKILL.md) | A page the owner keeps open for the decisions a long-running session needs, so they don't get lost in chat |
 | [`quota`](quota/SKILL.md) | What each usage window means, which model spends it, and a queue that fills every Codex window before it resets |
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
 | [`unnarrate`](unnarrate/SKILL.md) | Deletes text that narrates itself: comments that repeat the code, tooltips that repeat the label, PR bullets that repeat the diff |
