@@ -97,7 +97,9 @@ old→new SHA, a GitHub compare link, and the upstream commits that touched the
 vendored path.
 
 Review it as an import, not as a diff to fix: read the upstream changes, then
-merge or close. If something is wrong with the skill, the fix belongs in a PR to
+merge or close. A PR that only moves the pin merges itself once validate
+passes, and so does every PR for an entry marked `automerge = true`: set it
+only on upstreams you own, whose changes you already reviewed there. If something is wrong with the skill, the fix belongs in a PR to
 the upstream repo.
 
 **`VENDOR_PR_TOKEN` must be set** to a PAT with `contents: write` and

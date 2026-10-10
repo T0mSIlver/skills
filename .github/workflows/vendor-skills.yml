@@ -3,8 +3,9 @@ name: vendor-skills
 # Re-vendors each entry of vendor.toml daily and opens one PR per skill that
 # moved upstream. Vendored copies are pristine — the PR is a verbatim import,
 # so review the upstream diff, never patch the copy in this repo. PRs whose
-# diff is only the commit pin (no skill files changed) merge themselves once
-# validate passes; anything touching skill content waits for review.
+# diff is only the commit pin (no skill files changed), and every PR for an
+# entry marked `automerge = true` (my own upstreams), merge themselves once
+# validate passes; any other change to skill content waits for review.
 on:
   schedule:
     - cron: '17 6 * * *'
@@ -117,10 +118,18 @@ jobs:
           set -euo pipefail
           # A diff of just <skill>/.vendored + vendor.toml means upstream moved
           # without touching the skill's files — nothing to review, so merge as
-          # soon as validate passes. Any other file leaves the PR for review.
+          # soon as validate passes. Any other file leaves the PR for review,
+          # unless the entry says `automerge = true` (an upstream I own).
+          automerge="$(python3 -c '
+          import os, tomllib
+          with open("vendor.toml", "rb") as fh:
+              skills = tomllib.load(fh).get("skills", [])
+          entry = next(s for s in skills if s["name"] == os.environ["SKILL"])
+          print("true" if entry.get("automerge") is True else "false")
+          ')"
           extra="$(gh pr view "$PR" --json files --jq '.files[].path' \
             | grep -vxF -e "$SKILL/.vendored" -e vendor.toml || true)"
-          if [ -n "$extra" ]; then
+          if [ -n "$extra" ] && [ "$automerge" != true ]; then
             echo "skill content changed; leaving PR #$PR for review:"
             echo "$extra"
             exit 0

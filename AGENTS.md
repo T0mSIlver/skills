@@ -7,8 +7,9 @@
 - Never edit a directory that contains a `.vendored` stamp. The next update
   replaces it. Send the fix upstream instead
   ([docs/vendoring.md](docs/vendoring.md)). A vendor PR merges itself once
-  validate passes only if it just moves the pin (`.vendored` and
-  `vendor.toml`); one that changes skill files waits for review.
+  validate passes if it just moves the pin (`.vendored` and `vendor.toml`)
+  or its entry says `automerge = true` (an upstream I own, like
+  starbridge); any other one that changes skill files waits for review.
 - To add or remove a skill, also update its plugin in
   `.claude-plugin/marketplace.json` and its row in the README table. A skill
   script that should be on `PATH` also goes in `HELPER_SPECS` in
