@@ -37,8 +37,7 @@ license = "LICENSE"
 commit = "29a36d314be664583705f18e41cebdf2b61ad514"
 
 # Starbridge's own skill: how an agent asks its owner through the Starbridge
-# app. While the repo is private the daily update cannot clone it and its
-# job fails; update by hand with `scripts/vendor-skills.sh --only starbridge`.
+# app. It is my own repo, so content updates merge on green too.
 [[skills]]
 name = "starbridge"
 repo = "https://github.com/T0mSIlver/starbridge"
@@ -46,3 +45,4 @@ ref = "main"
 path = "plugin/skills/starbridge"
 license = "LICENSE"
 commit = "a9366aaed27698cc7798cad7cb9ddcab45b692bd"
+automerge = true
