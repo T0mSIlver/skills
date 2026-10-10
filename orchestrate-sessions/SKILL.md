@@ -30,8 +30,8 @@ runner or GPU), `quota` (review windows), `starbridge` (writing cards). The
   can't tell whether the owner is at the desktop, so post each brief as a
   comment on its issue, spawn the chip, and post one card per batch with a
   one-line Remote Control prompt per session (`Work #n in ~/work/<repo>:
-  the brief is the issue's last comment`). When one starts, dismiss the
-  chip or withdraw the card.
+  the brief is the issue's last comment`). Dismiss each chip whose session
+  started from the card; withdraw the card once every session started.
 - **Subagents** only explore, read-only, on Sonnet or Haiku, never waiting
   on a build, CI, a review or the owner (their cache lasts 5 minutes).
 - **Before spawning,** search the issue number in open PRs and
