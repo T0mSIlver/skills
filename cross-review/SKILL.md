@@ -104,7 +104,8 @@ One follow-up round; never loop.
   Vibe plan shows up as a failed run and Codex takes over. Don't override the
   order with `--vendor codex` to get a "better" review.
 - **Never review with Vibe's default model** (`mistral-medium-3.5`). The
-  script gives Vibe a private `VIBE_HOME` that pins `zai-glm-5-3`, with the
+  script gives Vibe a private `VIBE_HOME` that pins `zai-glm-5-3`
+  (`CROSS_REVIEW_VIBE_MODEL=mistral-large-4` for a second vendor), with the
   Vibe plan key from `~/.vibe/.env` (or `VIBE_MISTRAL_API_KEY`), never an
   exported `MISTRAL_API_KEY`; don't run `vibe` for a review outside the
   script.
