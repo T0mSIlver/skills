@@ -156,7 +156,8 @@ run_vibe() {
   # generic backend passes low through; it mangles the reasoning chunks that
   # high sends, so medium and high stay on the Mistral backend.
   local provider=mistral thinking=high
-  [ "$effort" = low ] && provider=mistral-generic thinking=low
+  # Mistral Large 4 takes only high or none, so a low-effort review runs it at high.
+  [ "$effort" = low ] && [ "$vibe_model" = zai-glm-5-3 ] && provider=mistral-generic thinking=low
   cat > "$home/config.toml" <<TOML
 active_model = "review"
 enable_telemetry = false
