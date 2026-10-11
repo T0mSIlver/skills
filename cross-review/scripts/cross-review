@@ -82,11 +82,13 @@ codex_ok() {
 }
 
 codex_model=${CROSS_REVIEW_CODEX_MODEL:-gpt-6.1-sol}
+# The model Vibe runs on the Mistral API: GLM 5.3 unless overridden (mistral-large-4 for a second vendor).
+vibe_model=${CROSS_REVIEW_VIBE_MODEL:-zai-glm-5-3}
 # The model each reviewer runs; a review is reused only by the same model.
 model_of() {
   case $1 in
     glm) echo zai-coding-plan/glm-5.3 ;;
-    vibe) echo zai-glm-5-3 ;;
+    vibe) echo "$vibe_model" ;;
     codex) echo "$codex_model" ;;
   esac
 }
@@ -141,8 +143,8 @@ run_glm() {
 }
 
 run_vibe() {
-  # Vibe's default model is never used: a private VIBE_HOME pins GLM 5.3,
-  # which the Mistral API hosts and bills to the Vibe plan.
+  # Vibe's default model is never used: a private VIBE_HOME pins $vibe_model
+  # (GLM 5.3 by default), which the Mistral API hosts and bills to the Vibe plan.
   local home="$run/vibe-home"
   # The Vibe plan key only: an exported MISTRAL_API_KEY is often the pay-per-call
   # Studio key (live proofs, evals), which GLM traffic must not bill.
@@ -156,7 +158,7 @@ run_vibe() {
   local provider=mistral thinking=high
   [ "$effort" = low ] && provider=mistral-generic thinking=low
   cat > "$home/config.toml" <<TOML
-active_model = "glm-5.3"
+active_model = "review"
 enable_telemetry = false
 enable_update_checks = false
 
@@ -170,7 +172,7 @@ api_style = "openai"
 [[models]]
 name = "$(model_of vibe)"
 provider = "$provider"
-alias = "glm-5.3"
+alias = "review"
 temperature = 1.0
 thinking = "$thinking"
 input_price = 1.4
