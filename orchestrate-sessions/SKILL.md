@@ -1,6 +1,6 @@
 ---
 name: orchestrate-sessions
-description: "Run a Claude Code desktop session as the orchestrator for many parallel sessions on one repo: spawn one session per independent issue (chips only the owner can start; subagents only explore, on Sonnet or Haiku), brief and greenlight them, take handoffs, keep the pipeline full, archive finished sessions and clean up, and reach the owner through Starbridge cards. Pairs with merge-queue, scarce-resource, quota and starbridge. Use when the owner asks this session to split work across sessions, act as the orchestrator, take over from a previous one, unblock or relaunch sessions, or archive finished ones."
+description: "Run a Claude Code desktop session as the orchestrator for many parallel sessions on one repo: spawn one session per independent issue (chips only the owner can start; subagents explore on Sonnet or Haiku, or take a session's batch on Opus when the owner starts none), brief and greenlight them, take handoffs, keep the pipeline full, archive finished sessions and clean up, and reach the owner through Starbridge cards. Pairs with merge-queue, scarce-resource, quota and starbridge. Use when the owner asks this session to split work across sessions, act as the orchestrator, take over from a previous one, unblock or relaunch sessions, or archive finished ones."
 compatibility: Claude Code desktop app (Code tab). Needs the starbridge CLI, spawn_task, dismiss_task, the ccd_session_mgmt tools (list_sessions, list_events, archive_session), SendMessage, the Agent tool, gh, and bash. The orch-* scripts read a per-repo config file.
 ---
 
@@ -32,15 +32,15 @@ runner or GPU), `quota` (review windows), `starbridge` (writing cards). The
   one-line Remote Control prompt per session (`Work #n in ~/work/<repo>:
   the brief is the issue's last comment`). Dismiss each chip whose session
   started from the card; withdraw the card once every session started.
-- **Subagents** only explore, read-only, on Sonnet or Haiku, never waiting
-  on a build, CI, a review or the owner (their cache lasts 5 minutes).
+- **Subagents** explore read-only on Sonnet or Haiku. If the owner starts
+  neither chip nor card session, its batch of issues or PRs goes to one Opus
+  `subagent-guard:session` subagent (1-hour cache), resumed by SendMessage.
 - **Before spawning,** search the issue number in open PRs and
   `list_sessions` titles. Title with `(#n)`. The brief stands alone: issue,
   what to read, the proof its PR carries, PRs it may collide with, "message
   the orchestrator (`<your local_… id>`) before using the resource and
   before `gh pr ready`" (you greenlight by lanes, `scarce-resource`), who
-  merges. A brief never overrides the owner's CLAUDE.md (reviews go
-  through `cross-review`, subagents run on Sonnet or Haiku).
+  merges. It never overrides the owner's CLAUDE.md (reviews: `cross-review`).
 - **Keep the pipeline full.** When a session finishes, spawn the next
   well-defined issue. At each wake-up, `list_events` on sessions idle on a
   question or a green draft; nudge those idle under an hour.
