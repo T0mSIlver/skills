@@ -24,9 +24,12 @@ their phone; they read it cold, between other things, and tap an option.
 
 Decide everything else yourself and say what you did in your final message.
 Ask one question in one place, never also in the terminal. In Claude Code,
-`AskUserQuestion` reaches their devices too, so a quick question may use it;
-post a card for a decision they will read cold, or that needs links or
-images. Ask in the terminal only when `starbridge` fails (not
+`AskUserQuestion` reaches their devices too, so a quick question may use it.
+Its question becomes the card's title, so write it as one (below): one
+sentence of at most 70 characters. It has no context field: put your
+findings in your message before the call, and what each pick does in its
+option's description. Post a card for a decision they will read cold, or
+that needs links or images. Ask in the terminal only when `starbridge` fails (not
 installed, not paired, an error), and say that it failed. A card cannot
 approve an action your guidelines say needs the user's yes in this chat
 (account settings, external messages, purchases, deleting data), since its
@@ -73,7 +76,8 @@ starbridge ask \
 ```
 
 Quote text in single quotes, since double quotes expand `$` and backticks,
-and write apostrophes as ’. Other flags: `--image` (up to 4 PNG or JPEG),
+and write apostrophes as ’. Break lines inside the quotes with real line
+breaks, as above, never `\n`: bash and zsh pass it on as typed. Other flags: `--image` (up to 4 PNG or JPEG),
 `--link` (up to 4 HTTPS URLs), `--waiting` (only the answer unblocks you), `--answer-in`. `ask` prints the decision id (`d_Xk3…`) and how the
 answer comes back.
 
