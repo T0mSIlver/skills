@@ -35,7 +35,8 @@ runner or GPU), `quota` (review windows), `starbridge` (writing cards). The
 - **Subagents** explore read-only on Sonnet or Haiku. If the owner starts
   neither chip nor card session, its batch goes to one Opus
   `subagent-guard:session` subagent. Send its follow-ups and next related
-  work to it by SendMessage while its last call is under an hour old.
+  work to it by SendMessage while its last call is under an hour old. Any
+  subagent you may resume, Sonnet too, runs as `subagent-guard:session`.
 - **Before spawning,** search the issue number in open PRs and
   `list_sessions` titles. Title with `(#n)`. The brief stands alone: issue,
   what to read, the proof its PR carries, PRs it may collide with, "message
