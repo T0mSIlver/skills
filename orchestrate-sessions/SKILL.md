@@ -33,8 +33,9 @@ runner or GPU), `quota` (review windows), `starbridge` (writing cards). The
   the brief is the issue's last comment`). Dismiss each chip whose session
   started from the card; withdraw the card once every session started.
 - **Subagents** explore read-only on Sonnet or Haiku. If the owner starts
-  neither chip nor card session, its batch of issues or PRs goes to one Opus
-  `subagent-guard:session` subagent (1-hour cache), resumed by SendMessage.
+  neither chip nor card session, its batch goes to one Opus
+  `subagent-guard:session` subagent. Send its follow-ups and next related
+  work to it by SendMessage while its last call is under an hour old.
 - **Before spawning,** search the issue number in open PRs and
   `list_sessions` titles. Title with `(#n)`. The brief stands alone: issue,
   what to read, the proof its PR carries, PRs it may collide with, "message
