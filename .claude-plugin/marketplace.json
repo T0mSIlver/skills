@@ -59,7 +59,7 @@
       "name": "unnarrate",
       "source": "./",
       "strict": false,
-      "description": "Remove self-narrating meta-commentary from UI copy, docs, code comments, and PR text \u2014 text that describes the artifact it lives in or restates what the reader already sees. First-party companion to the vendored unslop skill: unnarrate deletes what shouldn't exist, unslop fixes how the rest sounds.",
+      "description": "Remove self-narrating meta-commentary from UI copy, docs, code comments, and PR text — text that describes the artifact it lives in or restates what the reader already sees. First-party companion to the vendored unslop skill: unnarrate deletes what shouldn't exist, unslop fixes how the rest sounds.",
       "skills": [
         "./unnarrate"
       ],
@@ -75,6 +75,27 @@
         "code-comments",
         "microcopy",
         "documentation"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "docs-review",
+      "source": "./",
+      "strict": false,
+      "description": "Write, edit or review a project's user docs: every claim checked against the code, one home per fact, one sentence per behaviour, and a hard trim. Companion to unnarrate and unslop, which handle how the sentences read.",
+      "skills": [
+        "./docs-review"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "docs",
+        "writing",
+        "readme",
+        "review"
       ],
       "category": "workflow"
     },
