@@ -50,10 +50,10 @@ this skill.
 - **Two wordings drift apart.** A fact restated on a second page doesn't
   get the next fix. Rule: link to its home instead. Repeat only the one
   sentence that names a shared behaviour, verbatim.
-- **Synonyms.** "agent", "assistant" and "tool" for one thing make readers
-  look for three things. Rule: define each term once, in one place, and use
-  no other word for it. Keep a list order, such as the order of supported
-  platforms, the same everywhere.
+- **Terms defined page by page.** Readers meet a term on whichever page they
+  land on. Rule: define each term once, on the first page, and link there
+  (`unslop` keeps one word per thing). Keep a list order, such as the order
+  of supported platforms, the same everywhere.
 - **A ✓ with the catch in a footnote.** Readers trust the cell. Rule: put
   the condition in the cell ("CLI only", "Opt-in", "With add-on").
 - **Claims wider than the code.** "Works in X" when only X's CLI was
