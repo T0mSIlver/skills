@@ -13,7 +13,8 @@
       "skills": [
         "./owner-charter",
         "./intent-card",
-        "./blast-radius"
+        "./blast-radius",
+        "./verify"
       ],
       "author": {
         "name": "Tom Vaucourt"
