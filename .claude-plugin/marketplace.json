@@ -12,7 +12,8 @@
       "description": "How agents work for an owner who decides intent and delegates the rest: the owner's charter, cards that ask before code, a change's blast radius, a second agent that verifies it, repeated corrections turned into checks, and a weekly debt review.",
       "skills": [
         "./owner-charter",
-        "./intent-card"
+        "./intent-card",
+        "./blast-radius"
       ],
       "author": {
         "name": "Tom Vaucourt"
