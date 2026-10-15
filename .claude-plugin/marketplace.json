@@ -6,6 +6,28 @@
   "description": "T0mSIlver's personal agent skills: cross-vendor review, one session scheduling many, merging parallel PRs without breaking main, and prose cleanup. Written here or vendored verbatim.",
   "plugins": [
     {
+      "name": "owner-workflow",
+      "source": "./",
+      "strict": false,
+      "description": "How agents work for an owner who decides intent and delegates the rest: the owner's charter, cards that ask before code, a change's blast radius, a second agent that verifies it, repeated corrections turned into checks, and a weekly debt review.",
+      "skills": [
+        "./owner-charter"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "workflow",
+        "owner",
+        "verification",
+        "code-review",
+        "autonomy"
+      ],
+      "category": "workflow"
+    },
+    {
       "name": "cli-delegation",
       "source": "./",
       "strict": false,

@@ -11,6 +11,7 @@ the skill.
 
 | Skill | What it gives the agent |
 |-------|-------------------------|
+| [`owner-charter`](owner-charter/SKILL.md) | The owner's rules for every repo: what they decide on a card before any code, how to ask, what must hold before a merge, and what they reject |
 | [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
 | [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: starts a session per issue, briefs each one, takes handoffs, and archives finished sessions |
 | [`merge-queue`](merge-queue/SKILL.md) | Merges parallel PRs without breaking main: checks each against commits that landed after its CI run, builds the combination when they overlap, stacks PRs that share files |
