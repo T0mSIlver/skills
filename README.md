@@ -19,7 +19,7 @@ the skill.
 | [`debt-review`](debt-review/SKILL.md) | Weekly: reads the week's merged PRs, finds second ways, bolt-ons, dead code and workarounds, and proposes a redesign from first principles for each, one owner card each. Adapted from pstack |
 | [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
 | [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: starts a session per issue, briefs each one, takes handoffs, and archives finished sessions |
-| [`merge-queue`](merge-queue/SKILL.md) | Merges parallel PRs without breaking main: checks each against commits that landed after its CI run, builds the combination when they overlap, stacks PRs that share files |
+| [`merge-queue`](merge-queue/SKILL.md) | Merges parallel PRs once each is checked (intent, CI, review, blast radius, verifier verdict) without breaking main: checks each against commits that landed after its CI run, builds the combination when they overlap, stacks PRs that share files |
 | [`scarce-resource`](scarce-resource/SKILL.md) | Books a shared runner or GPU into the owner's night window, one dispatch at a time, with wake-ups that fire while the session is idle |
 | [`quota`](quota/SKILL.md) | What each usage window means, which model spends it, and a queue that fills every Codex window before it resets |
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
