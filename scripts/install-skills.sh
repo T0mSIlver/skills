@@ -27,8 +27,10 @@ dest="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"
 skills=()
 while [ $# -gt 0 ]; do
   case $1 in
-    --from) from=$2; shift ;;
-    --dest) dest=$2; shift ;;
+    --from|--dest)
+      if [ $# -lt 2 ]; then echo "install-skills: $1 needs a directory" >&2; exit 0; fi
+      if [ "$1" = --from ]; then from=$2; else dest=$2; fi
+      shift ;;
     -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
     *) skills+=("$1") ;;
   esac
@@ -39,8 +41,8 @@ done
 warn() { echo "install-skills: $*" >&2; }
 ours_or_missing() { [ ! -e "$dest/$1" ] || [ -f "$dest/$1/$MARKER" ]; }
 
-# Nothing to do on a machine that has them all from elsewhere: skip the
-# download.
+# Every skill came from elsewhere (the sync loop): skip the download. Its
+# own copies are refreshed on every run.
 todo=0
 for s in "${skills[@]}"; do ours_or_missing "$s" && todo=1; done
 [ "$todo" = 1 ] || exit 0

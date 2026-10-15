@@ -40,7 +40,7 @@ that wants the owner workflow in every session, on any machine, runs
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup",
+        "matcher": "startup|resume",
         "hooks": [
           {
             "type": "command",
@@ -58,8 +58,9 @@ on (`owner-charter`, `intent-card`, `blast-radius`, `verify`, `correct`,
 `debt-review`, `cross-review`, `starbridge`, `unslop`, `unnarrate`,
 `docs-review`, `test-audit`) into `~/.claude/skills`, where the session
 finds them at once. A skill already there that the script didn't write,
-such as one the [sync loop](sync-system.md) installed, is left alone, and
-when every skill is already there it downloads nothing. Name skills after
+such as one the [sync loop](sync-system.md) installed, is left alone; when
+every skill came from elsewhere it downloads nothing. Its own copies are
+refreshed at each session start and resume. Name skills after
 `bash -s --` to install others.
 
 ## What the folder copy doesn't install
