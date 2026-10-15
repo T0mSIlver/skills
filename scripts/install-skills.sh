@@ -5,12 +5,18 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/T0mSIlver/skills/main/scripts/install-skills.sh | bash > /dev/null
 #
-# Usage: install-skills.sh [--from DIR] [--dest DIR] [SKILL...]
-#   SKILL...    skills to install; default: the owner workflow and the
-#               skills it relies on (DEFAULT_SKILLS below)
-#   --from DIR  a checkout to copy from, instead of downloading SKILLS_REF
-#               (default main) from GitHub
-#   --dest DIR  where to install (default ~/.claude/skills)
+# Usage: install-skills.sh [--dest DIR] [SKILL...]
+#        install-skills.sh --print-list
+#   SKILL...      skills to install; default: the owner workflow and the
+#                 skills it relies on (DEFAULT_SKILLS below)
+#   --dest DIR    where to install (default ~/.claude/skills)
+#   --print-list  print the file list this script downloads from, generated
+#                 from a checkout; tests/install-skills.sh fails when the
+#                 committed scripts/install-skills.list differs
+#
+# Files come one by one from raw.githubusercontent.com (SKILLS_BASE_URL),
+# following scripts/install-skills.list: a cloud session's GitHub proxy
+# refuses codeload archives of repos not attached to the session.
 #
 # A skill directory this script didn't write is left alone, so a machine
 # whose sync loop or owner installed it keeps that copy and its local edits.
@@ -20,25 +26,44 @@ set -uo pipefail
 DEFAULT_SKILLS=(owner-charter intent-card blast-radius verify correct
   debt-review cross-review starbridge unslop unnarrate docs-review test-audit)
 MARKER=.installed-by-install-skills
-REPO_URL="https://codeload.github.com/T0mSIlver/skills/tar.gz/${SKILLS_REF:-main}"
+BASE_URL="${SKILLS_BASE_URL:-https://raw.githubusercontent.com/T0mSIlver/skills/${SKILLS_REF:-main}}"
 
-from=""
+warn() { echo "install-skills: $*" >&2; }
+
+# Every file git would track (untracked ones too, so a vendoring run sees
+# new upstream files) of every top-level directory holding a SKILL.md.
+print_list() {
+  local root
+  root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P) || return 1
+  git -C "$root" ls-files --cached --others --exclude-standard | LC_ALL=C sort -u \
+    | awk -F/ 'NF > 1' | while IFS= read -r f; do
+    [ -f "$root/${f%%/*}/SKILL.md" ] && printf '%s\n' "$f"
+  done
+}
+
 dest="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"
 skills=()
 while [ $# -gt 0 ]; do
   case $1 in
-    --from|--dest)
-      if [ $# -lt 2 ]; then echo "install-skills: $1 needs a directory" >&2; exit 0; fi
-      if [ "$1" = --from ]; then from=$2; else dest=$2; fi
-      shift ;;
-    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+    --print-list) print_list; exit $? ;;
+    --dest)
+      if [ $# -lt 2 ]; then warn "--dest needs a directory"; exit 0; fi
+      dest=$2; shift ;;
+    -h|--help) awk 'NR > 1 && /^#/ { print; next } NR > 1 { exit }' "$0"; exit 0 ;;
     *) skills+=("$1") ;;
   esac
   shift
 done
 [ ${#skills[@]} -gt 0 ] || skills=("${DEFAULT_SKILLS[@]}")
 
-warn() { echo "install-skills: $*" >&2; }
+# Downloads lose the executable bit; give it back to every script.
+mark_scripts_executable() {
+  local f
+  while IFS= read -r -d '' f; do
+    [ "$(head -c 2 "$f")" = '#!' ] && chmod +x "$f"
+  done < <(find "$1" -type f -print0)
+  return 0
+}
 ours_or_missing() { [ ! -e "$dest/$1" ] || [ -f "$dest/$1/$MARKER" ]; }
 
 # Every skill came from elsewhere (the sync loop): skip the download. Its
@@ -47,19 +72,15 @@ todo=0
 for s in "${skills[@]}"; do ours_or_missing "$s" && todo=1; done
 [ "$todo" = 1 ] || exit 0
 
-if [ -z "$from" ]; then
-  tmp=$(mktemp -d)
-  trap 'rm -rf "$tmp"' EXIT
-  if ! curl -fsSL --max-time 60 "$REPO_URL" | tar -xz -C "$tmp" --strip-components=1; then
-    warn "could not download $REPO_URL; no skills installed"
-    exit 0
-  fi
-  from=$tmp
+if ! list=$(curl -fsSL --max-time 30 "$BASE_URL/scripts/install-skills.list"); then
+  warn "could not download $BASE_URL/scripts/install-skills.list; no skills installed"
+  exit 0
 fi
 
 mkdir -p "$dest" || { warn "cannot create $dest"; exit 0; }
 for s in "${skills[@]}"; do
-  if [ ! -f "$from/$s/SKILL.md" ]; then
+  files=$(printf '%s\n' "$list" | grep "^$s/") || true
+  if ! printf '%s\n' "$files" | grep -qx "$s/SKILL.md"; then
     warn "skip $s: no such skill"
     continue
   fi
@@ -67,11 +88,18 @@ for s in "${skills[@]}"; do
     echo "keep $s: already installed by something else"
     continue
   fi
-  rm -rf "${dest:?}/$s.new"
-  if cp -R "$from/$s" "$dest/$s.new" && touch "$dest/$s.new/$MARKER" \
-    && rm -rf "${dest:?}/$s" && mv "$dest/$s.new" "$dest/$s"; then
+  new="$dest/$s.new"
+  rm -rf "${new:?}"
+  args=()
+  while IFS= read -r f; do
+    args+=(-o "$new/${f#"$s"/}" "$BASE_URL/$f")
+  done <<<"$files"
+  if curl -fsSL --fail-early --max-time 60 --create-dirs "${args[@]}" \
+    && mark_scripts_executable "$new" && touch "$new/$MARKER" \
+    && rm -rf "${dest:?}/$s" && mv "$new" "$dest/$s"; then
     echo "installed $s"
   else
+    rm -rf "${new:?}"
     warn "failed to install $s"
   fi
 done

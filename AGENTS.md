@@ -11,7 +11,9 @@
   or its entry says `automerge = true` (an upstream I own, like
   starbridge); any other one that changes skill files waits for review.
 - To add or remove a skill, also update its plugin in
-  `.claude-plugin/marketplace.json` and its row in the README table. A skill
+  `.claude-plugin/marketplace.json` and its row in the README table. Any
+  change to a skill's file set needs `scripts/install-skills.sh --print-list
+  > scripts/install-skills.list`; CI fails on a stale list. A skill
   script that should be on `PATH` also goes in `HELPER_SPECS` in
   `scripts/sync-skills.sh`.
 - Every line in a SKILL.md must correct something the model would otherwise
