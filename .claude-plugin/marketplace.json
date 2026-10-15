@@ -14,7 +14,8 @@
         "./owner-charter",
         "./intent-card",
         "./blast-radius",
-        "./verify"
+        "./verify",
+        "./correct"
       ],
       "author": {
         "name": "Tom Vaucourt"
