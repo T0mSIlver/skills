@@ -15,7 +15,8 @@
         "./intent-card",
         "./blast-radius",
         "./verify",
-        "./correct"
+        "./correct",
+        "./debt-review"
       ],
       "author": {
         "name": "Tom Vaucourt"
