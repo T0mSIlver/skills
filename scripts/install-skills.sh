@@ -37,7 +37,7 @@ print_list() {
   root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P) || return 1
   git -C "$root" ls-files --cached --others --exclude-standard | LC_ALL=C sort -u \
     | awk -F/ 'NF > 1' | while IFS= read -r f; do
-    [ -f "$root/${f%%/*}/SKILL.md" ] && printf '%s\n' "$f"
+    if [ -f "$root/${f%%/*}/SKILL.md" ]; then printf '%s\n' "$f"; fi
   done
 }
 
