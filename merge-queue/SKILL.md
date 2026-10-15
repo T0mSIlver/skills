@@ -35,8 +35,8 @@ instead of merging.
 carries a UX kind (copy, layout, style, asset, locale) goes to the owner on
 a card with the verifier's evidence before it merges. When the owner
 answers, reply under the verification comment with
-`Owner: kind=<kind> agrees|disagrees` and the card id. When every verdict on a kind matched the owner's for two weeks, hand it
-over: list it under "Risk kinds the verifier decides" in the repo's
+`Owner: kind=<kind> agrees|disagrees` and the card id. When every verdict on a kind matched the owner's for two weeks and at
+least 5 verdicts, hand it over: list it under "Risk kinds the verifier decides" in the repo's
 AGENTS.md, linking the tally, and tell the owner in one line. A
 disagreement after that takes the kind back. Find the tally with
 `gh search prs --repo <owner/repo> --merged '"kind=<kind>" in:comments'`.
@@ -59,7 +59,8 @@ disagreement after that takes the kind back. Find the tally with
      close the combo PR with `--delete-branch`. Docs-only overlap needs none.
 3. After the merge, the PR's session posts a card for the hand check; its
    label stays until the owner answers it done, then remove it. Never move
-   board cards for it.
+   board cards for it. A UX kind still in ramp-up skips it: its card before
+   merge was the check.
 4. Merge rights come from the owner as classes ("merge on green anything
    whose only wait is my hand check, except prompt changes"); record them in
    memory. A latitude granted for one night expires; ask again on a card. A peer's
