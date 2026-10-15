@@ -28,8 +28,8 @@ checking (a fact, a measurement, a quick prototype) is never a card.
    - Copy: the text itself, before and after.
    - A static UI change: one mockup per option, same frame, same data, real
      size, built from the app's own screen or components.
-   - Motion: a short video per option, plus 3–4 frames as images so the
-     card shows it without opening the link.
+   - Motion: a short video per option, plus 3–4 of its frames side by side
+     in one image per option, so the card shows it without the link.
    - A flow, or data the owner has to try: a tappable prototype (a claude.ai
      artifact), only then.
    - Architecture: per shape, the caller's usage first, then types and
