@@ -53,11 +53,13 @@ that wants the owner workflow in every session, on any machine, runs
 }
 ```
 
-It downloads `main` and copies the owner workflow and the skills it relies
-on (`owner-charter`, `intent-card`, `blast-radius`, `verify`, `correct`,
-`debt-review`, `cross-review`, `starbridge`, `unslop`, `unnarrate`,
-`docs-review`, `test-audit`) into `~/.claude/skills`, where the session
-finds them at once. A skill already there that the script didn't write,
+It copies the owner workflow and the skills it relies on (`owner-charter`,
+`intent-card`, `blast-radius`, `verify`, `correct`, `debt-review`,
+`cross-review`, `starbridge`, `unslop`, `unnarrate`, `docs-review`,
+`test-audit`) into `~/.claude/skills`, where the session finds them at once.
+It fetches each file from `main` on raw.githubusercontent.com, following
+`scripts/install-skills.list`, because a cloud session's GitHub proxy
+refuses archive downloads. A skill already there that the script didn't write,
 such as one the [sync loop](sync-system.md) installed, is left alone; when
 every skill came from elsewhere it downloads nothing. Its own copies are
 refreshed at each session start and resume. Name skills after

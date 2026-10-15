@@ -374,3 +374,10 @@ if [[ "$MODE" == "check" ]]; then
 fi
 
 printf '%s skill(s) updated\n' "$updated"
+
+# A vendored skill's file set can change upstream; keep the installer's
+# list in step so the update PR passes validate.
+if [[ "$updated" -gt 0 ]]; then
+  "$(dirname -- "${BASH_SOURCE[0]}")/install-skills.sh" --print-list \
+    >"$(dirname -- "${BASH_SOURCE[0]}")/install-skills.list"
+fi
