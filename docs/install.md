@@ -27,6 +27,41 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 (`~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/`,
 `~/.pi/agent/skills/`, …).
 
+## In every session of a repo, cloud sessions included
+
+Cloud sessions install no plugins, even ones a repo enables in its
+settings; they get the repo's own `.claude/` hooks and skills. So a repo
+that wants the owner workflow in every session, on any machine, runs
+`scripts/install-skills.sh` when a session starts. Add this to the repo's
+`.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -fsSL https://raw.githubusercontent.com/T0mSIlver/skills/main/scripts/install-skills.sh | bash > /dev/null"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+It downloads `main` and copies the owner workflow and the skills it relies
+on (`owner-charter`, `intent-card`, `blast-radius`, `verify`, `correct`,
+`debt-review`, `cross-review`, `starbridge`, `unslop`, `unnarrate`,
+`docs-review`, `test-audit`) into `~/.claude/skills`, where the session
+finds them at once. A skill already there that the script didn't write,
+such as one the [sync loop](sync-system.md) installed, is left alone, and
+when every skill is already there it downloads nothing. Name skills after
+`bash -s --` to install others.
+
 ## What the folder copy doesn't install
 
 Neither install method runs scripts. Skills that need more than their folder

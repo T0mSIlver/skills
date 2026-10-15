@@ -57,8 +57,9 @@ npx skills add T0mSIlver/skills                  # choose skills interactively
 /plugin marketplace add T0mSIlver/skills         # Claude Code
 ```
 
-[docs/install.md](docs/install.md) covers the plugin names and what each skill
-needs installed. My own machines don't use either command: they run
+[docs/install.md](docs/install.md) covers the plugin names, what each skill
+needs installed, and the hook that installs the owner workflow in every
+session of a repo, cloud sessions included. My own machines don't use either command: they run
 [a sync loop](docs/sync-system.md) that installs `origin/main` into every
 agent's skills folder. [docs/vendoring.md](docs/vendoring.md) explains how
 the vendored skills stay pinned to upstream.
