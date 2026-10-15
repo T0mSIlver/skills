@@ -33,9 +33,9 @@ instead of merging.
 
 **Ramp-up.** Until the owner hands a kind of risk over, a PR whose verdict
 carries a UX kind (copy, layout, style, asset, locale) goes to the owner on
-a card with the verifier's evidence before it merges. Reply under the
-verification comment with `Owner: kind=<kind> agrees|disagrees` and the card
-id. When every verdict on a kind matched the owner's for two weeks, hand it
+a card with the verifier's evidence before it merges. When the owner
+answers, reply under the verification comment with
+`Owner: kind=<kind> agrees|disagrees` and the card id. When every verdict on a kind matched the owner's for two weeks, hand it
 over: list it under "Risk kinds the verifier decides" in the repo's
 AGENTS.md, linking the tally, and tell the owner in one line. A
 disagreement after that takes the kind back. Find the tally with
