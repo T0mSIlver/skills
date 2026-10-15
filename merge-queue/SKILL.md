@@ -35,8 +35,9 @@ instead of merging.
 carries a UX kind (copy, layout, style, asset, locale) goes to the owner on
 a card with the verifier's evidence before it merges. When the owner
 answers, reply under the verification comment with
-`Owner: kind=<kind> agrees|disagrees` and the card id. When every verdict on a kind matched the owner's for two weeks and at
-least 5 verdicts, hand it over: list it under "Risk kinds the verifier decides" in the repo's
+`Owner: kind=<kind> agrees|disagrees` and the card id. When a kind has at
+least 5 verdicts over two weeks and every one matched the owner's, hand it
+over: list it under "Risk kinds the verifier decides" in the repo's
 AGENTS.md, linking the tally, and tell the owner in one line. A
 disagreement after that takes the kind back. Find the tally with
 `gh search prs --repo <owner/repo> --merged '"kind=<kind>" in:comments'`.
