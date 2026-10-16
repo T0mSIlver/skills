@@ -26,7 +26,8 @@ Before `--merge`, read the PR and confirm all of these (`owner-charter`):
    every risk it lists. INCONCLUSIVE, or a risk outside its scope, is not a
    pass.
 5. Docs and spec say what the code does.
-6. A PR touching `.github/` or `deploy/` has the owner's yes on a card.
+6. A PR touching `.github/` or `deploy/` has the owner's yes on a card. Add
+   the yes label after the PR's last push, right before merging: a push drops it.
 
 Unsure the owner would want it that way: post a card with the proof
 instead of merging.
@@ -91,8 +92,8 @@ open PR that lands first, make it a native stack (`gh-stack`; `gh stack link
 <bottom> <top>` turns a `--base` chain into one). `orch-mergecheck --merge`
 merges a stack from the bottom through `gh stack merge`, and refuses a layer
 whose commits credit an AI, since that call keeps GitHub's message. Never
-stack on a PR that can't merge soon (a fork pin, an owner decision, a long
-eval). Repairs: `reference/stacking.md`.
+stack on a PR that can't merge soon (a fork pin, an owner decision such as
+any `.github/` or `deploy/` change, a long eval). Repairs: `reference/stacking.md`.
 
 **Pausing merges:** while `~/.local/state/orchestrate/<repo name>.paused`
 exists (a history rewrite, a broken main), `--merge` refuses; its text says why.

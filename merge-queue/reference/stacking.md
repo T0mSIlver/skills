@@ -7,6 +7,10 @@
 - A squash-merged parent leaves the child conflicting on shared hunks. Merge
   main into the child, or transplant its diff:
   `git checkout -B child origin/main && git diff <parent> <child> | git apply -3`.
+  When merging main conflicts, resolve each conflicted file with the parent's
+  last head as the base: `git merge-file -p <child-file> <parent-head-file>
+  <main-file>` replays only the child's own change; a plain merge of main replays the parent
+  twice and conflicts with itself.
   Never `git reset --soft` onto a newer base: the tree keeps the old base and
   silently reverts everything that landed in between.
 - A conflicting PR gets no workflow run: ready and draft toggles start
