@@ -1,6 +1,6 @@
 ---
 name: merge-queue
-description: "Merge a batch of parallel PRs on one repo without breaking main: confirm each is checked (intent, every CI check, cross-review fixed, blast radius proved, verifier verdict, owner's card for .github/ or deploy/), poll for green, check each PR against commits that landed after its CI run, build the combination when they overlap, stack PRs that touch the same files, honour waits: labels and lane waivers, and merge only within the owner's merge classes. Use when asked to merge on green, to check whether a PR is safe to merge, to run the merge side of a scheduler, or to stack or unstack PRs."
+description: "Merge a batch of parallel PRs on one repo without breaking main: confirm each is checked (intent, every CI check, cross-review fixed, blast radius proved, verifier verdict, owner's card for .github/ or deploy/), poll for green, check each PR against commits that landed after its CI run, build the combination when they overlap, stack PRs that touch the same files, honour waits: labels and lane waivers, merge only within the owner's merge classes, and merge a merge-by-default PR with no card once its proof verdict says sufficient (orch-automerge-ready). Use when asked to merge on green, to check whether a PR is safe to merge, to run the merge side of a scheduler, or to stack or unstack PRs."
 compatibility: gh, git and bash. The orch-* scripts are on PATH (else in the orchestrate-sessions skill's scripts/) and read ~/.config/orchestrate/<repo>.env.
 ---
 
@@ -41,6 +41,25 @@ over: list it under "Risk kinds the verifier decides" in the repo's
 AGENTS.md, linking the tally, and tell the owner in one line. A
 disagreement after that takes the kind back. Find the tally with
 `gh search prs --repo <owner/repo> --merged '"kind=<kind>" in:comments'`.
+
+## Merging without the owner
+
+Only a PR of the repo's merge-by-default class (CONTRIBUTING.md, "What merges
+without the owner") merges with no card. `orch-automerge-ready <n>` prints
+READY or why not, and merges nothing; after READY, run `orch-mergecheck <n>
+--merge` in the same command (`&&`). READY needs every check green, a `<!-- proof-verdict -->` comment
+(`cross-review --proof <n>`) that says PROOF SUFFICIENT and class
+merge-by-default for the PR's current head SHA, no open card naming the PR,
+nothing under `.github/` or `deploy/`, and `orch-mergecheck` passing.
+
+- **A push makes the verdict stale.** Rerun `cross-review --proof <n>` from
+  the PR's head; READY on an older SHA is not READY.
+- **Sign-off PRs keep their card** and the ramp-up below. In doubt about the
+  class, it is sign-off.
+- **Name a card for a PR `PR #<n>`:** the script finds open cards by that
+  number, and treats a card it can't read as open.
+- Checks 1 to 3 and 5 of the list above still hold; the verdict stands in
+  for check 4's verify comment.
 
 ## The pipeline
 

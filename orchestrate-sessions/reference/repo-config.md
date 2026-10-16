@@ -26,6 +26,7 @@ in its agent guide.
 | `RESOURCE_JOBS` | job names `orch-idlewait` waits on (default `MUST_RUN_CHECKS`) | `mac-lanes eval-e2e` |
 | `POLL_SECONDS` | poller interval; stay at one GitHub call a minute or less per PR | `180` |
 | `LANE_STEPS` | jq regex of the must-run job's step names that `orch-lanecheck` prints | `Integration tests \\(live STT\|Live herdr` |
+| `PROOF_AUTHORS` | space-separated logins whose `<!-- proof-verdict -->` comment `orch-automerge-ready` trusts (default: the repo owner) | `T0mSIlver` |
 | `WAIVER_PATTERN` | grep -E pattern of lane waivers in PR bodies | `\[skip-[a-z-]*: [^]]*\]` |
 
 ## Where repo-specific knowledge goes
