@@ -23,6 +23,7 @@ case $path in
   */status) f=status.json ;;
   */comments) f=comments.json ;;
 esac
+[ ! -e "$GH_DIR/fail-$f" ] || { echo "HTTP 502" >&2; exit 1; }
 if [ -n "$jq" ]; then jq -r "$jq" "$GH_DIR/$f"; else cat "$GH_DIR/$f"; fi
 SH
 printf '#!/bin/sh\ncat "$GH_DIR/cards" 2>/dev/null || exit 1\n' > "$tmp/bin/starbridge"
@@ -82,5 +83,8 @@ reset; MC_FAIL="CONFLICT with main"; expect "orch-mergecheck: CONFLICT" "mergech
 reset; sed -i 's/"draft":false/"draft":true/' "$GH_DIR/pr.json"; expect "draft" "draft"
 reset; echo '[{"filename":".github/a"}]' > "$GH_DIR/files.json"; comment owner "$sha" "PROOF INSUFFICIENT" sign-off
 expect ".github/" "reasons are collected"; [[ $out == *";"* ]] || fail "only one reason: $out"
+
+reset; touch "$GH_DIR/fail-comments.json"; run
+[ "$rc" = 2 ] || fail "a failed comments call exited $rc: $out"
 
 echo "orch-automerge-ready tests passed"

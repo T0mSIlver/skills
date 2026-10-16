@@ -35,8 +35,8 @@ status=$(gh api "repos/$REPO/commits/$sha/status" --jq 'if .total_count == 0 the
 [ "$status" = success ] || no "commit status is $status"
 
 # The newest verdict comment by a trusted author.
-verdict=$(gh api --paginate "repos/$REPO/issues/$n/comments" --jq '.[] | select(.body | startswith("<!-- proof-verdict -->")) | {u: .user.login, b: .body}' |
-  jq -rs --arg a "$PROOF_AUTHORS" '[.[] | select(.u as $u | $a | split(" ") | index($u))] | last | .b // empty') || exit 2
+comments=$(gh api --paginate "repos/$REPO/issues/$n/comments" --jq '.[] | select(.body | startswith("<!-- proof-verdict -->")) | {u: .user.login, b: .body}') || exit 2
+verdict=$(jq -rs --arg a "$PROOF_AUTHORS" '[.[] | select(.u as $u | $a | split(" ") | index($u))] | last | .b // empty' <<< "$comments") || exit 2
 if [ -z "$verdict" ]; then no "no proof-verdict comment by $PROOF_AUTHORS"
 else
   field() { sed -n "s/^- $1: //p" <<< "$verdict" | head -1 | tr -d '\r'; }
