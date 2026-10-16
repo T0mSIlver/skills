@@ -3,8 +3,8 @@
   "repo": "https://github.com/cursor/plugins",
   "ref": "main",
   "path": "pstack/skills/unslop",
-  "commit": "e5136d82418d2db3165ea1050d17577cd618cc05",
-  "upstream": "https://github.com/cursor/plugins/tree/e5136d82418d2db3165ea1050d17577cd618cc05/pstack/skills/unslop",
-  "vendored_at": "2026-10-15",
+  "commit": "f713f14203cd6420cec13cd7c55c32d598dbab68",
+  "upstream": "https://github.com/cursor/plugins/tree/f713f14203cd6420cec13cd7c55c32d598dbab68/pstack/skills/unslop",
+  "vendored_at": "2026-10-16",
   "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
 }
