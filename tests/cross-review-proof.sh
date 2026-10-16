@@ -66,7 +66,7 @@ answer() { # verdict class [findings-json]
     '{findings: $f, overall_explanation: "stub", proof: {verdict: $v, class: $c, reasons: ["because"]}}' > "$tmp/answer"
 }
 xr() { rm -f "$tmp/body" "$tmp/verb"; rc=0
-  out=$(cd "$repo" && CROSS_REVIEW_DIR=$runs "$script" --proof 12 --vendor codex 2>&1) || rc=$?; }
+  out=$(cd "$repo" && CROSS_REVIEW_DIR=$runs "$script" --proof 12 --vendor codex "$@" 2>&1) || rc=$?; }
 
 # A sufficient, merge-by-default PR: one new comment, marked, naming the head.
 pr "$head"; answer "PROOF SUFFICIENT" merge-by-default
@@ -78,6 +78,10 @@ grep -qx -- "- Head: $head" "$tmp/body" || fail "head sha missing"
 grep -qx -- "- Verdict: PROOF SUFFICIENT" "$tmp/body" || fail "verdict missing"
 grep -qx -- "- Class: merge-by-default" "$tmp/body" || fail "class missing"
 grep -q -- "- Reviewer: codex (" "$tmp/body" || fail "reviewer missing"
+
+# A partial range can't grade the whole PR.
+xr --since "$head"
+[ "$rc" = 1 ] && [[ $out == *"no --since or --base"* ]] || fail "--since accepted: $rc $out"
 
 # An existing comment of mine is edited, not duplicated.
 echo 99 > "$tmp/existing"

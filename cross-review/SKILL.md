@@ -78,12 +78,10 @@ One follow-up round; never loop.
 
 ## 4. Grade the proof (before a PR merges without the owner)
 
-After pushing, from the PR's head: `cross-review --proof <pr>`. It reviews the
-whole PR, grades its proof against owner-charter "Merged means checked", and
-posts or edits one `<!-- proof-verdict -->` PR comment: head SHA, reviewer,
-PROOF SUFFICIENT or INSUFFICIENT, class, reasons. Fix each gap, push, rerun:
-a new head makes the old verdict stale. What the script forces, and the
-class list it reads: `reference/proof-verdict.md`.
+`cross-review --proof <pr>`, from the PR's pushed head, reviews the whole PR,
+grades its proof against owner-charter "Merged means checked" and posts or
+edits one `<!-- proof-verdict -->` comment. A push makes it stale: rerun.
+Rules: `reference/proof-verdict.md`.
 
 ## Gotchas
 
@@ -135,5 +133,4 @@ class list it reads: `reference/proof-verdict.md`.
 ## Not possible
 
 - No review of uncommitted work or of a PR you haven't checked out.
-- No inline PR comments; the output is a summary, plus the one proof-verdict
-  comment under `--proof`.
+- No inline PR comments; `--proof` posts its one verdict comment.

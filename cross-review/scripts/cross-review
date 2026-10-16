@@ -57,6 +57,7 @@ while [ $# -gt 0 ]; do
 done
 [[ ${timeout_s:-1} =~ ^[1-9][0-9]*$ ]] || die "--timeout must be a number of seconds"
 [ -z "$proof_pr" ] || [[ $proof_pr =~ ^[1-9][0-9]*$ ]] || die "--proof takes a pull request number"
+[ -z "$proof_pr" ] || { [ -z "$since" ] && [ -z "$base" ]; } || die "--proof grades the whole PR against its base: no --since or --base"
 if [ -z "$cont" ]; then
   if [ -n "$proof_pr" ] && [ -z "$brief" ]; then :  # the PR body is the brief
   else
