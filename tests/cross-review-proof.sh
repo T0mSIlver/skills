@@ -2,7 +2,6 @@
 # cross-review --proof PR grades a PR's proof and posts one marked comment. A stub
 # codex stands in for the reviewer and a stub gh for GitHub.
 set -euo pipefail
-[ -z "${XTRACE:-}" ] || set -x
 
 script=$(readlink -f "$(dirname "$0")/../cross-review/scripts/cross-review")
 tmp=$(mktemp -d)
@@ -67,7 +66,7 @@ answer() { # verdict class [findings-json]
     '{findings: $f, overall_explanation: "stub", proof: {verdict: $v, class: $c, reasons: ["because"]}}' > "$tmp/answer"
 }
 xr() { rm -f "$tmp/body" "$tmp/verb"; rc=0
-  out=$(cd "$repo" && CROSS_REVIEW_DIR=$runs ${XR_SHELL:-} "$script" --proof 12 --vendor codex "$@" 2>&1) || rc=$?; }
+  out=$(cd "$repo" && CROSS_REVIEW_DIR=$runs "$script" --proof 12 --vendor codex 2>&1) || rc=$?; }
 
 # A sufficient, merge-by-default PR: one new comment, marked, naming the head.
 pr "$head"; answer "PROOF SUFFICIENT" merge-by-default
