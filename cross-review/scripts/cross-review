@@ -76,7 +76,7 @@ for d in "$(dirname "$(readlink -f "$0")")/.." "$HOME/.claude/skills/cross-revie
 done
 [ -n "$skill_dir" ] || die "cannot find the skill's assets/rubric.md"
 schema="$skill_dir/assets/schema.json"
-if [ -n "$proof_pr" ]; then schema="$skill_dir/assets/schema-proof.json"; export CROSS_REVIEW_PROOF=$proof_pr; fi
+if [ -n "$proof_pr" ]; then schema="$skill_dir/assets/schema-proof.json"; fi
 
 pct() {
   printf '%s\n' "$quota_out" | awk -v a="$1" -v b="$2" '$1==a && $2==b {gsub("%","",$3); print $3; exit}'
@@ -233,8 +233,8 @@ run_codex() {
 }
 
 validate() {
-  python3 - "$1" "$run" <<'PY'
-import json, os, re, sys, pathlib
+  python3 - "$1" "$run" "$proof_pr" <<'PY'
+import json, re, sys, pathlib
 raw = pathlib.Path(sys.argv[1]).read_text()
 run = pathlib.Path(sys.argv[2])
 def bad(msg):
@@ -281,7 +281,7 @@ for n, f in enumerate(findings):
 explanation = data.get("overall_explanation")
 explanation = explanation if isinstance(explanation, str) else ""
 proof = None
-if os.environ.get("CROSS_REVIEW_PROOF"):
+if sys.argv[3]:
     proof = data.get("proof")
     if not isinstance(proof, dict):
         bad('"proof" must be an object with verdict, class and reasons')
@@ -502,7 +502,7 @@ if [ -n "$cont" ]; then
   # shellcheck source=/dev/null
   . "$run/state"
   timeout_s=${t:-$timeout_s} tree="$run/tree" attempt=$((attempt + 1))
-  if [ -n "$proof_pr" ]; then schema="$skill_dir/assets/schema-proof.json"; export CROSS_REVIEW_PROOF=$proof_pr; fi
+  if [ -n "$proof_pr" ]; then schema="$skill_dir/assets/schema-proof.json"; fi
   cd "$repo"
   prepare_tree
   rc=0; review "$vendor" || rc=$?
