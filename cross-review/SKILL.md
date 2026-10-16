@@ -76,6 +76,15 @@ then, with the earlier findings; a HEAD already reviewed returns that review.
 With `--vendor`, only reviews by that vendor and model count.
 One follow-up round; never loop.
 
+## 4. Grade the proof (before a PR merges without the owner)
+
+After pushing, from the PR's head: `cross-review --proof <pr>`. It reviews the
+whole PR, grades its proof against owner-charter "Merged means checked", and
+posts or edits one `<!-- proof-verdict -->` PR comment: head SHA, reviewer,
+PROOF SUFFICIENT or INSUFFICIENT, class, reasons. Fix each gap, push, rerun:
+a new head makes the old verdict stale. What the script forces, and the
+class list it reads: `reference/proof-verdict.md`.
+
 ## Gotchas
 
 - **Exit 2 is not a pass.** Empty or invalid output, or a crash, means
@@ -83,14 +92,12 @@ One follow-up round; never loop.
   With `--vendor auto` the script already tried each reviewer that had
   headroom, and asked each once to fix an invalid answer.
 - **Exit 4 means the reviewer hit `--timeout` (default 30 minutes)**; the
-  script stops it rather than starting the next reviewer from scratch, and
-  prints its work so far: what it read or ran, and what it said. Continue
-  when that work is closing in on specific risks in the diff:
-  `cross-review --continue RUN_DIR [--timeout SECONDS]` resumes the same
-  session on the same frozen copy, and can be repeated. When it is
-  re-reading files, crawling code the diff doesn't touch, or said nothing
-  useful, don't continue: report the review as incomplete, or rerun with
-  another `--vendor`. Either way, exit 4 is not a pass.
+  script stops it and prints its work so far. Continue only when that work is
+  closing in on specific risks in the diff: `cross-review --continue RUN_DIR
+  [--timeout SECONDS]` resumes the same session on the same frozen copy.
+  When it is re-reading files, crawling code the diff doesn't touch, or said
+  nothing useful, report the review as incomplete or rerun with another
+  `--vendor`. Exit 4 is not a pass.
 - **Exit 3 means no quota left** on any reviewer. Shipping unreviewed is
   Tom's call: post a card (ship now, or wait for the reset time `quota`
   prints).
@@ -128,4 +135,5 @@ One follow-up round; never loop.
 ## Not possible
 
 - No review of uncommitted work or of a PR you haven't checked out.
-- No inline PR comments; the output is a summary for you to act on.
+- No inline PR comments; the output is a summary, plus the one proof-verdict
+  comment under `--proof`.

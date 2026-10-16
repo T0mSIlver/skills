@@ -6,6 +6,7 @@
 #   cross-review --brief FILE [--base REF] [--since SHA | --full]
 #                [--vendor auto|glm|vibe|codex] [--effort low|medium|high]
 #                [--timeout SECONDS]
+#   cross-review --proof PR [--brief FILE] [...]
 #   cross-review --continue RUN_DIR [--timeout SECONDS]
 #
 # After a completed review of the branch, the next run reviews only the
@@ -21,6 +22,13 @@
 # diff has priority 0 or 1. An answer without valid findings gets one retry in
 # the same session, told what failed.
 #
+# --proof PR also grades the pull request's proof (assets/proof.md): HEAD must be
+# the PR's pushed head. It reviews the whole PR, then posts or edits the one PR
+# comment marked <!-- proof-verdict --> with the head SHA, reviewer model, verdict
+# (PROOF SUFFICIENT or PROOF INSUFFICIENT), class and reasons. An open P0 or P1
+# finding, or a change under .github/ or deploy/, can't be graded better than
+# insufficient or sign-off. A push makes the comment stale.
+#
 # Exit 0: review complete, findings in the printed summary (possibly none).
 # Exit 2: review incomplete (empty or invalid output, or a crash). Not a pass.
 # Exit 3: no reviewer has quota headroom left.
@@ -29,9 +37,9 @@
 set -euo pipefail
 
 die() { echo "cross-review: $*" >&2; exit "${code:-1}"; }
-usage() { sed -n '5,28p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '5,36p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
-brief="" base="" since="" full=0 vendor=auto effort="" timeout_s="" cont=""
+brief="" base="" since="" full=0 vendor=auto effort="" timeout_s="" cont="" proof_pr="" proof_repo=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --brief) brief=$2; shift 2 ;;
@@ -42,14 +50,19 @@ while [ $# -gt 0 ]; do
     --effort) effort=$2; shift 2 ;;
     --timeout) timeout_s=$2; shift 2 ;;
     --continue) cont=$2; shift 2 ;;
+    --proof) proof_pr=$2; shift 2 ;;
     -h|--help) usage ;;
     *) die "unknown argument: $1" ;;
   esac
 done
 [[ ${timeout_s:-1} =~ ^[1-9][0-9]*$ ]] || die "--timeout must be a number of seconds"
+[ -z "$proof_pr" ] || [[ $proof_pr =~ ^[1-9][0-9]*$ ]] || die "--proof takes a pull request number"
 if [ -z "$cont" ]; then
-  [ -n "$brief" ] && [ -s "$brief" ] || die "--brief FILE is required: the task, its constraints, your claims"
-  brief=$(readlink -f "$brief")
+  if [ -n "$proof_pr" ] && [ -z "$brief" ]; then :  # the PR body is the brief
+  else
+    [ -n "$brief" ] && [ -s "$brief" ] || die "--brief FILE is required: the task, its constraints, your claims"
+    brief=$(readlink -f "$brief")
+  fi
 fi
 case "$vendor" in auto|glm|vibe|codex) ;; *) die "--vendor must be auto, glm, vibe or codex" ;; esac
 case "${effort:-medium}" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
@@ -62,6 +75,8 @@ for d in "$(dirname "$(readlink -f "$0")")/.." "$HOME/.claude/skills/cross-revie
   [ -f "$d/assets/rubric.md" ] && { skill_dir=$(cd "$d" && pwd); break; }
 done
 [ -n "$skill_dir" ] || die "cannot find the skill's assets/rubric.md"
+schema="$skill_dir/assets/schema.json"
+if [ -n "$proof_pr" ]; then schema="$skill_dir/assets/schema-proof.json"; export CROSS_REVIEW_PROOF=$proof_pr; fi
 
 pct() {
   printf '%s\n' "$quota_out" | awk -v a="$1" -v b="$2" '$1==a && $2==b {gsub("%","",$3); print $3; exit}'
@@ -210,7 +225,7 @@ run_codex() {
   fi
   (cd "$tree" && timeout --signal=TERM "$timeout_s" codex "${cmd[@]}" --ignore-user-config \
     -m "$codex_model" -c "model_reasoning_effort=\"$effort\"" -c 'sandbox_mode="read-only"' --json \
-    --output-schema "$skill_dir/assets/schema.json" -o "$run/codex.out" \
+    --output-schema "$schema" -o "$run/codex.out" \
     - < "$prompt" > "$(log codex jsonl)" 2> "$(log codex stderr)") || rc=$?
   session=$(jq -r 'select(.type == "thread.started") | .thread_id' "$run/codex.jsonl" 2>/dev/null | head -1)
   status "$rc" || return
@@ -219,7 +234,7 @@ run_codex() {
 
 validate() {
   python3 - "$1" "$run" <<'PY'
-import json, re, sys, pathlib
+import json, os, re, sys, pathlib
 raw = pathlib.Path(sys.argv[1]).read_text()
 run = pathlib.Path(sys.argv[2])
 def bad(msg):
@@ -265,6 +280,18 @@ for n, f in enumerate(findings):
 # word it freely ("patch has issues").
 explanation = data.get("overall_explanation")
 explanation = explanation if isinstance(explanation, str) else ""
+proof = None
+if os.environ.get("CROSS_REVIEW_PROOF"):
+    proof = data.get("proof")
+    if not isinstance(proof, dict):
+        bad('"proof" must be an object with verdict, class and reasons')
+    if proof.get("verdict") not in ("PROOF SUFFICIENT", "PROOF INSUFFICIENT"):
+        bad('proof.verdict must be "PROOF SUFFICIENT" or "PROOF INSUFFICIENT"')
+    if proof.get("class") not in ("merge-by-default", "sign-off"):
+        bad('proof.class must be "merge-by-default" or "sign-off"')
+    rs = proof.get("reasons")
+    if not isinstance(rs, list) or not rs or not all(isinstance(r, str) and r.strip() for r in rs):
+        bad("proof.reasons must be a non-empty list of strings")
 def hunks(name):
     """New-side line ranges of each file's hunks in a patch of the run."""
     out, cur, path = {}, None, run / name
@@ -295,9 +322,25 @@ for f in findings:
 kept.sort(key=lambda f: (f["priority"], -(f.get("confidence") or 0)))
 # Findings outside the diff don't count against the patch.
 verdict = "patch is incorrect" if any(f["priority"] <= 1 for f in kept) else "patch is correct"
-(run / "findings.json").write_text(json.dumps({"findings": kept, "dropped_outside_diff": dropped,
-    "overall_correctness": verdict, "overall_explanation": explanation}, indent=2))
+out = {"findings": kept, "dropped_outside_diff": dropped,
+    "overall_correctness": verdict, "overall_explanation": explanation}
+if proof:
+    final, cls = proof["verdict"], proof["class"]
+    reasons = [r.strip() for r in proof["reasons"]]
+    for f in (f for f in kept if f["priority"] <= 1):
+        final = "PROOF INSUFFICIENT"
+        reasons.append(f"open P{f['priority']} finding {f['file']}:{f['line_start']} {f['title']}")
+    forced = run / "forced-signoff"
+    why = [l for l in forced.read_text().splitlines() if l.strip()] if forced.exists() else []
+    if why and cls != "sign-off":
+        cls = "sign-off"
+        reasons.append("class set to sign-off: " + "; ".join(why))
+    out["proof"] = {"verdict": final, "class": cls, "reasons": reasons}
+    (run / "proof.json").write_text(json.dumps(out["proof"], indent=2))
+(run / "findings.json").write_text(json.dumps(out, indent=2))
 lines = [f"{verdict}: {explanation}", ""]
+if proof:
+    lines += [f"{out['proof']['verdict']} ({out['proof']['class']})"] + ["  - " + r for r in out["proof"]["reasons"]] + [""]
 for f in kept:
     lines.append(f"[P{f['priority']}] {f['file']}:{f['line_start']} {f['title']} (confidence {f.get('confidence')})")
     lines.append(f"    {f.get('body', '')}")
@@ -362,7 +405,7 @@ timed_out() {
   local v=$1 k
   [ -n "$session" ] || code=2 die "$v timed out before it started a session; nothing to continue. Logs in $run"
   vendor=$v
-  for k in vendor codex_model session attempt effort timeout_s head branch whole range_base lines repo; do
+  for k in vendor codex_model session attempt effort timeout_s head branch whole range_base lines repo proof_pr proof_repo; do
     printf '%s=%q\n' "$k" "${!k}"
   done > "$run/state"
   partial "$v" > "$run/partial.md"
@@ -378,6 +421,69 @@ finish() {
   rm -f "$run/state"
   echo "cross-review by $1 of ${range_base:0:8}..${head:0:8} ($lines lines, --effort $effort). Run dir: $run"
   cat "$run/summary.md"
+  if [ -n "$proof_pr" ]; then
+    post_proof "$1" || code=2 die "review done but the proof verdict is not posted on PR #$proof_pr"
+    echo "cross-review: proof verdict posted on PR #$proof_pr"
+  fi
+}
+
+# The repo's own list of what merges without the owner, as of the PR's base.
+class_section() {
+  git show "$1:CONTRIBUTING.md" 2>/dev/null |
+    awk '/^## /{p=($0 ~ /[Ww]hat merges without the owner/)} p'
+}
+
+# The brief for a proof grade: the author's brief if any, the PR as written,
+# the issues it closes and the repo's class list from the base branch (the PR
+# could edit its own copy). Whatever forces sign-off goes in forced-signoff.
+proof_brief() {
+  local out="$run/brief.md" n section
+  section=$(class_section "$base")
+  {
+    [ -z "$brief" ] || { cat "$brief"; echo; }
+    printf '## Pull request #%s: %s\n\n%s\n' "$proof_pr" "$(jq -r .title <<< "$pr_json")" "$(jq -r .body <<< "$pr_json" | head -c 12000)"
+    for n in $(jq -r .body <<< "$pr_json" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) +#[0-9]+' | grep -oE '[0-9]+' | sort -un); do
+      printf '\n## Issue #%s\n\n' "$n"
+      gh issue view "$n" --json title,body --jq '.title + "\n\n" + .body' 2>/dev/null | head -c 6000 || echo "(unreadable)"
+    done
+    printf '\n## What merges without the owner (from %s)\n\n' "$base"
+    if [ -n "$section" ]; then printf '%s\n' "$section"; else echo "(the repo lists none: class is sign-off)"; fi
+  } > "$out"
+  brief=$out
+  {
+    [ -n "$section" ] || echo "the repo lists no merge-by-default class"
+    [ "$section" = "$(class_section "$head")" ] || echo "the PR edits the list of what merges without the owner"
+    printf '%s\n' "$changed" | grep -E '^(\.github|deploy)/' | sed 's/^/it touches /' | head -3 || true
+  } > "$run/forced-signoff"
+}
+
+# Post or edit the one proof-verdict comment, if the PR still has the graded head.
+post_proof() {
+  local v=$1 cur me id file="$run/comment.md"
+  cur=$(gh pr view "$proof_pr" --json headRefOid --jq .headRefOid) || return 1
+  [ "$cur" = "$head" ] || { echo "cross-review: PR #$proof_pr moved to ${cur:0:8} during the review; verdict not posted" >&2; return 1; }
+  {
+    echo '<!-- proof-verdict -->'
+    echo "## Proof verdict: $(jq -r .verdict "$run/proof.json")"
+    echo
+    echo "- Head: $head"
+    echo "- Reviewer: $v ($(model_of "$v"))"
+    echo "- Verdict: $(jq -r .verdict "$run/proof.json")"
+    echo "- Class: $(jq -r .class "$run/proof.json")"
+    echo
+    echo "Reasons:"
+    jq -r '.reasons[] | "- " + (. | gsub("\n"; " "))' "$run/proof.json"
+    echo
+    echo "Stale once the PR's head is not the SHA above. Written by cross-review --proof."
+  } > "$file"
+  me=$(gh api user --jq .login) || return 1
+  id=$(gh api --paginate "repos/$proof_repo/issues/$proof_pr/comments" \
+    --jq ".[] | select(.user.login == \"$me\" and (.body | startswith(\"<!-- proof-verdict -->\"))) | .id" | head -1)
+  if [ -n "$id" ]; then
+    gh api -X PATCH "repos/$proof_repo/issues/comments/$id" -F "body=@$file" > /dev/null
+  else
+    gh api "repos/$proof_repo/issues/$proof_pr/comments" -F "body=@$file" > /dev/null
+  fi
 }
 
 prepare_tree() {
@@ -396,6 +502,7 @@ if [ -n "$cont" ]; then
   # shellcheck source=/dev/null
   . "$run/state"
   timeout_s=${t:-$timeout_s} tree="$run/tree" attempt=$((attempt + 1))
+  if [ -n "$proof_pr" ]; then schema="$skill_dir/assets/schema-proof.json"; export CROSS_REVIEW_PROOF=$proof_pr; fi
   cd "$repo"
   prepare_tree
   rc=0; review "$vendor" || rc=$?
@@ -409,6 +516,16 @@ repo=$(git rev-parse --show-toplevel)
 cd "$repo"
 git diff --quiet HEAD -- || die "uncommitted changes: commit first, the review pins HEAD"
 head=$(git rev-parse HEAD)
+if [ -n "$proof_pr" ]; then
+  command -v gh >/dev/null && command -v jq >/dev/null || die "--proof needs gh and jq"
+  pr_json=$(gh pr view "$proof_pr" --json headRefOid,baseRefName,title,body) || die "cannot read PR #$proof_pr"
+  pr_head=$(jq -r .headRefOid <<< "$pr_json")
+  [ "$pr_head" = "$head" ] || die "HEAD is not PR #$proof_pr's pushed head (${pr_head:0:8}): push, or check out its head"
+  proof_repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+  [ -n "$base" ] || base=origin/$(jq -r .baseRefName <<< "$pr_json")
+  git fetch -q origin "${base#origin/}" || die "cannot fetch $base"
+  full=1  # the grade covers the whole PR, not the commits since a review
+fi
 
 [ -n "$base" ] || base=$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
 branch_base=$(git merge-base HEAD "$base")
@@ -484,8 +601,10 @@ rules=$(printf '%s\n' "$changed" | while IFS= read -r f; do
 done | sed 's#^\./##' | sort -u || true)
 
 [ -z "$since" ] || git diff -U0 "$branch_base" "$head" > "$run/branch.diff"
+[ -z "$proof_pr" ] || proof_brief
 {
   cat "$skill_dir/assets/rubric.md"
+  [ -z "$proof_pr" ] || cat "$skill_dir/assets/proof.md"
   if [ -n "$since" ]; then
     cat "$skill_dir/assets/rereview.md"
     if [ -n "$prior" ]; then
