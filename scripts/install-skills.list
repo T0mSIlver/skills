@@ -19,6 +19,7 @@ cross-review/assets/schema-proof.json
 cross-review/assets/schema.json
 cross-review/reference/proof-verdict.md
 cross-review/reference/sources.md
+cross-review/reference/vendors.md
 cross-review/scripts/cross-review
 debt-review/LICENSE
 debt-review/SKILL.md
