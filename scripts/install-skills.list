@@ -45,6 +45,7 @@ orchestrate-sessions/reference/incidents.md
 orchestrate-sessions/reference/repo-config.md
 orchestrate-sessions/reference/starbridge.md
 orchestrate-sessions/reference/worked-example.md
+orchestrate-sessions/scripts/orch-automerge-ready
 orchestrate-sessions/scripts/orch-combo
 orchestrate-sessions/scripts/orch-combowatch
 orchestrate-sessions/scripts/orch-conflicts

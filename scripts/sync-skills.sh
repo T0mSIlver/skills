@@ -40,6 +40,7 @@ HELPER_SPECS=(
   "claude-remote-control-server/scripts/refresh-claude-rc-servers.sh:refresh-claude-rc-servers.sh"
   "cross-review/scripts/cross-review:cross-review"
   "orchestrate-sessions/scripts/orch-lib.sh:orch-lib.sh"
+  "orchestrate-sessions/scripts/orch-automerge-ready:orch-automerge-ready"
   "orchestrate-sessions/scripts/orch-greenwatch:orch-greenwatch"
   "orchestrate-sessions/scripts/orch-mergecheck:orch-mergecheck"
   "orchestrate-sessions/scripts/orch-lanecheck:orch-lanecheck"

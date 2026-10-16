@@ -1,0 +1,57 @@
+#!/bin/bash
+# orch-automerge-ready <pr>
+# Prints READY when the PR may merge without the owner, else NOT READY with every
+# reason found. It merges nothing: after READY, run orch-mergecheck <pr> --merge.
+# READY needs all of: not draft; no file under .github/ or deploy/; every check
+# run on the head finished green (a skip passes) and the commit status not red;
+# a <!-- proof-verdict --> comment by PROOF_AUTHORS (default: the repo owner)
+# whose Head is the PR's current head, Verdict PROOF SUFFICIENT and Class
+# merge-by-default; no open Starbridge card that names the PR (#<n>, pull/<n>);
+# and orch-mergecheck <pr> passing (must-run checks, waits label, conflicts, overlap).
+# A card that can't be read counts as open. Exit: 0 READY, 1 NOT READY, 2 GitHub failed.
+. "$(dirname "$0")/orch-lib.sh"
+n=${1:?usage: orch-automerge-ready <pr>}
+: "${PROOF_AUTHORS:=${REPO%%/*}}"
+why=()
+no() { why+=("$1"); }
+
+pr=$(gh api "repos/$REPO/pulls/$n") || exit 2
+sha=$(jq -r .head.sha <<< "$pr")
+[ "$(jq -r .state <<< "$pr")" = open ] || no "PR is not open"
+[ "$(jq -r .draft <<< "$pr")" = false ] || no "PR is a draft"
+
+files=$(gh api --paginate "repos/$REPO/pulls/$n/files" --jq '.[] | .filename, (.previous_filename // empty)') || exit 2
+touched=$(grep -E '^(\.github|deploy)/' <<< "$files" | sort -u | head -3 | tr '\n' ' ' || true)
+[ -z "$touched" ] || no "touches ${touched% } (owner's card required)"
+
+# Latest run of each check name, as orch-lib's checks_of does, but all of them.
+checks=$(gh api "repos/$REPO/commits/$sha/check-runs?per_page=100" --jq '[.check_runs[] | {n: .name, c: (.conclusion // .status), i: .id}] | group_by(.n) | map(max_by(.i)) | map("\(.n)=\(.c)") | .[]') || exit 2
+if [ -z "$checks" ]; then no "no CI checks on ${sha:0:8}"
+else
+  bad=$(grep -vE '=(success|skipped|neutral)$' <<< "$checks" | tr '\n' ' ' || true)
+  [ -z "$bad" ] || no "checks not green: ${bad% }"
+fi
+status=$(gh api "repos/$REPO/commits/$sha/status" --jq 'if .total_count == 0 then "success" else .state end') || exit 2
+[ "$status" = success ] || no "commit status is $status"
+
+# The newest verdict comment by a trusted author.
+verdict=$(gh api --paginate "repos/$REPO/issues/$n/comments" --jq '.[] | select(.body | startswith("<!-- proof-verdict -->")) | {u: .user.login, b: .body}' |
+  jq -rs --arg a "$PROOF_AUTHORS" '[.[] | select(.u as $u | $a | split(" ") | index($u))] | last | .b // empty') || exit 2
+if [ -z "$verdict" ]; then no "no proof-verdict comment by $PROOF_AUTHORS"
+else
+  field() { sed -n "s/^- $1: //p" <<< "$verdict" | head -1 | tr -d '\r'; }
+  [ "$(field Head)" = "$sha" ] || no "proof verdict is stale (graded $(field Head | cut -c1-8), head is ${sha:0:8})"
+  [ "$(field Verdict)" = "PROOF SUFFICIENT" ] || no "proof verdict is $(field Verdict)"
+  [ "$(field Class)" = merge-by-default ] || no "class is $(field Class), not merge-by-default"
+fi
+
+cards=$(starbridge decisions --open 2>/dev/null) || { cards=""; no "cannot read open cards"; }
+if grep -qE "(#|pull/)$n([^0-9]|$)" <<< "$cards"; then no "an open card names it"; fi
+
+if [ ${#why[@]} = 0 ]; then
+  mc=$("$(dirname "$0")/orch-mergecheck" "$n" 2>&1) || no "orch-mergecheck: $(tail -1 <<< "$mc")"
+fi
+
+if [ ${#why[@]} = 0 ]; then echo "READY #$n at ${sha:0:8}"; exit 0; fi
+echo "NOT READY #$n: $(printf '%s; ' "${why[@]}" | sed 's/; $//')"
+exit 1
