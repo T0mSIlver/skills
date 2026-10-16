@@ -430,7 +430,7 @@ finish() {
 # The repo's own list of what merges without the owner, as of the PR's base.
 class_section() {
   git show "$1:CONTRIBUTING.md" 2>/dev/null |
-    awk '/^## /{p=($0 ~ /[Ww]hat merges without the owner/)} p'
+    awk '/^## /{p=($0 ~ /[Ww]hat merges without the owner/)} p' || true
 }
 
 # The brief for a proof grade: the author's brief if any, the PR as written,
