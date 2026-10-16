@@ -47,7 +47,7 @@ disagreement after that takes the kind back. Find the tally with
 Only a PR of the repo's merge-by-default class (CONTRIBUTING.md, "What merges
 without the owner") merges with no card. `orch-automerge-ready <n>` prints
 READY or why not, and merges nothing; after READY, run `orch-mergecheck <n>
---merge`. READY needs every check green, a `<!-- proof-verdict -->` comment
+--merge` in the same command (`&&`). READY needs every check green, a `<!-- proof-verdict -->` comment
 (`cross-review --proof <n>`) that says PROOF SUFFICIENT and class
 merge-by-default for the PR's current head SHA, no open card naming the PR,
 nothing under `.github/` or `deploy/`, and `orch-mergecheck` passing.
