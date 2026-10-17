@@ -25,7 +25,7 @@ wt=/path/to/scratch/pr986
 git -C /path/to/repo fetch -q origin pull/986/head &&
   git -C /path/to/repo worktree add --detach "$wt" FETCH_HEAD &&
   cd "$wt" &&
-  CROSS_REVIEW_CODEX_MODEL=gpt-6-astra cross-review --vendor codex \
+  CROSS_REVIEW_CODEX_MODEL=gpt-6.1-sol cross-review --vendor codex \
     --effort high --brief /path/to/brief-986.md > /path/to/results/pr986.txt 2>&1
 ```
 
@@ -37,7 +37,7 @@ forever at 0% CPU otherwise.
 #!/bin/bash
 # 30-audit-locking: read-only audit of main for one bug class.
 cd /path/to/scratch/main-checkout && git pull -q --ff-only &&
-  codex exec -C "$PWD" -m gpt-6-astra -c model_reasoning_effort='"high"' \
+  codex exec -C "$PWD" -m gpt-6.1-sol -c model_reasoning_effort='"high"' \
     -s read-only -o /path/to/results/audit-locking.md \
     - < /path/to/brief-locking.md > /dev/null
 ```
