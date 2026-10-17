@@ -29,10 +29,11 @@ Researched 2026-10-17. Wording is paraphrased; every source below is MIT-license
   `prompts/review-item-pr.md` (section 6 "Proof") and the "one gap, one place"
   rule; openclaw/agent-skills `skills/autoreview/SKILL.md` ("truncation or
   unfinished assessment means incomplete, never clean").
-- **Refute pass, and the one fact a change is safe because of.** cursor/plugins
+- **The one fact a change is safe because of.** cursor/plugins
   `pstack/skills/blast-radius/SKILL.md` (pstack, Lauren Tan's Cursor plugin;
   the other "pstack" repos on GitHub are ports of it). The how-sure ladder in
-  item 2 already came from here.
+  item 2 already came from here. The refute pass is this repo's `verify`
+  skill, step 9, moved into the proof prompt.
 - **Before and after for an existing screen, a recording for motion.**
   pingdotgg/t3code `.github/pull_request_template.md` and AGENTS.md;
   openclaw `proof-video` skill (same viewport and crop before and after).

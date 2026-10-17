@@ -19,8 +19,8 @@ PR body that the diff does not support is a gap.
 2. Proof per risk. Each risk needs a proof and how far it got (said so,
    pointed at the line, walked the failure, ran it, reproduced it in the
    app). "Said so" alone is a gap, and so is a "Safe because" fact the diff
-   contradicts. Proof that counts is the changed behavior running after the
-   fix through the shipped entry point (the real CLI, server, app or page):
+   contradicts. For a diff that changes runtime behavior, proof that counts is
+   the changed behavior running after the fix through the shipped entry point (the real CLI, server, app or page):
    unit tests, mocks, snapshots, lint and CI support it and never replace it.
    Each proof names the entry point, the scenario and the result. For a bug
    fix, the proof must fail on the old code and pass on the new; a test that
@@ -41,7 +41,7 @@ PR body that the diff does not support is a gap.
 Before you answer SUFFICIENT, try to refute it. For each "Safe because" fact,
 name the one caller, input or platform that would break it, and look for it in
 the diff. If you cannot cite file:line or PR text for an item, it is a gap.
-Missing, cut-off or unreadable input (the PR body, the issue, the merge list)
+Missing, cut-off or unreadable input (the PR body, the issue)
 is a gap, never a pass. Your own limits are not the author's gaps: if you
 cannot run something, grade what the PR shows.
 
