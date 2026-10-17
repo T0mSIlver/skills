@@ -13,7 +13,7 @@ in its agent guide.
 |---|---|---|
 | `REPO` | owner/name | `T0mSIlver/localvoxtral` |
 | `BASE` | branch PRs merge into | `main` |
-| `GATE_CHECKS` | check runs that must pass (or skip) on the head before a merge | `build-test linux mac-lanes` |
+| `GATE_CHECKS` | check runs that must pass (or skip) on the head before a merge; write each run of spaces and commas in a name as `_` (`test, typecheck, lint` is `test_typecheck_lint`) | `build-test linux mac-lanes` |
 | `MUST_RUN_CHECKS` | gate checks whose skip doesn't count, such as a self-hosted job that skips drafts | `mac-lanes` |
 | `OPTIONAL_CHECKS` | checks that may be absent but block when red | `dogfood` |
 | `COMBO_CHECKS` | checks a combo draft runs (hosted only) | `build-test linux` |
