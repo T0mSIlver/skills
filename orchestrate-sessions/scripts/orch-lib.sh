@@ -18,7 +18,9 @@ fi
 
 # checks_of <sha> <space-separated names>: "name=conclusion ..." for the latest run of each
 # (highest id: a queued run has no start time yet, and must win over an older success).
+# A name's runs of spaces and commas read as one `_`, so `test, typecheck, lint` is
+# `test_typecheck_lint` in the config and in the output.
 checks_of() {
   local re; re="^($(echo $2 | tr " " "|"))$"
-  gh api "repos/$REPO/commits/$1/check-runs?per_page=100" --jq "[.check_runs[]|select(.name|test(\"$re\"))|{n:.name,c:(.conclusion // .status),i:.id}]|group_by(.n)|map(max_by(.i))|map(\"\(.n)=\(.c)\")|join(\" \")"
+  gh api "repos/$REPO/commits/$1/check-runs?per_page=100" --jq "[.check_runs[]|{n:(.name|gsub(\"[ ,]+\";\"_\")),c:(.conclusion // .status),i:.id}|select(.n|test(\"$re\"))]|group_by(.n)|map(max_by(.i))|map(\"\(.n)=\(.c)\")|join(\" \")"
 }
