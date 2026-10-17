@@ -54,3 +54,5 @@ obra/superpowers, Trail of Bits' second-opinion and differential-review skills, 
 - https://google.github.io/eng-practices/review/reviewer/standard.html,
 - https://learn.chatgpt.com/docs/developer-commands?surface=cli
 - https://openrouter.ai/docs/cookbook/coding-agents/automatic-code-review
+
+Proof review sources: `reference/proof-verdict.md`, "Where the grading rules come from".
