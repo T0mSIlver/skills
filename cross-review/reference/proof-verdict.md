@@ -21,7 +21,7 @@ during the review. Nothing here merges anything: `orch-automerge-ready`
 
 ## Where the grading rules come from
 
-Researched 2026-10-17. Wording is paraphrased; every source below is MIT
+Researched 2026-10-17. Wording is paraphrased; every source below is MIT-licensed.
 
 - **Shipped entry point, tests never replace it; media proves only what it
   shows; upgrade run for stored data; a regression test fails on base; paperwork
