@@ -1,6 +1,6 @@
 ---
 name: quota
-description: "Read the model usage windows with `quota` and decide which model spends which window: GLM 5.3 first, then Vibe, Codex last for per-change reviews; every Codex 5-hour window filled with the strongest model on queued review and audit tasks; Codex reset credits spent only once the weekly limit is gone. Use before launching a review, audit or delegated run, when choosing between GLM, Vibe and Codex, when a Codex window or weekly limit is spent, when deciding whether to spend a reset credit, and to keep Codex windows busy with a queue of tasks (`quota-queue`)."
+description: "Read the model usage windows with `quota` and decide which model spends which window: GLM 5.3 first, then Codex, for per-change reviews; every Codex 5-hour window filled with the strongest model on queued review and audit tasks; Codex reset credits spent only once the weekly limit is gone. Use before launching a review, audit or delegated run, when choosing between GLM and Codex, when a Codex window or weekly limit is spent, when deciding whether to spend a reset credit, and to keep Codex windows busy with a queue of tasks (`quota-queue`)."
 compatibility: "`quota` reads CodexBar (`codexbar usage --format json`) and is installed from Tom's dotfiles, not by this skill. `codex-limits` and `quota-queue` need the codex CLI, python3, bash and flock."
 ---
 
@@ -36,11 +36,9 @@ mistral vibe   37%  €93.66 / €255.00 · €161.34 left
   timer: the next reset moves to 7 days after the spend.
 - **zai** is GLM 5.3 through opencode. It has a 5-hour window and no weekly
   cap, so headroom in one window is gone at the next.
-- **mistral api** is the plan's included La Plateforme API allowance. Reviews
-  don't spend it, so a high reading there says nothing about Vibe.
-- **mistral vibe** is the Vibe plan credits, monthly (about €255), and the
-  budget that GLM 5.3 through Vibe draws on. Both mistral rows reset on the
-  1st.
+- **mistral api** and **mistral vibe** are not headroom. Tom cancelled
+  the Vibe plan; its last €8.50 of credit is not for reviews or any
+  delegated run, so room on either row is never a reason to schedule work.
 - **claude** is Tom's Claude subscription, which this session and its
   subagents spend. It is not a reviewer. A weekly row near 100% means fewer or cheaper subagents
   (Sonnet), not a different reviewer. A Claude reset refills the
@@ -50,13 +48,11 @@ mistral vibe   37%  €93.66 / €255.00 · €161.34 left
 ## Who spends what
 
 1. **Per-change reviews** (`cross-review`): GLM 5.3 through opencode, then
-   GLM 5.3 through Vibe, then Codex (gpt-6.1-sol) only when both are spent or
-   failed. GLM goes first because its window has no weekly cap; Vibe's
-   credits are lost at month end if unused.
+   Codex (gpt-6.1-sol) only when GLM is spent or failed. GLM goes first
+   because its window has no weekly cap. Never Vibe.
 2. **A window about to reset with room left goes first.** A zai window with
-   reserve and under an hour to go, Vibe credits in the last days of the
-   month, or a Codex weekly limit resetting within a day. Spend that one
-   before the usual order.
+   reserve and under an hour to go, or a Codex weekly limit resetting
+   within a day. Spend that one before the usual order.
 3. **Fill every Codex 5-hour window with the strongest model**
    (gpt-6.1-sol at high effort; never gpt-6-astra, which spends a whole 5-hour window before one run finishes) on deep reviews and audits, through
    `quota-queue`. Room left when a window closes is lost. This is

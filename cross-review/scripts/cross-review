@@ -4,16 +4,16 @@
 # working while it runs.
 #
 #   cross-review --brief FILE [--base REF] [--since SHA | --full]
-#                [--vendor auto|glm|vibe|codex] [--effort low|medium|high]
+#                [--vendor auto|glm|codex] [--effort low|medium|high]
 #                [--timeout SECONDS]
 #   cross-review --proof PR [--brief FILE] [...]
 #   cross-review --continue RUN_DIR [--timeout SECONDS]
 #
 # After a completed review of the branch, the next run reviews only the
 # commits since then, with the earlier findings; --full reviews it all.
-# --effort sets Codex's reasoning effort, GLM's opencode variant and Vibe's
-# reasoning (low, else high). It defaults to low for a follow-up under 300
-# changed lines, else medium. Nothing limits a reviewer's turns.
+# --effort sets Codex's reasoning effort and GLM's opencode variant. It
+# defaults to low for a follow-up under 300 changed lines, else medium.
+# Nothing limits a reviewer's turns.
 #
 # A reviewer that reaches the timeout is stopped, not replaced: its partial
 # review is printed and saved, and --continue resumes the same session.
@@ -65,7 +65,7 @@ if [ -z "$cont" ]; then
     brief=$(readlink -f "$brief")
   fi
 fi
-case "$vendor" in auto|glm|vibe|codex) ;; *) die "--vendor must be auto, glm, vibe or codex" ;; esac
+case "$vendor" in auto|glm|codex) ;; *) die "--vendor must be auto, glm or codex" ;; esac
 case "${effort:-medium}" in low|medium|high) ;; *) die "--effort must be low, medium or high" ;; esac
 
 # The sync installs this script on PATH as a copy, so the assets may not sit
@@ -85,9 +85,6 @@ pct() {
 # Reviewers with headroom, in the order to try them.
 order() {
   if ! command -v quota >/dev/null || [ "$(pct zai 5h)" -lt 90 ] 2>/dev/null || [ -z "$(pct zai 5h)" ]; then echo glm; fi
-  # quota shows Vibe's monthly credits only when CodexBar has a Mistral cookie;
-  # without it, a spent plan fails the run and the next reviewer takes over.
-  if command -v vibe >/dev/null && { [ "$(pct mistral vibe)" -lt 95 ] 2>/dev/null || [ -z "$(pct mistral vibe)" ]; }; then echo vibe; fi
   codex_ok && echo codex
   true
 }
@@ -98,13 +95,10 @@ codex_ok() {
 }
 
 codex_model=${CROSS_REVIEW_CODEX_MODEL:-gpt-6.1-sol}
-# The model Vibe runs on the Mistral API: GLM 5.3 unless overridden (mistral-large-4 for a second vendor).
-vibe_model=${CROSS_REVIEW_VIBE_MODEL:-zai-glm-5-3}
 # The model each reviewer runs; a review is reused only by the same model.
 model_of() {
   case $1 in
     glm) echo zai-coding-plan/glm-5.3 ;;
-    vibe) echo "$vibe_model" ;;
     codex) echo "$codex_model" ;;
   esac
 }
@@ -156,65 +150,6 @@ run_glm() {
   jq -rs '(map(.type) | rindex("step_start")) as $i | .[$i:] | map(select(.type=="text") | .part.text) | join("")' \
     "$out" > "$run/glm.out"
   validate "$run/glm.out"
-}
-
-run_vibe() {
-  # Vibe's default model is never used: a private VIBE_HOME pins $vibe_model
-  # (GLM 5.3 by default), which the Mistral API hosts and bills to the Vibe plan.
-  local home="$run/vibe-home"
-  # The Vibe plan key only: an exported MISTRAL_API_KEY is often the pay-per-call
-  # Studio key (live proofs, evals), which GLM traffic must not bill.
-  local key=${VIBE_MISTRAL_API_KEY:-$(sed -n 's/^MISTRAL_API_KEY=//p' "${VIBE_HOME:-$HOME/.vibe}/.env" 2>/dev/null | tr -d "\"'")}
-  [ -n "$key" ] || { echo "no Vibe key: log in with vibe --setup or set VIBE_MISTRAL_API_KEY" > "$(log vibe stderr)"; return 1; }
-  mkdir -p "$home"
-  # GLM 5.3 on the Mistral API takes reasoning_effort low, high or max, but
-  # Vibe's Mistral backend sends "none" for low, which the API rejects. The
-  # generic backend passes low through; it mangles the reasoning chunks that
-  # high sends, so medium and high stay on the Mistral backend.
-  local provider=mistral thinking=high
-  # Mistral Large 4 takes only high or none, so a low-effort review runs it at high.
-  [ "$effort" = low ] && [ "$vibe_model" = zai-glm-5-3 ] && provider=mistral-generic thinking=low
-  cat > "$home/config.toml" <<TOML
-active_model = "review"
-enable_telemetry = false
-enable_update_checks = false
-
-[[providers]]
-name = "mistral-generic"
-api_base = "https://api.mistral.ai/v1"
-api_key_env_var = "MISTRAL_API_KEY"
-backend = "generic"
-api_style = "openai"
-
-[[models]]
-name = "$(model_of vibe)"
-provider = "$provider"
-alias = "review"
-temperature = 1.0
-thinking = "$thinking"
-input_price = 1.4
-output_price = 4.4
-cached_input_price = 0.26
-auto_compact_threshold = 800000
-TOML
-  # setsid: with a prompt on stdin, vibe reopens /dev/tty, which would take
-  # the caller's terminal. The harness Vibe rolls out by default has no grep
-  # tool, so pin the legacy one. The private home holds one session, which
-  # --continue resumes.
-  local resume=() out rc=0
-  out=$(log vibe jsonl)
-  [ "$attempt" = 1 ] || resume=(--continue)
-  { if [ "$attempt" = 1 ]; then cat "$run/prompt.md"; else echo "$resume_prompt"; fi; } |
-    MISTRAL_API_KEY=$key VIBE_HOME=$home setsid -w timeout --signal=TERM "$timeout_s" vibe -p --legacy-harness --agent plan \
-      --enabled-tools read_file --enabled-tools grep --auto-approve "${resume[@]}" \
-      --max-price 5 --output streaming --workdir "$tree" --trust \
-      > "$out" 2> "$(log vibe stderr)" || rc=$?
-  session=vibe-home
-  status "$rc" || return
-  jq -rRs '[split("\n")[] | fromjson? | select(.type == "message" and .role == "assistant")] | last | .content
-           | if type == "string" then . else map(select(.type == "text") | .text) | join("") end' \
-    "$out" > "$run/vibe.out"
-  validate "$run/vibe.out"
 }
 
 run_codex() {
@@ -367,8 +302,7 @@ def said(t):
 def did(t):
     out.append("- " + short(t, 200))
 logs = sorted(run.glob(f"{vendor}*.jsonl"), key=lambda p: (len(p.name), p.name))
-# A resumed Vibe session replays its history into the new log.
-for path in logs[-1:] if vendor == "vibe" else logs:
+for path in logs:
     out.append(f"\n### {path.name}\n")
     for line in path.read_text(errors="replace").splitlines():
         try:
@@ -633,7 +567,7 @@ done | sed 's#^\./##' | sort -u || true)
 if [ "$vendor" = auto ]; then
   quota_out=$(command -v quota >/dev/null && quota 2>/dev/null || true)
   mapfile -t vendors < <(order)
-  [ "${#vendors[@]}" -gt 0 ] || code=3 die "no reviewer headroom: GLM's 5-hour window, Vibe's credits and Codex are all spent"
+  [ "${#vendors[@]}" -gt 0 ] || code=3 die "no reviewer headroom: GLM's 5-hour window and Codex are both spent"
 else
   vendors=("$vendor")
 fi

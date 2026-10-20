@@ -1,6 +1,6 @@
 ---
 name: cross-review
-description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else GLM 5.3 on the Mistral API through Vibe, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a follow-up review of fixes, which covers only the commits since the last review. Decides whether a review is worth running, when to launch it, and how to act on findings."
+description: "Get a finished code change reviewed by a model from another vendor (GLM 5.3 through opencode, else Codex), headless and read-only, running in the background while you do the slow remaining steps. Use when you have committed a change that is ready to ship and the repo expects review before a PR is marked ready or merged; also for a follow-up review of fixes, which covers only the commits since the last review. Decides whether a review is worth running, when to launch it, and how to act on findings."
 ---
 
 # Cross-vendor review
@@ -88,11 +88,10 @@ Rules: `reference/proof-verdict.md`.
   prints).
 - **Uncommitted changes abort the run**, because the review pins HEAD.
   Commit first; a WIP commit is fine.
-- **The vendor order is deliberate:** GLM on the Z.ai plan, then GLM 5.3 on
-  the Mistral API through Vibe, then Codex, whose weekly cap is the scarcest.
-  Idle GLM and Vibe headroom is lost. Don't force `--vendor codex` for a
-  "better" review. Never run `vibe` for a review outside the script, and never
-  with its default model: `reference/vendors.md`.
+- **The vendor order is deliberate:** GLM on the Z.ai plan, then Codex,
+  whose weekly cap is the scarcest. Idle GLM headroom is lost. Don't force
+  `--vendor codex` for a "better" review. Never review with `vibe`, even
+  though it is installed: its plan is cancelled (`reference/vendors.md`).
 - **Don't widen the rubric.** Asking for style, design or test-coverage
   comments, or for a full fix per finding, raises false positives
   (`reference/sources.md`).
