@@ -19,8 +19,8 @@ echo '{"findings": [], "overall_explanation": "stub codex"}' > "$out"
 echo '{"type": "thread.started", "thread_id": "stub"}'
 touch "$CODEX_RAN"
 SH
-# The other reviewers fail, so a test can never reach a real one.
-for r in opencode vibe; do printf '#!/bin/sh\nexit 1\n' > "$tmp/bin/$r"; done
+# The other reviewer fails, so a test can never reach a real one.
+printf '#!/bin/sh\nexit 1\n' > "$tmp/bin/opencode"
 printf '#!/bin/sh\necho "zai 5h 0%%"\n' > "$tmp/bin/quota"
 chmod +x "$tmp/bin/"*
 export PATH="$tmp/bin:$PATH" CODEX_RAN="$tmp/codex-ran"

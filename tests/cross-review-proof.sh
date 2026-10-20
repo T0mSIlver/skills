@@ -29,7 +29,7 @@ case "$*" in
     case "$1 $2" in "api -X") echo PATCH > "$GH_VERB" ;; *) echo POST > "$GH_VERB" ;; esac ;;
 esac
 SH
-for r in opencode vibe; do printf '#!/bin/sh\nexit 1\n' > "$tmp/bin/$r"; done
+printf '#!/bin/sh\nexit 1\n' > "$tmp/bin/opencode"
 printf '#!/bin/sh\necho "zai 5h 99%%"\n' > "$tmp/bin/quota"
 chmod +x "$tmp/bin/"*
 export PATH="$tmp/bin:$PATH" GH_PR_JSON="$tmp/pr.json" GH_EXISTING="$tmp/existing" \

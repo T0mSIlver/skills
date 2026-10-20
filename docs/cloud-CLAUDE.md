@@ -50,6 +50,6 @@ his full CLAUDE.md applies instead.
 - `gh pr` and `gh issue` fail behind the proxy: use `gh api repos/OWNER/REPO/...`.
 - Checks that need Android, iOS or macOS run only in CI: push, then read CI and
   count every check's state.
-- Codex, GLM and Vibe aren't here, so the cross-review skill can't run. Say so
+- Codex and GLM aren't here, so the cross-review skill can't run. Say so
   in the PR's handoff comment; a session on his dev box runs it before merge.
 - Never handle key or secret values. Name a secret; never print it.

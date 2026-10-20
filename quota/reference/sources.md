@@ -1,7 +1,10 @@
 # Sources
 
-- **Scheduling order and Vibe as the second reviewer**: Tom's global
-  CLAUDE.md, "Reviews and quotas".
+- **Scheduling order, GLM then Codex**: Tom's global CLAUDE.md, "Reviews
+  and quotas".
+- **No Vibe**: Tom cancelled the Mistral Vibe subscription in October 2026
+  with €8.50 of credit left, and said on 2026-10-20 that Vibe must not
+  review, even as a fallback.
 - **Fill every Codex window, credits at weekly 100%**: Tom to the
   localvoxtral scheduler session, 2026-09-28: "we're gonna be using the
   Codex 5-hour limits as soon as they're available with Astra … The goal is

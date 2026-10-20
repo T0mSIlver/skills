@@ -82,7 +82,7 @@ list the requirement in their `compatibility:` frontmatter:
   session tools (`spawn_task`, `send_message`, `archive_session`, …) it uses.
 - `gh-stack` needs the [gh-stack](https://github.com/github/gh-stack) `gh`
   extension.
-- `cross-review` needs opencode, Vibe or Codex installed and logged in.
+- `cross-review` needs opencode or Codex installed and logged in.
 
 ## Turning skills off on one machine
 
