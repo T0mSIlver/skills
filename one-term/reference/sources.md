@@ -31,6 +31,24 @@ first statement of the rule:
 That pass became
 [starbridge#1053](https://github.com/T0mSIlver/starbridge/pull/1053).
 
+**11 Oct 2026, 20:01 UTC.** In the Starbridge orchestrator session, asking
+for the docs guide that became starbridge `docs/AGENTS.md`:
+
+> For the docs PR, let's also have an AGENTS.md that enforces concision,
+> /unslop, one behavior = one phrasing and some other best practices from
+> other tools docs
+
+**13 Oct 2026, 19:24 UTC.** Same session, asking for what became
+`docs-review`:
+
+> Let's also do a docs review session: no stale doc, take into account
+> recent changes, trim down, one behavior one phrasing. [...] make the skill
+> portable so don't overfit it on starbridge.
+
+The agent saved the rule as the memory `docs-same-sentence.md` (starbridge
+project, 10 Oct), with the why: "reworded sentences for the same behaviour
+read as different behaviour".
+
 **21 Oct 2026, 17:42 UTC.** Comment on a course page for
 [Blaizzy/mlx-audio-swift#271](https://github.com/Blaizzy/mlx-audio-swift/pull/271),
 on the draft reply "The first melColumns call would materialize it anyway,
