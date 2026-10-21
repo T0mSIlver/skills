@@ -13,7 +13,7 @@ repo = "https://github.com/cursor/plugins"
 ref = "main"
 path = "pstack/skills/unslop"
 license = "pstack/LICENSE"
-commit = "88d47514b82e7c44f00f2b2a72ff6dd12158038c"
+commit = "190d28736eff128ec94f502a22c7fe0c4b56cd37"
 # Upstream ships it user-only; I want the model to reach for it on its own.
 frontmatter = { disable-model-invocation = false }
 
