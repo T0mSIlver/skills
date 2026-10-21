@@ -1,6 +1,6 @@
 # Sources
 
-Where the rule comes from. Tom's words are quoted as he sent them (some by
+Where the rule comes from. Dates are UTC. Tom's words are quoted as he sent them (some by
 voice, so spoken fillers are left in).
 
 ## Tom's words
@@ -49,7 +49,7 @@ The agent saved the rule as the memory `docs-same-sentence.md` (starbridge
 project, 10 Oct), with the why: "reworded sentences for the same behaviour
 read as different behaviour".
 
-**21 Oct 2026, 17:42 UTC.** Comment on a course page for
+**21 Oct 2026, 17:42 UTC.** Comment on the page an agent wrote to explain
 [Blaizzy/mlx-audio-swift#271](https://github.com/Blaizzy/mlx-audio-swift/pull/271),
 on the draft reply "The first melColumns call would materialize it anyway,
 but evaluating it in periodicHannWindow keeps that cost out of the first
@@ -67,11 +67,11 @@ or there's a concrete reason to do this."
 
 | Where | Text | Since |
 |---|---|---|
-| starbridge `docs/AGENTS.md`, Terms | "Keep one name per thing" and a shared sentence "copied word for word" | #1273, 11 Oct |
-| starbridge `DESIGN.md`, Settings | "One name per setting on every client" | #1061, 10 Oct |
+| starbridge `docs/AGENTS.md`, Terms | "Keep one name per thing" and a shared sentence "copied word for word" | #1273, 12 Oct |
+| starbridge `DESIGN.md`, Settings | "One name per setting on every client" | #1065 (issue #1061), 10 Oct |
 | `docs-review` step 4 | "Say each behaviour in one sentence" | skills #188, 13 Oct |
-| `docs/cloud-CLAUDE.md` and Tom's `~/.claude/CLAUDE.md` | "Keep one name per thing." | |
-| `unslop` 11 (vendored) | "Synonym cycling [...] Pick one, repeat it." | |
+| Tom's `~/.claude/CLAUDE.md` (dotfiles) and `docs/cloud-CLAUDE.md` | "Keep one name per thing. Don't let two terms drift into meaning the same thing." The cloud copy keeps the first sentence; this PR points it to `one-term` | 29 Sep (dotfiles c3c7127); cloud copy 16 Oct |
+| `unslop` 11 (vendored from cursor/plugins) | "Synonym cycling [...] Pick one, repeat it." | upstream |
 
 Those lines are scoped to docs, settings or style. This skill is the rule
 for any text, with the exceptions Tom named: a different context or a

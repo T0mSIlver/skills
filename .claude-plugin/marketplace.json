@@ -131,7 +131,7 @@
       "name": "one-term",
       "source": "./",
       "strict": false,
-      "description": "One behaviour, one term: name each thing with one term and keep it in every reply, doc, PR, UI string and comment, copy a shared sentence word for word, and change a term only for a different thing, context or stated reason.",
+      "description": "One behaviour, one term: each thing keeps one term in docs, UI copy, PRs and replies, a sentence that must repeat is copied word for word, and a term changes only for a different thing, a different context or a stated reason.",
       "skills": [
         "./one-term"
       ],
