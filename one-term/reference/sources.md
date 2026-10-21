@@ -74,7 +74,7 @@ or there's a concrete reason to do this."
 | `unslop` 11 (vendored from cursor/plugins) | "Synonym cycling [...] Pick one, repeat it." | upstream |
 
 Those lines are scoped to docs, settings or style. This skill is the rule
-for any text, with the exceptions Tom named: a different context or a
+for docs, UI copy, PR bodies, comments and replies, with the exceptions Tom named: a different context or a
 concrete reason.
 
 ## Outside

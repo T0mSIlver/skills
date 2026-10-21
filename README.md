@@ -106,7 +106,7 @@ phone app for decisions. They are here to read and adapt.
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
 | [`unnarrate`](unnarrate/SKILL.md) | Deletes text that narrates itself: comments that repeat the code, tooltips that repeat the label, PR bullets that repeat the diff |
 | [`docs-review`](docs-review/SKILL.md) | Edits a project's docs: checks each claim against the code, keeps each fact on one page and each behaviour in one sentence, and trims |
-| [`one-term`](one-term/SKILL.md) | One behaviour, one term: each thing keeps one term in docs, UI copy, PRs and replies, a sentence that must repeat is copied word for word, and a term changes only for a different thing, a different context or a stated reason |
+| [`one-term`](one-term/SKILL.md) | One behaviour, one term: each thing keeps one term in docs, UI copy, PR bodies, comments and replies, a sentence that must repeat is copied word for word, and a term changes only for a different thing, a different context or a stated reason |
 | [`test-audit`](test-audit/SKILL.md) | A gate for new tests and an audit for deleting low-value ones: tests of mocks, mirrored expected values, duplicate coverage |
 | [`unslop`](unslop/SKILL.md) | Vendored from [cursor/plugins](https://github.com/cursor/plugins). Removes AI tells from prose |
 | [`herdr`](herdr/SKILL.md) | Vendored from [herdrdev/herdr](https://github.com/herdrdev/herdr). Controls panes and other agents inside herdr |
