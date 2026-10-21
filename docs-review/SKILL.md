@@ -52,7 +52,7 @@ this skill.
   sentence that names a shared behaviour, verbatim.
 - **Terms defined page by page.** Readers meet a term on whichever page they
   land on. Rule: define each term once, on the first page, and link there
-  (`unslop` keeps one word per thing). Keep a list order, such as the order
+  (`one-term` keeps one word per thing). Keep a list order, such as the order
   of supported platforms, the same everywhere.
 - **A ✓ with the catch in a footnote.** Readers trust the cell. Rule: put
   the condition in the cell ("CLI only", "Opt-in", "With add-on").

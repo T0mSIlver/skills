@@ -128,6 +128,27 @@
       "category": "workflow"
     },
     {
+      "name": "one-term",
+      "source": "./",
+      "strict": false,
+      "description": "One behaviour, one term: name each thing with one term and keep it in every reply, doc, PR, UI string and comment, copy a shared sentence word for word, and change a term only for a different thing, context or stated reason.",
+      "skills": [
+        "./one-term"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "writing",
+        "terminology",
+        "consistency",
+        "documentation"
+      ],
+      "category": "workflow"
+    },
+    {
       "name": "test-audit",
       "source": "./",
       "strict": false,
