@@ -80,7 +80,10 @@ asks for `Co-Authored-By: Claude` and `Claude-Session:` trailers. GitHub's
 squash merge then credits Claude on main for every Claude-authored commit in
 the PR, even when each message is clean. `scripts/git-as-owner.sh` fixes both
 per clone: a Claude identity becomes the owner's, and a `commit-msg` hook
-drops the AI lines and keeps human co-authors. Add it next to the hook above:
+drops Claude's `noreply@anthropic.com` co-author lines, `Claude-Session:`
+and "Generated with Claude Code" lines, and keeps human co-authors. It leaves
+alone a `commit-msg` hook it didn't write and a `core.hooksPath` set outside
+the repo. Add it next to the hook above:
 
 ```json
 {
