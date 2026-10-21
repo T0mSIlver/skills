@@ -19,9 +19,16 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 /plugin install cli-delegation@t0msilver-skills    # cross-review, fastcontext
 /plugin install remote-control-server@t0msilver-skills  # claude-remote-control-server
 /plugin install unnarrate@t0msilver-skills
+/plugin install test-audit@t0msilver-skills
+/plugin install docs-review@t0msilver-skills
+/plugin install blast-radius@t0msilver-skills
+/plugin install verify@t0msilver-skills       # pairs with blast-radius
 /plugin install orchestrate-sessions@t0msilver-skills
 /plugin install vendored@t0msilver-skills          # unslop, herdr, gh-stack
 ```
+
+`owner-workflow` already contains `blast-radius` and `verify`. Install it or
+the two single plugins, not both, or each skill loads twice.
 
 **Manual:** copy a top-level skill directory into your agent's skills folder
 (`~/.claude/skills/`, `~/.codex/skills/`, `~/.config/opencode/skills/`,

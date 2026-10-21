@@ -3,7 +3,7 @@
   "owner": {
     "name": "Tom Vaucourt"
   },
-  "description": "T0mSIlver's personal agent skills: cross-vendor review, one session scheduling many, merging parallel PRs without breaking main, and prose cleanup. Written here or vendored verbatim.",
+  "description": "Agent skills for shipping changes you didn't write line by line: which tests are worth keeping, what a change could break, a second agent that verifies a PR, docs checked against the code, and prose without meta-commentary.",
   "plugins": [
     {
       "name": "owner-workflow",
@@ -146,6 +146,50 @@
         "mocks",
         "regression-tests",
         "code-review"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "blast-radius",
+      "source": "./",
+      "strict": false,
+      "description": "Before a PR is ready, write what the change could break beyond its diff, per platform and visually, the one fact it is safe because of, and the cheapest proof for each risk with how far that proof got. The output is the PR body's Blast radius section.",
+      "skills": [
+        "./blast-radius"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "code-review",
+        "pull-request",
+        "risk",
+        "regression",
+        "testing"
+      ],
+      "category": "workflow"
+    },
+    {
+      "name": "verify",
+      "source": "./",
+      "strict": false,
+      "description": "A second agent, not the author, checks a PR before merge: reads the diff and its Blast radius section, gathers evidence risk by risk, looks at every screenshot itself, baselines bug fixes on main, argues against its own verdict, and posts VERIFIED, NOT VERIFIED or INCONCLUSIVE with its scope. Pairs with blast-radius.",
+      "skills": [
+        "./verify"
+      ],
+      "author": {
+        "name": "Tom Vaucourt"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/T0mSIlver/skills",
+      "keywords": [
+        "verification",
+        "code-review",
+        "pull-request",
+        "qa",
+        "refuter"
       ],
       "category": "workflow"
     },

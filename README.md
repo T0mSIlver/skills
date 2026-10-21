@@ -9,6 +9,83 @@ wrong without it. That is why most of these are gotchas backed by evidence
 rather than tutorials. When upstream fixes what a skill works around, I delete
 the skill.
 
+## Five to start with
+
+These five work in any repo, with no setup beyond the install line
+(`verify` also uses the `gh` CLI). Each
+install line puts one skill in Claude Code (2.1.275 or later). For Codex,
+opencode, Cursor and the other agents, use `npx skills add T0mSIlver/skills
+--skill <name>`.
+
+**[`test-audit`](test-audit/SKILL.md)** decides which tests are worth having:
+four questions before any new test, and an audit for deleting tests that
+mirror the code, test mocks or repeat stronger coverage. The day after it
+merged, five agents ran it over five areas of localvoxtral's tests, and each
+deletion names the test that still proves its contract: 1,586 lines out and
+838 in, test code only
+([#947](https://github.com/T0mSIlver/localvoxtral/pull/947) to
+[#951](https://github.com/T0mSIlver/localvoxtral/pull/951)). It has the
+most installs of anything here.
+
+```text
+/plugin install test-audit --marketplace T0mSIlver/skills
+```
+
+**[`blast-radius`](blast-radius/SKILL.md)** writes what a change could break
+beyond its diff, on each platform and on screen, the one fact it is safe
+because of, and the cheapest proof for each risk. It exists because an app
+icon that sat low passed review four times
+([#1453](https://github.com/T0mSIlver/starbridge/pull/1453),
+[#1477](https://github.com/T0mSIlver/starbridge/pull/1477),
+[#1564](https://github.com/T0mSIlver/starbridge/pull/1564),
+[#1713](https://github.com/T0mSIlver/starbridge/pull/1713)): reviewers read
+the diff, and nobody listed the icon beside its neighbours as a surface.
+167 merged Starbridge PRs carry a Blast radius section.
+
+```text
+/plugin install blast-radius --marketplace T0mSIlver/skills
+```
+
+**[`verify`](verify/SKILL.md)** has a second agent, not the author, check a
+PR before merge. It reads the PR's blast radius, gathers evidence risk by
+risk, opens every screenshot itself, reproduces a bug on main before
+accepting the fix, and argues against its own verdict before posting
+VERIFIED, NOT VERIFIED or INCONCLUSIVE. It expects a Blast radius section,
+so install it with `blast-radius`.
+
+```text
+/plugin install verify --marketplace T0mSIlver/skills
+```
+
+**[`docs-review`](docs-review/SKILL.md)** edits a project's docs: every
+claim checked against the code, one page per fact, one sentence per
+behaviour, then a trim. Each rule is a correction reviewers made more than
+once on Starbridge's docs ([sources](docs-review/reference/sources.md)). The
+pass those rules came from cut the docs by a third, 9,055 words to 6,119
+([#1273](https://github.com/T0mSIlver/starbridge/pull/1273)).
+
+```text
+/plugin install docs-review --marketplace T0mSIlver/skills
+```
+
+**[`unnarrate`](unnarrate/SKILL.md)** deletes text that narrates itself:
+comments that repeat the next line, tooltips that repeat the label, PR
+bullets that repeat the diff. Run it before
+[`unslop`](unslop/SKILL.md), which fixes how the remaining sentences sound.
+
+```text
+/plugin install unnarrate --marketplace T0mSIlver/skills
+```
+
+On Claude Code before 2.1.275, add the marketplace first with
+`/plugin marketplace add T0mSIlver/skills`, then
+`/plugin install <name>@t0msilver-skills`.
+
+## All of them
+
+The rest are built around how I work: one owner, many agent sessions, a
+phone app for decisions. They are here to read and adapt.
+
 | Skill | What it gives the agent |
 |-------|-------------------------|
 | [`owner-charter`](owner-charter/SKILL.md) | The owner's rules for every repo: what they decide on a card before any code, how to ask, what must hold before a merge, and what they reject |
