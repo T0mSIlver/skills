@@ -24,7 +24,7 @@ summary, a trust level, and how a cloud thread gets each piece.
    matches or what the source says instead. Name each source by repo, ref and
    path: one it can't open comes back "no source", which reads like a gap.
 4. **Fresh refuter.** A Sonnet subagent (never Fable) with the `verify` skill
-   gets the repo, PR number, head SHA and a local checkout, and the
+   gets the repo, PR number, head SHA and a checkout at that SHA, and the
    instruction to find what's wrong. Nothing else: no transcript, no summary
    of why the change is right. In the cloud, tell it to read the PR with the
    GitHub MCP tools or `gh api`, since `gh pr` fails there. Recheck each
@@ -33,7 +33,8 @@ summary, a trust level, and how a cloud thread gets each piece.
    with the finding.
 5. **Cross-review.** Skip it only where `cross-review` §1 allows, and say so.
    On the sandbox, run it yourself. From a project thread, start one Remote
-   Control session per batch (`start_remote_control`, not one per PR) in the
+   Control session per batch (`start_remote_control`, not one per PR; it
+   answers a message of the owner's, so it can't start unprompted) in the
    one folder the owner approved for all sandbox sessions,
    `/home/dev/work/T0mSIlver`, and `cd` from there; never ask for another
    folder. Tell it, per PR: check out the head SHA, write a 5–15 line brief to a file
@@ -68,21 +69,23 @@ The first that applies wins. Read the repo's AGENTS.md and CONTRIBUTING.md
 first: they override this (the fast-lane repos, vidtheque and working-set,
 push to main and are reviewed nightly).
 
-- **L2, the owner does it.** Anything sent or published outside his repos
-  (send packet, `owner-charter` "Never"), opinions or a thesis in his voice,
-  money, anything irreversible.
+- **L2, the owner does it.** Anything to be sent or published outside his
+  repos (send packet), anything in `owner-charter` "Never", opinions or a
+  thesis in his voice, money, anything irreversible.
 - **L1, the owner says yes on one card.** `.github/`, `deploy/`, auth,
   migrations, secrets; a push that deploys to production (website `main`);
+  a change to the rules agents follow (skills, CLAUDE.md, AGENTS.md);
   what `owner-charter` puts on a card (feature, UX, visible copy); a risk
   kind still in `merge-queue`'s ramp-up (copy, layout, style, asset,
   locale); a refuter INCONCLUSIVE, or NOT VERIFIED after the fix round;
   cross-review due and not run.
-- **L0, the agent merges and says so in one line.** His own repos only.
-  Every check green at the head, refuter VERIFIED at the head, cross-review
-  clean or skipped by its rule, bundle SHA equal to the head SHA. Where the
-  repo has a "What merges without the owner" section, also everything
-  `merge-queue` asks of a merge-by-default PR (proof verdict, READY).
-  Edit the bundle to "L0, merged" after the merge.
+- **L0, the agent merges and says so in one line.** His own repos, and only
+  where the repo lets an agent merge: its merge-by-default class through
+  `merge-queue` (proof verdict, READY) where CONTRIBUTING.md has "What merges
+  without the owner", the owner's merge classes where AGENTS.md names them,
+  and his standing rule (green and reviewed) where the repo says nothing.
+  Every check green, refuter VERIFIED and cross-review clean or skipped by
+  its rule, all at the head SHA. Edit the bundle to "L0, merged" after.
 
 Work the owner didn't ask for goes up as a draft PR labelled `proposal`, with
 its bundle and a 30-second demo. It never merges on L0. Close it unanswered
