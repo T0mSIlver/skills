@@ -73,6 +73,33 @@ every skill came from elsewhere it downloads nothing. Its own copies are
 refreshed at each session start and resume. Name skills after
 `bash -s --` to install others.
 
+## Commits carry the owner's name
+
+A cloud session commits as `Claude <noreply@anthropic.com>`, and its harness
+asks for `Co-Authored-By: Claude` and `Claude-Session:` trailers. GitHub's
+squash merge then credits Claude on main for every Claude-authored commit in
+the PR, even when each message is clean. `scripts/git-as-owner.sh` fixes both
+per clone: a Claude identity becomes the owner's, and a `commit-msg` hook
+drops Claude's `noreply@anthropic.com` co-author lines, `Claude-Session:`
+and "Generated with Claude Code" lines, and keeps human co-authors. It leaves
+alone a `commit-msg` hook it didn't write and a `core.hooksPath` outside
+`.git`. Add a second entry to the `hooks` list of the `SessionStart` block
+above:
+
+```json
+{
+  "type": "command",
+  "command": "curl -fsSL https://raw.githubusercontent.com/T0mSIlver/skills/main/scripts/git-as-owner.sh | bash"
+}
+```
+
+Commits that skip `commit-msg` (`--no-verify`, `cherry-pick`) and commits
+made through the GitHub API keep their messages. Branch commits made this
+way show "Unverified" on GitHub, since the container signs with a key on
+Claude's account. Squash-merge through the API with your own
+`commit_message`: the merge commit on main is signed by GitHub, and
+localvoxtral's AGENTS.md reports it carries no co-author lines.
+
 ## What the folder copy doesn't install
 
 Neither install method runs scripts. Skills that need more than their folder
