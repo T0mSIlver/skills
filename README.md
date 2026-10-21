@@ -11,8 +11,9 @@ the skill.
 
 ## Five to start with
 
-These five work in any repo, with no setup beyond the install line
-(`verify` also uses the `gh` CLI). Each
+These five work in any repo. `verify` and `blast-radius` mention the owner
+charter and intent cards from the rest of this repo, and work without them.
+`verify` uses the `gh` CLI. Each
 install line puts one skill in Claude Code (2.1.275 or later). For Codex,
 opencode, Cursor and the other agents, use `npx skills add T0mSIlver/skills
 --skill <name>`.
