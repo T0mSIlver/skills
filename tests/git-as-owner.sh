@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# git-as-owner.sh moves a Claude identity to the owner and keeps a person's,
+# and its commit-msg hook strips AI attribution but keeps human co-authors.
+set -euo pipefail
+
+script=$(readlink -f "$(dirname "$0")/../scripts/git-as-owner.sh")
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+fail() { echo "FAIL: $*" >&2; exit 1; }
+export GIT_CONFIG_GLOBAL="$tmp/gitconfig" GIT_CONFIG_NOSYSTEM=1
+
+git config --global user.name Claude
+git config --global user.email noreply@anthropic.com
+git init -q "$tmp/repo"
+CLAUDE_PROJECT_DIR="$tmp/repo" "$script"
+cd "$tmp/repo"
+[ "$(git config user.email)" = "34662901+T0mSIlver@users.noreply.github.com" ] || fail "Claude identity kept"
+
+commit() { git commit -q --allow-empty -m "$1" && git log -1 --format=%B; }
+
+out=$(commit $'Fix\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_x')
+[ "$out" = "Fix" ] || fail "trailers kept: $out"
+
+out=$(commit $'Fix\n\n* step\n\nCo-authored-by: Ada <ada@example.com>\nco-authored-by: claude <noreply@anthropic.com>')
+[ "$out" = $'Fix\n\n* step\n\nCo-authored-by: Ada <ada@example.com>' ] || fail "human co-author or body lost: $out"
+
+out=$(commit $'Fix\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)')
+[ "$out" = "Fix" ] || fail "footer kept: $out"
+
+out=$(commit $'Explain why Claude Code reviews ran\n\nThe anthropic SDK pin moves.')
+[ "$out" = $'Explain why Claude Code reviews ran\n\nThe anthropic SDK pin moves.' ] || fail "prose changed: $out"
+
+# A person's identity and someone else's hook are left alone.
+git init -q "$tmp/mine"
+git -C "$tmp/mine" config user.email ada@example.com
+printf '#!/bin/sh\nexit 0\n' > "$tmp/mine/.git/hooks/commit-msg"
+CLAUDE_PROJECT_DIR="$tmp/mine" "$script" 2> "$tmp/err"
+[ "$(git -C "$tmp/mine" config user.email)" = ada@example.com ] || fail "person's identity changed"
+grep -q "isn't mine" "$tmp/err" || fail "no warning for a foreign hook"
+[ "$(sed -n 2p "$tmp/mine/.git/hooks/commit-msg")" = "exit 0" ] || fail "foreign hook overwritten"
+
+# Its own hook is rewritten on the next start, and core.hooksPath is honoured.
+CLAUDE_PROJECT_DIR="$tmp/repo" "$script"
+git -C "$tmp/repo" config core.hooksPath .githooks
+CLAUDE_PROJECT_DIR="$tmp/repo" "$script"
+[ -x "$tmp/repo/.githooks/commit-msg" ] || fail "core.hooksPath ignored"
+echo "git-as-owner: ok"
