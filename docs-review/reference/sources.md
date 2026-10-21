@@ -65,7 +65,7 @@ https://github.com/anthropics/skills/blob/main/skills/doc-coauthoring/SKILL.md
   voice, sentence-case headings, the condition before the instruction, and
   consistency within a document over any single rule.
 - `unslop` (vendored from cursor/plugins): one name per thing, no synonym
-  cycling. Covered by running `unslop`.
+  cycling. `one-term` holds the full rule.
 
 ## Other projects on the same box
 

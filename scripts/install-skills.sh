@@ -24,7 +24,7 @@
 set -uo pipefail
 
 DEFAULT_SKILLS=(owner-charter intent-card blast-radius verify correct
-  debt-review cross-review starbridge unslop unnarrate docs-review test-audit)
+  debt-review cross-review starbridge unslop unnarrate docs-review one-term test-audit)
 MARKER=.installed-by-install-skills
 BASE_URL="${SKILLS_BASE_URL:-https://raw.githubusercontent.com/T0mSIlver/skills/${SKILLS_REF:-main}}"
 

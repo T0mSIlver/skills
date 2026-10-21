@@ -21,6 +21,7 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 /plugin install unnarrate@t0msilver-skills
 /plugin install test-audit@t0msilver-skills
 /plugin install docs-review@t0msilver-skills
+/plugin install one-term@t0msilver-skills
 /plugin install blast-radius@t0msilver-skills
 /plugin install verify@t0msilver-skills       # pairs with blast-radius
 /plugin install orchestrate-sessions@t0msilver-skills
@@ -63,7 +64,7 @@ that wants the owner workflow in every session, on any machine, runs
 It copies the owner workflow and the skills it relies on (`owner-charter`,
 `intent-card`, `blast-radius`, `verify`, `correct`, `debt-review`,
 `cross-review`, `starbridge`, `unslop`, `unnarrate`, `docs-review`,
-`test-audit`) into `~/.claude/skills`, where the session finds them at once.
+`one-term`, `test-audit`) into `~/.claude/skills`, where the session finds them at once.
 It fetches each file from `main` on raw.githubusercontent.com, following
 `scripts/install-skills.list`, because a cloud session's GitHub proxy
 refuses archive downloads. A skill already there that the script didn't write,
