@@ -52,4 +52,7 @@ his full CLAUDE.md applies instead.
   count every check's state.
 - Codex and GLM aren't here, so the cross-review skill can't run. Say so
   in the PR's handoff comment; a session on his dev box runs it before merge.
+- Before reporting a PR or draft as done, follow the evidence-bundle skill:
+  proof on the pushed head, a fresh refuter, and the trust level that says
+  whether you merge or he decides.
 - Never handle key or secret values. Name a secret; never print it.

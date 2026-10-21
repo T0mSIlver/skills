@@ -15,6 +15,7 @@
         "./intent-card",
         "./blast-radius",
         "./verify",
+        "./evidence-bundle",
         "./correct",
         "./debt-review"
       ],
