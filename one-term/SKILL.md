@@ -24,13 +24,13 @@ A reader takes a new term for a new thing, so a varied term is a bug.
    places (two platforms on one page, a doc and the CLI's help) gets the
    same sentence, word for word. A reworded sentence reads as a different
    behaviour.
-4. **Change a term only for a stated reason.** A different term means a
-   different thing, or the same thing in a context that has its own term
-   for it: the identifier in a code block, the UI label in steps. Say once
+4. **Change a term only for a different thing, a different context or a
+   stated reason.** A different context is one that has its own term for
+   the thing: the identifier in a code block, the UI label in steps. Say once
    that the two are the same thing ("the pairing code, `pair_code` in the
    API"), then keep each in its own context.
 5. **Check before sending.** For each thing the text refers to, list the
-   terms used for it. More than one, without a stated reason from step 4:
+   terms used for it. More than one, without a reason from step 4:
    keep one.
 
 ## Gotchas

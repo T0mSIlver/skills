@@ -70,7 +70,7 @@ or there's a concrete reason to do this."
 | starbridge `docs/AGENTS.md`, Terms | "Keep one name per thing" and a shared sentence "copied word for word" | #1273, 12 Oct |
 | starbridge `DESIGN.md`, Settings | "One name per setting on every client" | #1065 (issue #1061), 10 Oct |
 | `docs-review` step 4 | "Say each behaviour in one sentence" | skills #188, 13 Oct |
-| Tom's `~/.claude/CLAUDE.md` (dotfiles) and `docs/cloud-CLAUDE.md` | "Keep one name per thing. Don't let two terms drift into meaning the same thing." The cloud copy keeps the first sentence; this PR points it to `one-term` | 29 Sep (dotfiles c3c7127); cloud copy 16 Oct |
+| Tom's `~/.claude/CLAUDE.md` (dotfiles) and `docs/cloud-CLAUDE.md` | "Keep one name per thing. Don't let two terms drift into meaning the same thing." The cloud copy had the first sentence; this PR makes it "Keep one term per thing (`one-term` skill)." | 29 Sep (dotfiles c3c7127); cloud copy 16 Oct |
 | `unslop` 11 (vendored from cursor/plugins) | "Synonym cycling [...] Pick one, repeat it." | upstream |
 
 Those lines are scoped to docs, settings or style. This skill is the rule
