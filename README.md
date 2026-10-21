@@ -33,8 +33,9 @@ most installs of anything here.
 
 **[`blast-radius`](blast-radius/SKILL.md)** writes what a change could break
 beyond its diff, on each platform and on screen, the one fact it is safe
-because of, and the cheapest proof for each risk. It exists because an app
-icon that sat low passed review four times
+because of, and the cheapest proof for each risk. It exists because icons
+that sat low or off-centre, on desktop, web and Android, passed review four
+times
 ([#1453](https://github.com/T0mSIlver/starbridge/pull/1453),
 [#1477](https://github.com/T0mSIlver/starbridge/pull/1477),
 [#1564](https://github.com/T0mSIlver/starbridge/pull/1564),
@@ -61,7 +62,8 @@ so install it with `blast-radius`.
 claim checked against the code, one page per fact, one sentence per
 behaviour, then a trim. Each rule is a correction reviewers made more than
 once on Starbridge's docs ([sources](docs-review/reference/sources.md)). The
-pass those rules came from cut the docs by a third, 9,055 words to 6,119
+pass those rules came from cut the docs by a third, 9,055 to 6,119 in the
+PR's count
 ([#1273](https://github.com/T0mSIlver/starbridge/pull/1273)).
 
 ```text
