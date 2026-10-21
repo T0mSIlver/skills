@@ -12,7 +12,9 @@
 #    address, Claude-Session, and a line that is only "Generated with/by
 #    Claude Code". Human co-authors and prose that mentions Claude stay.
 #
-# Leaves alone a person's own identity and a commit-msg hook it didn't write.
+# Leaves alone a person's own identity, a commit-msg hook it didn't write and
+# a hooks path outside .git. Commits that skip commit-msg (--no-verify,
+# cherry-pick) or are made through the GitHub API keep their messages.
 set -euo pipefail
 
 owner_name="Tom Vaucourt"
@@ -23,18 +25,22 @@ cd "${CLAUDE_PROJECT_DIR:-.}" 2> /dev/null || exit 0
 git rev-parse --git-dir > /dev/null 2>&1 || exit 0
 
 case "$(git config user.email || true)" in
-  noreply@anthropic.com | "")
+  noreply@anthropic.com)
     git config --local user.name "$owner_name"
     git config --local user.email "$owner_email"
     ;;
 esac
 
-# A hooks directory set outside this repo's config is shared with other repos.
-if [ -n "$(git config core.hooksPath || true)" ] && [ -z "$(git config --local core.hooksPath || true)" ]; then
-  echo "git-as-owner: core.hooksPath is set outside this repo; AI trailers won't be stripped" >&2
-  exit 0
-fi
-hooks=$(git rev-parse --git-path hooks)
+# Writes only inside the repo's own git directory: a core.hooksPath elsewhere
+# is shared with other repos or tracked in the working tree.
+hooks=$(realpath -m "$(git rev-parse --git-path hooks)")
+case "$hooks/" in
+  "$(realpath -m "$(git rev-parse --git-common-dir)")"/*) ;;
+  *)
+    echo "git-as-owner: core.hooksPath points outside .git; AI trailers won't be stripped" >&2
+    exit 0
+    ;;
+esac
 hook="$hooks/commit-msg"
 if [ -e "$hook" ] && ! grep -qxF "$marker" "$hook"; then
   echo "git-as-owner: $hook exists and isn't mine; AI trailers won't be stripped" >&2
@@ -47,7 +53,9 @@ cat > "$hook.git-as-owner.$$" << EOF
 $marker
 # Drops AI attribution lines; git removes the blank lines left behind.
 msg="\$1"
-grep -viE '^[[:space:]]*(co-authored-by:[^<]*<noreply@anthropic\\.com>|claude-session:)|^[^[:alnum:]]*generated (with|by) \\[?claude code\\]?[^[:alnum:]]*(\\(https?://[^)]*\\)[^[:alnum:]]*)?\$' "\$msg" > "\$msg.git-as-owner" || true
+# grep exits 1 when every line went (git then refuses the empty message) and 2
+# on an error, which keeps the message as written.
+grep -aviE '^[[:space:]]*(co-authored-by:[^<]*<noreply@anthropic\\.com>|claude-session:)|^[^[:alnum:]]*generated (with|by) \\[?claude code\\]?[^[:alnum:]]*(\\(https?://[^)]*\\)[^[:alnum:]]*)?\$' "\$msg" > "\$msg.git-as-owner"; [ \$? -le 1 ] || { rm -f "\$msg.git-as-owner"; exit 0; }
 mv -f "\$msg.git-as-owner" "\$msg"
 EOF
 chmod +x "$hook.git-as-owner.$$"

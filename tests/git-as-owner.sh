@@ -50,11 +50,23 @@ CLAUDE_PROJECT_DIR="$tmp/repo" "$script" 2> "$tmp/err"
 [ ! -e "$tmp/shared-hooks/commit-msg" ] || fail "wrote into a global hooks path"
 git config --global --unset core.hooksPath
 
-# Its own hook is rewritten on the next start, and a repo's core.hooksPath is honoured.
-CLAUDE_PROJECT_DIR="$tmp/repo" "$script"
+# A hooks path in the working tree is tracked content: left alone.
 git -C "$tmp/repo" config core.hooksPath .githooks
-CLAUDE_PROJECT_DIR="$tmp/repo" "$script"
-[ -x "$tmp/repo/.githooks/commit-msg" ] || fail "core.hooksPath ignored"
+CLAUDE_PROJECT_DIR="$tmp/repo" "$script" 2> /dev/null
+[ ! -e "$tmp/repo/.githooks" ] || fail "wrote into the working tree"
+git -C "$tmp/repo" config --unset core.hooksPath
+
+# A message that isn't UTF-8 is still committed, stripped.
+LC_ALL=C.UTF-8 git commit -q --allow-empty -m "$(printf 'caf\xe9 fix\n\nClaude-Session: x')" 2> /dev/null \
+  || fail "non-UTF-8 message refused"
+git cat-file commit HEAD | grep -aq Claude-Session && fail "non-UTF-8 message kept its trailer"
+
+# A name with no email is a person's: left alone.
+git init -q "$tmp/named"
+git -C "$tmp/named" config user.name Ada
+git config --global --unset user.email
+CLAUDE_PROJECT_DIR="$tmp/named" "$script"
+[ "$(git -C "$tmp/named" config user.name)" = Ada ] || fail "person's name changed"
 # No project directory or no repo: nothing to do, success.
 CLAUDE_PROJECT_DIR="$tmp/missing" "$script" || fail "missing dir failed"
 mkdir "$tmp/plain"; CLAUDE_PROJECT_DIR="$tmp/plain" "$script" || fail "non-repo failed"

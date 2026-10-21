@@ -82,8 +82,9 @@ the PR, even when each message is clean. `scripts/git-as-owner.sh` fixes both
 per clone: a Claude identity becomes the owner's, and a `commit-msg` hook
 drops Claude's `noreply@anthropic.com` co-author lines, `Claude-Session:`
 and "Generated with Claude Code" lines, and keeps human co-authors. It leaves
-alone a `commit-msg` hook it didn't write and a `core.hooksPath` set outside
-the repo. Add it next to the hook above:
+alone a `commit-msg` hook it didn't write and a `core.hooksPath` outside
+`.git`. Add a second entry to the `hooks` list of the `SessionStart` block
+above:
 
 ```json
 {
@@ -92,10 +93,12 @@ the repo. Add it next to the hook above:
 }
 ```
 
-Branch commits made this way show "Unverified" on GitHub, since the
-container signs with a key on Claude's account. Squash-merge through the API
-with your own `commit_message`: the merge commit on main is signed by GitHub
-and carries no co-author lines.
+Commits that skip `commit-msg` (`--no-verify`, `cherry-pick`) and commits
+made through the GitHub API keep their messages. Branch commits made this
+way show "Unverified" on GitHub, since the container signs with a key on
+Claude's account. Squash-merge through the API with your own
+`commit_message`: the merge commit on main is signed by GitHub, and
+localvoxtral's AGENTS.md reports it carries no co-author lines.
 
 ## What the folder copy doesn't install
 
