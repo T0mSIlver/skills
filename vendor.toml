@@ -44,5 +44,5 @@ repo = "https://github.com/T0mSIlver/starbridge"
 ref = "main"
 path = "plugin/skills/starbridge"
 license = "LICENSE"
-commit = "e748e903374509435084867596597a17eef99c10"
+commit = "a5b379a89c9da94c7f7c8934d4cb1465a4f3a5d1"
 automerge = true
