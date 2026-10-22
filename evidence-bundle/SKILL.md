@@ -23,6 +23,8 @@ summary, a trust level, and how a cloud thread gets each piece.
    subagent gets only that list and opens each source; it returns, per claim,
    matches or what the source says instead. Name each source by repo, ref and
    path: one it can't open comes back "no source", which reads like a gap.
+   Anything public also names no private repo of the owner's: no link, no
+   `repo #12` reference, branch, file path or artifact built from one.
 4. **Fresh refuter.** A Sonnet subagent (never Fable) with the `verify` skill
    gets the repo, PR number, head SHA and a checkout at that SHA, and the
    instruction to find what's wrong. Nothing else: no transcript, no summary

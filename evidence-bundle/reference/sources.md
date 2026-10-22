@@ -13,7 +13,7 @@
   (feeding a previous verdict back in anchors the reviewer).
 - **Trust levels:** `owner-charter` (what goes on a card, "Never"), Tom's
   merge rule in project memory (agents merge his own repos once CI is green
-  and reviewed, 20 Oct 2026), the send packet in `T0mSIlver/tom` CLAUDE.md,
+  and reviewed, 20 Oct 2026), the send packet in the owner's private CLAUDE.md,
   website AGENTS.md (main deploys production).
 - **`proposal` drafts:** Tom asked for agents to build things he isn't sure
   he needs yet; `owner-charter` forbids merging unrequested features. A draft
