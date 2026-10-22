@@ -33,6 +33,8 @@ his full CLAUDE.md applies instead.
   bodies, issue and PR comments.
 - Keep PR bodies short, with a clear logical order.
 - Never open issues or PRs in repos he doesn't own without his consent.
+- Never name or link his private repos in anything public: not the repo, its
+  issues (`repo #12`), branches, files or artifacts built from them.
 
 ## Done means done
 
