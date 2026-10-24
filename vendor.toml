@@ -34,7 +34,7 @@ repo = "https://github.com/github/gh-stack"
 ref = "main"
 path = "skills/gh-stack"
 license = "LICENSE"
-commit = "6721eba93e847178089b44c89f2cd5c3c3c464bf"
+commit = "c477b7d1f290a9df463b86773742a5237d14b980"
 
 # Starbridge's own skill: how an agent asks its owner through the Starbridge
 # app. It is my own repo, so content updates merge on green too.
