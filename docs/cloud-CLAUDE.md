@@ -21,9 +21,12 @@ his full CLAUDE.md applies instead.
 
 - Load the owner-charter skill before planning a change, asking him anything,
   or marking a PR ready. It says what he decides on a card before any code.
-- Ask through the starbridge skill. In a cloud session no background service
-  runs, so wait for the answer with `starbridge wait <id> --timeout 5m`, again
-  on exit 2. Each card has your recommendation and the default you'll apply.
+- In a Claude project thread, ask on the thread's decision card
+  (`request_decision`): that's where he answers now. Each card has your
+  recommendation and the default you'll apply.
+- Elsewhere, ask through the starbridge skill. In a cloud session no background
+  service runs, so wait for the answer with `starbridge wait <id> --timeout 5m`,
+  again on exit 2.
 - If `starbridge` fails (not installed, `STARBRIDGE_MACHINE` unset or revoked),
   ask in the session and on the issue, and say that it failed.
 
