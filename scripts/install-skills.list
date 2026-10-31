@@ -29,6 +29,7 @@ docs-review/reference/examples.md
 docs-review/reference/sources.md
 evidence-bundle/SKILL.md
 evidence-bundle/reference/sources.md
+evidence-bundle/reference/upstream.md
 fastcontext/SKILL.md
 gh-stack/.vendored
 gh-stack/LICENSE

@@ -93,6 +93,16 @@ Work the owner didn't ask for goes up as a draft PR labelled `proposal`, with
 its bundle and a 30-second demo. It never merges on L0. Close it unanswered
 after 7 days.
 
+## Upstream items
+
+Proof scales with the diff. **Small** (a comment, an issue, or a PR under
+about 50 changed lines with one behaviour): a reproducer, the repo's test
+failing on base and passing on head, numbers checked, and a five-line note
+atop the send packet; no refuter, cross-review or explainer page. Open the
+issue and the PR together unless the repo asks for an issue first. The owner
+reviews in 15 minutes ([reference/upstream.md](reference/upstream.md)); a no
+means cut the change smaller, never add proof.
+
 ## Gotchas
 
 - **A refuter who read your reasoning agrees with it.** Pass the PR and SHA,
@@ -102,13 +112,11 @@ after 7 days.
 - **Green as a draft is not green.** Some lanes skip drafts (localvoxtral
   `mac-lanes`); count each check's state on the head SHA.
 - **A push makes the bundle stale.** Merge only when its SHA is the head's.
-- **Remote Control turns off the thread's folder access** and shows the
-  owner an approval prompt. Ask once a night, never on Sunday, and keep
-  working; no answer leaves the PR at L1, never a reason to wait.
+- **Remote Control turns off folder access** and prompts the owner. Ask once
+  a night, never Sunday; no answer leaves the PR at L1, never a reason to wait.
 - **Haiku misreads long sources.** Give it the page section, not the site;
   a mismatch it reports gets rechecked by you before you change the text.
 
 ## Not possible
 
-- Cross-review inside a cloud container: opencode and Codex live on the sandbox.
 - Proving a visual change without a render.
