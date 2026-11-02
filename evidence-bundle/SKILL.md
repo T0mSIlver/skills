@@ -1,6 +1,6 @@
 ---
 name: evidence-bundle
-description: "What an agent proves before the owner sees its PR or outward draft, and who decides next. Tests on the pushed head, before/after renders, every claim checked against its source, a fresh Sonnet refuter, cross-review (on the sandbox, from a cloud thread through Remote Control), gathered in one PR comment with a trust level: L0 the agent merges, L1 the owner says yes, L2 the owner does it. Use when finishing any change or draft that reports to the owner, in a Claude project thread or any session, and before merging without the owner."
+description: "What an agent proves before the owner sees its PR or outward draft, and who decides next. Tests on the pushed head, before/after renders, every claim checked against its source, a fresh Sonnet refuter, cross-review (on the sandbox, from a cloud thread through Remote Control), gathered in one PR comment with a trust level named for who acts: Do (the agent merges), Pick (the owner picks on one card, work goes on with the default) or Yours (the owner, or the agent right after his go). Use when finishing any change or draft that reports to the owner, in a Claude project thread or any session, and before merging without the owner."
 ---
 
 # Evidence bundle
@@ -31,7 +31,7 @@ summary, a trust level, and how a cloud thread gets each piece.
    of why the change is right. In the cloud, tell it to read the PR with the
    GitHub MCP tools or `gh api`, since `gh pr` fails there. Recheck each
    finding yourself before acting on it. Fix what holds, push, rerun on the
-   new head. One fix round; a second NOT VERIFIED goes to the owner as L1
+   new head. One fix round; a finding you can't fix goes to the owner as Pick
    with the finding.
 5. **Cross-review.** Skip it only where `cross-review` §1 allows, and say so.
    On the sandbox, run it yourself. From a project thread, start one Remote
@@ -42,7 +42,8 @@ summary, a trust level, and how a cloud thread gets each piece.
    folder. Tell it, per PR: check out the head SHA, write a 5–15 line brief to a file
    (task, constraints, claim, how it was verified), run `cross-review --brief
    FILE`, and post the findings as one PR comment; for a merge-by-default
-   PR, also `cross-review --proof <n>`. Not run when it was due: L1.
+   PR, also `cross-review --proof <n>`. Not run when it was due: a
+   "Not verified" line, not a reason to ask.
 6. **Post the bundle** as one PR comment, edited on every push, then act on
    its trust level. The thread's reply to the owner is the comment's first
    four lines and a link.
@@ -52,7 +53,7 @@ summary, a trust level, and how a cloud thread gets each piece.
 ## Evidence at <short head SHA>
 
 **Claim:** <what is now true, one sentence>
-**Trust:** L0, merging | L1, needs your yes | L2, yours to do. <why this level>
+**Trust:** Do, merging | Pick, your call (default: …) | Yours, yours to do. <why this level>
 **Confidence:** high | medium | low, resting on <the one fact>
 **Not verified:** <each gap and what would close it>
 
@@ -62,36 +63,36 @@ summary, a trust level, and how a cloud thread gets each piece.
 **Refuter** (Sonnet, fresh, at <sha>): VERIFIED | NOT VERIFIED | INCONCLUSIVE. <findings: fixed, or rejected because>
 **Cross-review:** <vendor>, N findings, fixed X, rejected Y because … | skipped: <rule> | not run: <why>
 **Claims checked:** N of N against their sources <link to the table>
-**You decide:** <one question, with the default> (L1 and L2 only)
+**You decide:** <one question, with the default> (Pick and Yours only)
 ```
 
 ## Trust levels
 
-The first that applies wins. Read the repo's AGENTS.md and CONTRIBUTING.md
-first: they override this (the fast-lane repos, vidtheque and working-set,
-push to main and are reviewed nightly).
+Named for who acts. The repo's AGENTS.md and CONTRIBUTING.md win (the
+fast-lane repos, vidtheque and working-set, push to main and are reviewed
+nightly); then the first match from the top.
 
-- **L2, the owner does it.** Anything to be sent or published outside his
-  repos (send packet), anything in `owner-charter` "Never", opinions or a
-  thesis in his voice, money, anything irreversible.
-- **L1, the owner says yes on one card.** `.github/`, `deploy/`, auth,
-  migrations, secrets; a push that deploys to production (website `main`);
-  a change to the rules agents follow (skills, CLAUDE.md, AGENTS.md);
-  what `owner-charter` puts on a card (feature, UX, visible copy); a risk
-  kind still in `merge-queue`'s ramp-up (copy, layout, style, asset,
-  locale); a refuter INCONCLUSIVE, or NOT VERIFIED after the fix round;
-  cross-review due and not run.
-- **L0, the agent merges and says so in one line.** His own repos, and only
-  where the repo lets an agent merge: its merge-by-default class through
-  `merge-queue` (proof verdict, READY) where CONTRIBUTING.md has "What merges
-  without the owner", the owner's merge classes where AGENTS.md names them,
-  and his standing rule (green and reviewed) where the repo says nothing.
-  Every check green, refuter VERIFIED and cross-review clean or skipped by
-  its rule, all at the head SHA. Edit the bundle to "L0, merged" after.
+- **Yours: the owner, or the agent right after his "go" naming the item.**
+  Anything sent, published or submitted outside his repos under his name
+  (send packet): upstream PRs, issues and comments, posts, emails,
+  applications, a production deploy, making a repo public. Money. Deleting
+  anything: repos, data, backups, unmerged branches. Secrets. History
+  rewrites on `main`. Accounts and terms. A third party's AI rule. Anything
+  in `owner-charter` "Never".
+- **Pick: the owner, on one card with a default; work goes on with the
+  default meanwhile.** A product decision in something other people use
+  (feature, UX, visible copy); architecture that's hard to undo; a refuter
+  finding you couldn't fix.
+- **Do: the agent, then one line to the owner.** Everything else in his own
+  repos and machines: code, docs, edits to skills, CLAUDE.md and AGENTS.md
+  (the line names the rule), and merging once every check is green at the
+  head SHA and the bundle is posted. Edit the bundle to "Do, merged" after.
+
+When in doubt and it can be undone, do it and say so. Never ask just in case.
 
 Work the owner didn't ask for goes up as a draft PR labelled `proposal`, with
-its bundle and a 30-second demo. It never merges on L0. Close it unanswered
-after 7 days.
+its bundle and a 30-second demo. It never merges without him. Close it
+unanswered after 7 days.
 
 ## Gotchas
 
@@ -104,7 +105,8 @@ after 7 days.
 - **A push makes the bundle stale.** Merge only when its SHA is the head's.
 - **Remote Control turns off the thread's folder access** and shows the
   owner an approval prompt. Ask once a night, never on Sunday, and keep
-  working; no answer leaves the PR at L1, never a reason to wait.
+  working; no answer leaves cross-review as a "Not verified" line,
+  never a reason to wait.
 - **Haiku misreads long sources.** Give it the page section, not the site;
   a mismatch it reports gets rechecked by you before you change the text.
 
