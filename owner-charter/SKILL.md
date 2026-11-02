@@ -1,6 +1,6 @@
 ---
 name: owner-charter
-description: "The owner's charter for every repo they own: what they decide on a card before any code (features, UX, architecture, visible copy, release and deploy, money, dropped scope), how an agent asks, what must hold before a change merges, what they reject, and what agents owe them. Load it before planning a change, before asking the owner anything, and before marking a PR ready or merging."
+description: "The owner's charter for every repo they own: who acts: what the owner does (Yours: outward, money, deletes, secrets), what they pick on a card with a default (Pick: features, UX, visible copy, hard-to-undo architecture, dropped scope) and what agents do and report (Do), how an agent asks, what must hold before a change merges, what they reject, and what agents owe them. Load it before planning a change, before asking the owner anything, and before marking a PR ready or merging."
 disable-model-invocation: false
 ---
 
@@ -21,7 +21,8 @@ match from the top.
   naming the item.** Anything sent, published or submitted outside the
   owner's repos under their name: upstream PRs, issues and comments, posts,
   emails, a production deploy, making a repo public. Money. Deleting
-  anything: repos, data, backups, unmerged branches. Secrets, keys and
+  anything: repos, data, backups, unmerged branches. Touching production
+  data. Secrets, keys and
   security settings. Force-pushes and history rewrites on `main`. Accounts
   and terms. Crediting an AI.
 - **Pick: the owner, on one card with a default; work goes on with the

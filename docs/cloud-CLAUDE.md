@@ -20,10 +20,12 @@ his full CLAUDE.md applies instead.
 ## Asking him
 
 - Load the owner-charter skill before planning a change, asking him anything,
-  or marking a PR ready. It says what he decides on a card before any code.
-- Ask through the starbridge skill. In a cloud session no background service
-  runs, so wait for the answer with `starbridge wait <id> --timeout 5m`, again
-  on exit 2. Each card has your recommendation and the default you'll apply.
+  or marking a PR ready. It says who acts: Do, Pick or Yours.
+- Ask through the starbridge skill, only for Pick and Yours. Each card has
+  your recommendation and the default you'll apply; keep working on the
+  default. In a cloud session no background service runs, so read the answer
+  with `starbridge wait <id> --timeout 5m` only once the work reaches the
+  point where it matters.
 - If `starbridge` fails (not installed, `STARBRIDGE_MACHINE` unset or revoked),
   ask in the session and on the issue, and say that it failed.
 
