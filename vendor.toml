@@ -17,25 +17,6 @@ commit = "ae5650febf4320793844c12c4adaa937f417f8da"
 # Upstream ships it user-only; I want the model to reach for it on its own.
 frontmatter = { disable-model-invocation = false }
 
-# The official herdr CLI skill, from the herdr repo itself: the authority on
-# how an agent inside a herdr pane drives panes, tabs, and other agents.
-[[skills]]
-name = "herdr"
-repo = "https://github.com/herdrdev/herdr"
-ref = "master"
-path = "skills/herdr"
-license = "LICENSE"
-commit = "ee5bfb5041bb3e4a49d591c72308aae3c81ecdde"
-
-# GitHub's skill for its gh-stack CLI extension, from the extension's repo.
-[[skills]]
-name = "gh-stack"
-repo = "https://github.com/github/gh-stack"
-ref = "main"
-path = "skills/gh-stack"
-license = "LICENSE"
-commit = "2a49e6751238633db504655d8a8eba3e433e827d"
-
 # Starbridge's own skill: how an agent asks its owner through the Starbridge
 # app. It is my own repo, so content updates merge on green too.
 [[skills]]

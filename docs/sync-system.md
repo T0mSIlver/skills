@@ -72,8 +72,8 @@ So the sync itself owns the off switch, and disabled means **not installed**:
 
 ```bash
 skills-toggle list                          # the skill-by-agent grid
-skills-toggle disable fastcontext           # off for every agent
-skills-toggle enable fastcontext --agent codex
+skills-toggle disable quota           # off for every agent
+skills-toggle enable quota --agent codex
 skills-toggle edit                          # hand-edit the rules, then apply
 ```
 
@@ -82,7 +82,7 @@ never synced — the skill stays in the repo and on the remote, and other
 machines are unaffected. One rule per line:
 
 ```text
-fastcontext                       # off for every agent
+quota                             # off for every agent
 claude:cross-review               # off for Claude Code only
 codex:claude-remote-control-server
 ```
@@ -98,7 +98,7 @@ space toggle · a row · w apply · r reload · q quit
 SKILL                          claude    codex    opencode    pi
 claude-remote-control-server     on        off       off       off
 cross-review                     off       on        on        on
-fastcontext                      off*      on        on        on
+quota                            off*      on        on        on
 
 1 unapplied change — w to apply · rules: ~/.config/skills-sync/disabled
 ```

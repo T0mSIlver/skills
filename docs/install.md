@@ -16,7 +16,7 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 ```text
 /plugin marketplace add T0mSIlver/skills
 /plugin install owner-workflow@t0msilver-skills    # owner-charter and the skills that carry it out
-/plugin install cli-delegation@t0msilver-skills    # cross-review, fastcontext
+/plugin install cli-delegation@t0msilver-skills    # cross-review
 /plugin install remote-control-server@t0msilver-skills  # claude-remote-control-server
 /plugin install unnarrate@t0msilver-skills
 /plugin install test-audit@t0msilver-skills
@@ -24,8 +24,7 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 /plugin install one-term@t0msilver-skills
 /plugin install blast-radius@t0msilver-skills
 /plugin install verify@t0msilver-skills       # pairs with blast-radius
-/plugin install orchestrate-sessions@t0msilver-skills
-/plugin install vendored@t0msilver-skills          # unslop, herdr, gh-stack
+/plugin install vendored@t0msilver-skills          # unslop, starbridge
 ```
 
 `owner-workflow` already contains `blast-radius` and `verify`. Install it or
@@ -105,18 +104,10 @@ localvoxtral's AGENTS.md reports it carries no co-author lines.
 Neither install method runs scripts. Skills that need more than their folder
 list the requirement in their `compatibility:` frontmatter:
 
-- `fastcontext` needs the
-  [fastcontext CLI](https://github.com/T0mSIlver/fastcontext#installation) on
-  `PATH` and a model server for it. If the CLI is missing, the skill says so
-  when it loads.
 - `claude-remote-control-server` creates a user systemd service with its
   `scripts/install-claude-rc-server-service.sh`. The agent runs that script
   during setup, not at install time. The script also enables a shared timer
   that restarts servers still running an old CLI after an auto-update.
-- `orchestrate-sessions` works only in the Claude Code desktop app, whose
-  session tools (`spawn_task`, `send_message`, `archive_session`, …) it uses.
-- `gh-stack` needs the [gh-stack](https://github.com/github/gh-stack) `gh`
-  extension.
 - `cross-review` needs opencode or Codex installed and logged in.
 
 ## Turning skills off on one machine
@@ -126,7 +117,7 @@ machine, for one agent or for all of them, without changing the repo:
 
 ```bash
 skills-toggle list                          # skill-by-agent grid
-skills-toggle disable fastcontext           # off for every agent here
-skills-toggle enable fastcontext --agent codex
+skills-toggle disable quota           # off for every agent here
+skills-toggle enable quota --agent codex
 skills-tui                                  # the same grid, interactive
 ```
