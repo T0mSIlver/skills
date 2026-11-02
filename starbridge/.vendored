@@ -3,8 +3,8 @@
   "repo": "https://github.com/T0mSIlver/starbridge",
   "ref": "main",
   "path": "plugin/skills/starbridge",
-  "commit": "b029b2b7fccad2503e236f34d51087d9628b6f1a",
-  "upstream": "https://github.com/T0mSIlver/starbridge/tree/b029b2b7fccad2503e236f34d51087d9628b6f1a/plugin/skills/starbridge",
-  "vendored_at": "2026-11-01",
+  "commit": "2195be9d405a87f41634f02ed03e5039521da7b5",
+  "upstream": "https://github.com/T0mSIlver/starbridge/tree/2195be9d405a87f41634f02ed03e5039521da7b5/plugin/skills/starbridge",
+  "vendored_at": "2026-11-02",
   "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
 }
