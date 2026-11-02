@@ -70,7 +70,7 @@ summary, a trust level, and how a cloud thread gets each piece.
 
 `owner-charter` "Who acts" sets the level: **Do** (the agent merges, then
 one line), **Pick** (one card with a default, work goes on meanwhile) or
-**Yours** (the owner, or the agent right after his "go" naming the item).
+**Yours** (the owner, or the agent right after his own yes naming the item, in any words).
 The repo's AGENTS.md and CONTRIBUTING.md win (the fast-lane repos,
 vidtheque and working-set, push to main and are reviewed nightly). Do
 merges once every check is green at the head SHA and the bundle is posted;
