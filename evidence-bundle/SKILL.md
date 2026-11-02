@@ -30,9 +30,9 @@ summary, a trust level, and how a cloud thread gets each piece.
    instruction to find what's wrong. Nothing else: no transcript, no summary
    of why the change is right. In the cloud, tell it to read the PR with the
    GitHub MCP tools or `gh api`, since `gh pr` fails there. Recheck each
-   finding yourself before acting on it. Fix what holds, push, rerun on the
-   new head. One fix round; a finding you can't fix goes to the owner as Pick
-   with the finding.
+   finding yourself before acting on it. Fix what holds and push; a
+   second refuter round isn't needed. A finding you can't fix goes to the
+   owner as Pick.
 5. **Cross-review.** Skip it only where `cross-review` §1 allows, and say so.
    On the sandbox, run it yourself. From a project thread, start one Remote
    Control session per batch (`start_remote_control`, not one per PR; it
@@ -68,27 +68,13 @@ summary, a trust level, and how a cloud thread gets each piece.
 
 ## Trust levels
 
-Named for who acts. The repo's AGENTS.md and CONTRIBUTING.md win (the
-fast-lane repos, vidtheque and working-set, push to main and are reviewed
-nightly); then the first match from the top.
-
-- **Yours: the owner, or the agent right after his "go" naming the item.**
-  Anything sent, published or submitted outside his repos under his name
-  (send packet): upstream PRs, issues and comments, posts, emails,
-  applications, a production deploy, making a repo public. Money. Deleting
-  anything: repos, data, backups, unmerged branches. Secrets. History
-  rewrites on `main`. Accounts and terms. A third party's AI rule. Anything
-  in `owner-charter` "Never".
-- **Pick: the owner, on one card with a default; work goes on with the
-  default meanwhile.** A product decision in something other people use
-  (feature, UX, visible copy); architecture that's hard to undo; a refuter
-  finding you couldn't fix.
-- **Do: the agent, then one line to the owner.** Everything else in his own
-  repos and machines: code, docs, edits to skills, CLAUDE.md and AGENTS.md
-  (the line names the rule), and merging once every check is green at the
-  head SHA and the bundle is posted. Edit the bundle to "Do, merged" after.
-
-When in doubt and it can be undone, do it and say so. Never ask just in case.
+`owner-charter` "Who acts" sets the level: **Do** (the agent merges, then
+one line), **Pick** (one card with a default, work goes on meanwhile) or
+**Yours** (the owner, or the agent right after his "go" naming the item).
+The repo's AGENTS.md and CONTRIBUTING.md win (the fast-lane repos,
+vidtheque and working-set, push to main and are reviewed nightly). Do
+merges once every check is green at the head SHA and the bundle is posted;
+edit the bundle to "Do, merged" after.
 
 Work the owner didn't ask for goes up as a draft PR labelled `proposal`, with
 its bundle and a 30-second demo. It never merges without him. Close it
