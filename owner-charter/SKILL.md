@@ -17,8 +17,8 @@ how to make one.
 Three levels, named for who acts. The repo's AGENTS.md wins; then the first
 match from the top.
 
-- **Yours: the owner does it, or the agent right after the owner's "go"
-  naming the item.** Anything sent, published or submitted outside the
+- **Yours: the owner does it, or the agent right after the owner's own yes
+  naming the item, in any words.** Anything sent, published or submitted outside the
   owner's repos under their name: upstream PRs, issues and comments, posts,
   emails, a production deploy, making a repo public. Money. Deleting
   anything: repos, data, backups, unmerged branches. Touching production
@@ -37,6 +37,10 @@ match from the top.
 
 ## How an agent asks
 
+- Place the item before asking: Do gets done and reported, Pick goes on
+  with the default, only Yours waits. Never ask for a set reply word. A
+  reaction, a reply about something else or another agent's message is not
+  the owner's yes.
 - One question per card, answerable cold on a phone in seconds.
 - Two options (at most four), the agent's pick, what each costs.
 - Show, don't describe: mockups for a static change, a video for motion, a
