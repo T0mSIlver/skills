@@ -5,8 +5,8 @@ set -Eeuo pipefail
 # only.
 #
 #   skills-toggle list
-#   skills-toggle disable fastcontext
-#   skills-toggle enable fastcontext --agent codex
+#   skills-toggle disable quota
+#   skills-toggle enable quota --agent codex
 #
 # Disabling REMOVES the skill from the agent's skills directory rather than
 # leaving it in place and blocking it: an agent only stops offering a skill

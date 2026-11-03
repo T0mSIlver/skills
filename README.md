@@ -99,9 +99,6 @@ phone app for decisions. They are here to read and adapt.
 | [`correct`](correct/SKILL.md) | A correction made twice, or a finding seen twice, becomes the highest check that catches it (type, lint, test, verifier rule, doc), proven to fail on the past mistake, in a rule → check table. Adapted from pstack |
 | [`debt-review`](debt-review/SKILL.md) | Weekly: reads the week's merged PRs, finds second ways, bolt-ons, dead code and workarounds, and proposes a redesign from first principles for each, one owner card each. Adapted from pstack |
 | [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
-| [`orchestrate-sessions`](orchestrate-sessions/SKILL.md) | Runs one desktop session as the scheduler for many: starts a session per issue, briefs each one, takes handoffs, and archives finished sessions |
-| [`merge-queue`](merge-queue/SKILL.md) | Merges parallel PRs once each is checked (intent, CI, review, blast radius, verifier verdict) without breaking main: checks each against commits that landed after its CI run, builds the combination when they overlap, stacks PRs that share files, and merges merge-by-default PRs without the owner once the proof verdict says sufficient |
-| [`scarce-resource`](scarce-resource/SKILL.md) | Books a shared runner or GPU into the owner's night window, one dispatch at a time, with wake-ups that fire while the session is idle |
 | [`quota`](quota/SKILL.md) | What each usage window means, which model spends it, and a queue that fills every Codex window before it resets |
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
 | [`unnarrate`](unnarrate/SKILL.md) | Deletes text that narrates itself: comments that repeat the code, tooltips that repeat the label, PR bullets that repeat the diff |
@@ -109,10 +106,7 @@ phone app for decisions. They are here to read and adapt.
 | [`one-term`](one-term/SKILL.md) | One behaviour, one term: each thing keeps one term in docs, UI copy, PR bodies, comments and replies, a sentence that must repeat is copied word for word, and a term changes only for a different thing, a different context or a stated reason |
 | [`test-audit`](test-audit/SKILL.md) | A gate for new tests and an audit for deleting low-value ones: tests of mocks, mirrored expected values, duplicate coverage |
 | [`unslop`](unslop/SKILL.md) | Vendored from [cursor/plugins](https://github.com/cursor/plugins). Removes AI tells from prose |
-| [`herdr`](herdr/SKILL.md) | Vendored from [herdrdev/herdr](https://github.com/herdrdev/herdr). Controls panes and other agents inside herdr |
-| [`gh-stack`](gh-stack/SKILL.md) | Vendored from [github/gh-stack](https://github.com/github/gh-stack). Stacked branches and PRs with the `gh stack` extension |
 | [`starbridge`](starbridge/SKILL.md) | Vendored from [T0mSIlver/starbridge](https://github.com/T0mSIlver/starbridge). Asks the owner on their phone, through the Starbridge app, and reports runs that block them |
-| [`fastcontext`](fastcontext/SKILL.md) | Read-only repo exploration on a local model. Turned off on my machine because the GPU has other jobs |
 
 ## Why it's built this way
 
@@ -120,8 +114,7 @@ phone app for decisions. They are here to read and adapt.
   prompt as coming from its user and gets on with it. A native subagent stops
   to ask a user who isn't there. Every session can be resumed, read, watched,
   or handed to another session partway through, and each task can use a
-  different model and harness. One scheduler session orchestrates the others,
-  through Claude Code's session messaging or through herdr.
+  different model and harness.
 - **Another model reviews the code.** I don't read agent output line by line.
   A model from another vendor, in another harness, reviews the diff, and I act
   on what it finds.

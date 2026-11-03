@@ -45,8 +45,8 @@ checking (a fact, a measurement, a quick prototype) is never a card.
 8. **Don't wait.** Build what both shapes share. Never write code that only
    one shape needs before the answer.
 9. **Record the answer** where the repo keeps decisions (its spec, decision
-   records, or the issue), with the card id. The PR links it; `verify` and
-   `merge-queue` check the change against it.
+   records, or the issue), with the card id. The PR links it; `verify` checks
+   the change against it.
 
 ## When Starbridge is unavailable
 

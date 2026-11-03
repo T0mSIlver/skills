@@ -16,8 +16,8 @@ The script, not the reviewer, has the last word on two things:
 The comment's lines are `- Head: <sha>`, `- Reviewer: <vendor> (<model>)`,
 `- Verdict: …`, `- Class: …`, then `Reasons:`. Only a comment by the
 authenticated `gh` user is edited. The comment is not written if the PR moved
-during the review. Nothing here merges anything: `orch-automerge-ready`
-(merge-queue) reads the comment.
+during the review. Nothing here merges anything: the agent that merges
+reads the comment.
 
 ## Where the grading rules come from
 

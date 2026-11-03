@@ -37,9 +37,8 @@
       "name": "cli-delegation",
       "source": "./",
       "strict": false,
-      "description": "Cross-vendor review of a finished change that runs while the author finishes, and read-only repo exploration to fastcontext.",
+      "description": "Cross-vendor review of a finished change that runs while the author finishes.",
       "skills": [
-        "./fastcontext",
         "./cross-review"
       ],
       "author": {
@@ -65,8 +64,6 @@
       "description": "Pristine copies of third-party skills, vendored from their upstream repositories by scripts/vendor-skills.sh. Each directory keeps its upstream LICENSE and a .vendored stamp naming the repo, path, and pinned commit; fixes go upstream, never into this repo.",
       "skills": [
         "./unslop",
-        "./herdr",
-        "./gh-stack",
         "./starbridge"
       ],
       "author": {
@@ -77,8 +74,6 @@
         "vendored",
         "third-party",
         "writing",
-        "herdr",
-        "stacked-prs",
         "starbridge"
       ],
       "category": "workflow"
@@ -87,7 +82,7 @@
       "name": "unnarrate",
       "source": "./",
       "strict": false,
-      "description": "Remove self-narrating meta-commentary from UI copy, docs, code comments, and PR text — text that describes the artifact it lives in or restates what the reader already sees. First-party companion to the vendored unslop skill: unnarrate deletes what shouldn't exist, unslop fixes how the rest sounds.",
+      "description": "Remove self-narrating meta-commentary from UI copy, docs, code comments, and PR text \u2014 text that describes the artifact it lives in or restates what the reader already sees. First-party companion to the vendored unslop skill: unnarrate deletes what shouldn't exist, unslop fixes how the rest sounds.",
       "skills": [
         "./unnarrate"
       ],
@@ -211,31 +206,6 @@
         "pull-request",
         "qa",
         "refuter"
-      ],
-      "category": "workflow"
-    },
-    {
-      "name": "orchestrate-sessions",
-      "source": "./",
-      "strict": false,
-      "description": "Run one Claude Code desktop session as the orchestrator and scheduler for many parallel sessions on a repo: one chip per issue, slots on a scarce shared resource, merges that keep main green, archiving finished sessions, and the owner's decisions on Starbridge cards. Three skills: orchestrate-sessions, merge-queue, scarce-resource.",
-      "skills": [
-        "./orchestrate-sessions",
-        "./merge-queue",
-        "./scarce-resource"
-      ],
-      "author": {
-        "name": "Tom Vaucourt"
-      },
-      "license": "MIT",
-      "repository": "https://github.com/T0mSIlver/skills",
-      "keywords": [
-        "orchestration",
-        "scheduler",
-        "parallel-sessions",
-        "claude-code",
-        "desktop",
-        "merge-queue"
       ],
       "category": "workflow"
     },
