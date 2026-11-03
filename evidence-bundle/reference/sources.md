@@ -11,7 +11,7 @@
 - **Fresh refuter with no transcript:** `verify` "you don't read the author's
   transcript"; the anchoring note in `cross-review/reference/proof-verdict.md`
   (feeding a previous verdict back in anchors the reviewer).
-- **Trust levels:** `owner-charter` (what goes on a card, "Never"), Tom's
+- **Trust levels:** `owner-charter` ("Who acts": Do, Pick, Yours), Tom's
   merge rule in project memory (agents merge his own repos once CI is green
   and reviewed, 20 Oct 2026), the send packet in the owner's private CLAUDE.md,
   website AGENTS.md (main deploys production).

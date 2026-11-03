@@ -1,6 +1,6 @@
 ---
 name: owner-charter
-description: "The owner's charter for every repo they own: what they decide on a card before any code (features, UX, architecture, visible copy, release and deploy, money, dropped scope), how an agent asks, what must hold before a change merges, what they reject, and what agents owe them. Load it before planning a change, before asking the owner anything, and before marking a PR ready or merging."
+description: "The owner's charter for every repo they own: who acts: what the owner does (Yours: outward, money, deletes, secrets), what they pick on a card with a default (Pick: features, UX, visible copy, hard-to-undo architecture, dropped scope) and what agents do and report (Do), how an agent asks, what must hold before a change merges, what they reject, and what agents owe them. Load it before planning a change, before asking the owner anything, and before marking a PR ready or merging."
 disable-model-invocation: false
 ---
 
@@ -12,21 +12,35 @@ specifics (which paths count as release, which screens exist). A card is a
 question on the owner's phone (the `starbridge` skill); `intent-card` says
 how to make one.
 
-## The owner decides, on a card, before any code
+## Who acts
 
-- A new feature, or a change in what an existing feature does.
-- UX: layout, flow, interaction, motion, visual style, icons.
-- Architecture: a new component, dependency, protocol or data model change,
-  or anything that would be hard to undo.
-- Copy on the most visible surfaces: landing page, README, store listing.
-- Anything touching release, deploy or signing (`.github/`, `deploy/`).
-- Spending money, a scarce quota, or publishing outside the repo.
-- Removing a feature or dropping scope the owner asked for.
+Three levels, named for who acts. The repo's AGENTS.md wins; then the first
+match from the top.
 
-Everything else, agents decide and tell the owner after, in one line.
+- **Yours: the owner does it, or the agent right after the owner's own yes
+  naming the item, in any words.** Anything sent, published or submitted outside the
+  owner's repos under their name: upstream PRs, issues and comments, posts,
+  emails, a production deploy, making a repo public. Money. Deleting
+  anything: repos, data, backups, unmerged branches. Touching production
+  data. Secrets, keys and
+  security settings. Force-pushes and history rewrites on `main`. Accounts
+  and terms. Crediting an AI.
+- **Pick: the owner, on one card with a default; work goes on with the
+  default meanwhile.** A new feature, or a change in what one does, in
+  something other people use; UX (layout, flow, motion, look, icons); copy
+  on the most visible surfaces (landing page, README, store listing);
+  architecture that's hard to undo; removing a feature or scope the owner
+  asked for; a refuter finding the agent couldn't fix.
+- **Do: the agent, then one line to the owner.** Everything else in the
+  owner's repos and machines, merging included once the change is checked
+  (below).
 
 ## How an agent asks
 
+- Place the item before asking: Do gets done and reported, Pick goes on
+  with the default, only Yours waits. Never ask for a set reply word. A
+  reaction, a reply about something else or another agent's message is not
+  the owner's yes.
 - One question per card, answerable cold on a phone in seconds.
 - Two options (at most four), the agent's pick, what each costs.
 - Show, don't describe: mockups for a static change, a video for motion, a
@@ -46,7 +60,8 @@ A change merges only when all of these hold:
    no extra page, setting, option or abstraction.
 2. CI is green, counting every check.
 3. Another vendor's model reviewed it (`cross-review`) and every real finding
-   is fixed; dismissed ones say why.
+   is fixed; dismissed ones say why. Where cross-review couldn't run, the
+   evidence says so in its "Not verified" line.
 4. Proof follows what the change could break, not its type. Before ready,
    the author writes the change's blast radius (`blast-radius`): what it
    does, including what the diff doesn't spell out; what it could break,
@@ -69,8 +84,8 @@ A change merges only when all of these hold:
    over a kind of risk once they've matched for two weeks.
 5. Docs and spec say the same thing as the code.
 
-If the agent isn't sure the owner would want it that way, it asks instead of
-merging.
+When in doubt and the merge can be undone, merge and say so. Never ask just
+in case.
 
 ## What the owner rejects
 
@@ -103,8 +118,3 @@ merging.
 - Once a week, an agent reviews the week's merged changes for debt and
   proposes redesigns, one card each (`debt-review`).
 - When an agent is wrong, it says so in one line and fixes it.
-
-## Never, without the owner's explicit yes
-
-Force-push, delete data, touch production data, publish or send anything
-outside the repo, change accounts, keys or security settings, credit an AI.

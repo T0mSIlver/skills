@@ -91,7 +91,7 @@ phone app for decisions. They are here to read and adapt.
 
 | Skill | What it gives the agent |
 |-------|-------------------------|
-| [`owner-charter`](owner-charter/SKILL.md) | The owner's rules for every repo: what they decide on a card before any code, how to ask, what must hold before a merge, and what they reject |
+| [`owner-charter`](owner-charter/SKILL.md) | The owner's rules for every repo: who acts (Do, Pick, Yours), how to ask, what must hold before a merge, and what they reject |
 | [`intent-card`](intent-card/SKILL.md) | Asks the owner before code on one card: one question, two shapes designed in from the start and a pick, shown in the lightest medium (mockup, video, prototype). Adapted from pstack's `architect` |
 | [`blast-radius`](blast-radius/SKILL.md) | Before ready, what a change could break beyond its diff, visually and functionally per platform, the one fact it's safe because of, and the cheapest proof per risk, as the PR body's Blast radius section. Adapted from pstack |
 | [`verify`](verify/SKILL.md) | A second agent checks a PR before merge: blast radius, intent, evidence it looked at, peers on the same screen, a baseline on main for bug fixes, then VERIFIED, NOT VERIFIED or INCONCLUSIVE with scope. Adapted from pstack |

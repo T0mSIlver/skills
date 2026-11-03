@@ -13,7 +13,7 @@ repo = "https://github.com/cursor/plugins"
 ref = "main"
 path = "pstack/skills/unslop"
 license = "pstack/LICENSE"
-commit = "99b609a72323b70204eab407c622f436e858e112"
+commit = "ae5650febf4320793844c12c4adaa937f417f8da"
 # Upstream ships it user-only; I want the model to reach for it on its own.
 frontmatter = { disable-model-invocation = false }
 
@@ -25,7 +25,7 @@ repo = "https://github.com/herdrdev/herdr"
 ref = "master"
 path = "skills/herdr"
 license = "LICENSE"
-commit = "5608de0608918aba2f9d501e7793b984a0ca9cfa"
+commit = "ee5bfb5041bb3e4a49d591c72308aae3c81ecdde"
 
 # GitHub's skill for its gh-stack CLI extension, from the extension's repo.
 [[skills]]
@@ -34,7 +34,7 @@ repo = "https://github.com/github/gh-stack"
 ref = "main"
 path = "skills/gh-stack"
 license = "LICENSE"
-commit = "f63271237b45fb121affa4ae69e4dd0b2785a37b"
+commit = "2a49e6751238633db504655d8a8eba3e433e827d"
 
 # Starbridge's own skill: how an agent asks its owner through the Starbridge
 # app. It is my own repo, so content updates merge on green too.
@@ -44,5 +44,5 @@ repo = "https://github.com/T0mSIlver/starbridge"
 ref = "main"
 path = "plugin/skills/starbridge"
 license = "LICENSE"
-commit = "b824e692c75aacdc526cc9e09de26291c41a6fb8"
+commit = "2195be9d405a87f41634f02ed03e5039521da7b5"
 automerge = true
