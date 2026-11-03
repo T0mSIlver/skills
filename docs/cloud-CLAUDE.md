@@ -21,13 +21,15 @@ his full CLAUDE.md applies instead.
 
 - Load the owner-charter skill before planning a change, asking him anything,
   or marking a PR ready. It says who acts: Do, Pick or Yours.
-- Ask only for Pick and Yours. Each card has your recommendation and the
-  default you'll apply; keep working on the default.
-- In a Claude project thread, ask on the thread's decision card
-  (`request_decision`): that's where he answers now.
-- Elsewhere, ask through the starbridge skill. In a cloud session no
+- Ask only for Pick and Yours. A Pick card has your recommendation and the
+  default you'll apply; keep working on the default. Yours waits for his own
+  yes naming the item.
+- When `request_decision` is available (a Claude project thread), ask on
+  that decision card: that's where he answers now.
+- Otherwise ask through the starbridge skill. In a cloud session no
   background service runs, so read the answer with `starbridge wait <id>
-  --timeout 5m` only once the work reaches the point where it matters.
+  --timeout 5m` once the work reaches the point where it matters, again on
+  exit 2, never after exit 3.
 - If `starbridge` fails (not installed, `STARBRIDGE_MACHINE` unset or revoked),
   ask in the session and on the issue, and say that it failed.
 
