@@ -16,6 +16,7 @@ Vendored today:
 |-------|----------|---------|
 | [`unslop`](../unslop/SKILL.md) | [`cursor/plugins`](https://github.com/cursor/plugins) `pstack/skills/unslop` | MIT, Lauren Tan |
 | [`starbridge`](../starbridge/SKILL.md) | [`T0mSIlver/starbridge`](https://github.com/T0mSIlver/starbridge) `plugin/skills/starbridge` | MIT, Tom Vaucourt |
+| [`council`](../council/SKILL.md) | [`t3dotgg/tstack`](https://github.com/t3dotgg/tstack) `skills/council` | MIT, Theo Browne |
 
 ## The moving parts
 

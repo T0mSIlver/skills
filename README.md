@@ -107,6 +107,7 @@ phone app for decisions. They are here to read and adapt.
 | [`test-audit`](test-audit/SKILL.md) | A gate for new tests and an audit for deleting low-value ones: tests of mocks, mirrored expected values, duplicate coverage |
 | [`unslop`](unslop/SKILL.md) | Vendored from [cursor/plugins](https://github.com/cursor/plugins). Removes AI tells from prose |
 | [`starbridge`](starbridge/SKILL.md) | Vendored from [T0mSIlver/starbridge](https://github.com/T0mSIlver/starbridge). Asks the owner on their phone, through the Starbridge app, and reports runs that block them |
+| [`council`](council/SKILL.md) | Vendored from [t3dotgg/tstack](https://github.com/t3dotgg/tstack). Convenes several models to deliberate on a question |
 
 ## Why it's built this way
 
