@@ -46,3 +46,12 @@ path = "plugin/skills/starbridge"
 license = "LICENSE"
 commit = "20d47cc217c8e68b2681cb0d573aa4f6ad68ac4f"
 automerge = true
+
+# Theo Browne's council skill, from his tstack repo.
+[[skills]]
+name = "council"
+repo = "https://github.com/t3dotgg/tstack"
+ref = "main"
+path = "skills/council"
+license = "LICENSE"
+commit = "1085050f3baed1ac724caa4a8166145fb2ac88af"

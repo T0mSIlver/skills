@@ -67,7 +67,8 @@
         "./unslop",
         "./herdr",
         "./gh-stack",
-        "./starbridge"
+        "./starbridge",
+        "./council"
       ],
       "author": {
         "name": "Tom Vaucourt"

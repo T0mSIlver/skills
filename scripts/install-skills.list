@@ -10,6 +10,9 @@ claude-remote-control-server/scripts/refresh-claude-rc-servers.sh
 correct/LICENSE
 correct/SKILL.md
 correct/reference/sources.md
+council/.vendored
+council/LICENSE
+council/SKILL.md
 cross-review/SKILL.md
 cross-review/assets/cross-reviewer.md
 cross-review/assets/proof.md
