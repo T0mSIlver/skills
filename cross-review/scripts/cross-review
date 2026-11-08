@@ -488,9 +488,11 @@ if [ -n "$ingest" ]; then
   . "$run/state"
   tree="$run/tree" answer=$(readlink -f "${answer:-$run/answer.json}")
   [ -s "$answer" ] || code=2 die "no answer in $answer: the child has not written one"
-  trap cleanup EXIT
+  # An invalid answer keeps the frozen copy: the child fixes it there.
   rc=0; validate "$answer" || rc=$?
   [ "$rc" = 0 ] || code=2 die "the child's answer is invalid: $(cat "$run/invalid" 2>/dev/null). Ask it once to fix only that, then ingest again"
+  trap cleanup EXIT
+  cd "$repo"  # --proof posts to the PR of the repo that was reviewed
   finish "$vendor"
   exit 0
 fi

@@ -39,6 +39,7 @@ rc=0; out=$("$script" --ingest "$run" 2>&1) || rc=$?
 echo '{"findings":[{"title":"x","body":"y","file":"f"}]}' > "$run/answer.json"
 rc=0; out=$("$script" --ingest "$run" 2>&1) || rc=$?
 [ "$rc" = 2 ] && [[ $out == *priority* ]] || fail "an invalid answer was not refused with its reason: $out"
+[ -f "$run/tree/f" ] || fail "an invalid answer removed the frozen copy the child fixes it in"
 
 echo '{"findings":[{"title":"bad b","body":"y","priority":1,"confidence":0.9,"file":"f","line_start":2,"line_end":2}],"overall_explanation":"ok"}' > "$run/answer.json"
 rc=0; out=$("$script" --ingest "$run" 2>&1) || rc=$?
