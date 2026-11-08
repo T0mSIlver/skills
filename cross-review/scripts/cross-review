@@ -468,9 +468,8 @@ handoff() {
     sed '1,/^---$/{/^---$/!d};1,/^---$/d' "$skill_dir/assets/cross-reviewer.md"
     echo
     echo "Your instructions and the change are in $run/prompt.md: read it first."
-    echo "When done, write the JSON answer to $run/answer.json with a shell command"
-    echo "(file edits are off for you), and end your reply"
-    echo "with the same JSON object."
+    echo "When done, write the JSON answer to $run/answer.json with a shell"
+    echo "command, and end your reply with the same JSON object."
   } > "$run/t3-task.md"
   echo "cross-review: handed off to T3 Code; nothing is reviewed yet. Run dir: $run"
   echo "Start the review with delegate_task (mode async):"
