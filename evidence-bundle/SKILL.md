@@ -89,6 +89,10 @@ unanswered after 7 days.
 - **Green as a draft is not green.** Some lanes skip drafts (localvoxtral
   `mac-lanes`); count each check's state on the head SHA.
 - **A push makes the bundle stale.** Merge only when its SHA is the head's.
+- **Green alone isn't green with main.** Two PRs green on their own heads
+  have broken main together. Before merging, check what landed on main
+  after the PR's CI run; if it touches the same code, merge main in and push.
+  A rerun reuses the old merge ref, so push instead of rerunning.
 - **Remote Control turns off the thread's folder access** and shows the
   owner an approval prompt. Ask once a night, never on Sunday, and keep
   working; no answer leaves cross-review as a "Not verified" line,

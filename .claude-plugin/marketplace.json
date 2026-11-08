@@ -9,15 +9,14 @@
       "name": "owner-workflow",
       "source": "./",
       "strict": false,
-      "description": "How agents work for an owner who decides intent and delegates the rest: the owner's charter, cards that ask before code, a change's blast radius, a second agent that verifies it, repeated corrections turned into checks, and a weekly debt review.",
+      "description": "How agents work for an owner who decides intent and delegates the rest: the owner's charter, cards that ask before code, a change's blast radius, a second agent that verifies it, and repeated corrections turned into checks.",
       "skills": [
         "./owner-charter",
         "./intent-card",
         "./blast-radius",
         "./verify",
         "./evidence-bundle",
-        "./correct",
-        "./debt-review"
+        "./correct"
       ],
       "author": {
         "name": "Tom Vaucourt"
@@ -37,9 +36,8 @@
       "name": "cli-delegation",
       "source": "./",
       "strict": false,
-      "description": "Cross-vendor review of a finished change that runs while the author finishes, and read-only repo exploration to fastcontext.",
+      "description": "Cross-vendor review of a finished change that runs while the author finishes.",
       "skills": [
-        "./fastcontext",
         "./cross-review"
       ],
       "author": {
@@ -66,7 +64,6 @@
       "skills": [
         "./unslop",
         "./herdr",
-        "./gh-stack",
         "./starbridge",
         "./council"
       ],
@@ -79,7 +76,6 @@
         "third-party",
         "writing",
         "herdr",
-        "stacked-prs",
         "starbridge"
       ],
       "category": "workflow"
@@ -212,31 +208,6 @@
         "pull-request",
         "qa",
         "refuter"
-      ],
-      "category": "workflow"
-    },
-    {
-      "name": "orchestrate-sessions",
-      "source": "./",
-      "strict": false,
-      "description": "Run one Claude Code desktop session as the orchestrator and scheduler for many parallel sessions on a repo: one chip per issue, slots on a scarce shared resource, merges that keep main green, archiving finished sessions, and the owner's decisions on Starbridge cards. Three skills: orchestrate-sessions, merge-queue, scarce-resource.",
-      "skills": [
-        "./orchestrate-sessions",
-        "./merge-queue",
-        "./scarce-resource"
-      ],
-      "author": {
-        "name": "Tom Vaucourt"
-      },
-      "license": "MIT",
-      "repository": "https://github.com/T0mSIlver/skills",
-      "keywords": [
-        "orchestration",
-        "scheduler",
-        "parallel-sessions",
-        "claude-code",
-        "desktop",
-        "merge-queue"
       ],
       "category": "workflow"
     },

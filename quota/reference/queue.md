@@ -44,8 +44,8 @@ cd /path/to/scratch/main-checkout && git pull -q --ff-only &&
 
 ## What to queue, in order
 
-1. Reviews of PRs waiting on a strongest-model review (orchestrate-sessions
-   labels them `waits:deep-review`), as they reach ready.
+1. Reviews of PRs waiting on a strongest-model review (labelled
+   `waits:deep-review`), as they reach ready.
 2. Re-reviews after non-trivial fixes.
 3. Read-only audits of main for one bug class, with a brief that names the
    invariants to check.

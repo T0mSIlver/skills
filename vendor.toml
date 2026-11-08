@@ -27,15 +27,6 @@ path = "skills/herdr"
 license = "LICENSE"
 commit = "ee5bfb5041bb3e4a49d591c72308aae3c81ecdde"
 
-# GitHub's skill for its gh-stack CLI extension, from the extension's repo.
-[[skills]]
-name = "gh-stack"
-repo = "https://github.com/github/gh-stack"
-ref = "main"
-path = "skills/gh-stack"
-license = "LICENSE"
-commit = "bd0a32504f9ae9f795875a9e6bb90ff7408fda08"
-
 # Starbridge's own skill: how an agent asks its owner through the Starbridge
 # app. It is my own repo, so content updates merge on green too.
 [[skills]]

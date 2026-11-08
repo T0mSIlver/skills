@@ -1,6 +1,6 @@
 ---
 name: intent-card
-description: "Ask the owner before code, on one card, when a change needs their call: a new feature or a change in what one does, UX (layout, flow, motion, look, icons), architecture (a new component, dependency, protocol or data model, anything hard to undo), copy on the landing page, README or store listing. Covers one question, two shapes and a pick, the lightest medium that shows them (mockups, a video of the motion, a tappable prototype only when flow or data needs it), architecture as two sketched shapes designed in from the start, and what to do when Starbridge is unavailable. Use before writing code for any of those, and when a debt review proposes a redesign."
+description: "Ask the owner before code, on one card, when a change needs their call: a new feature or a change in what one does, UX (layout, flow, motion, look, icons), architecture (a new component, dependency, protocol or data model, anything hard to undo), copy on the landing page, README or store listing. Covers one question, two shapes and a pick, the lightest medium that shows them (mockups, a video of the motion, a tappable prototype only when flow or data needs it), architecture as two sketched shapes designed in from the start, and what to do when Starbridge is unavailable. Use before writing code for any of those."
 ---
 
 # Intent card
@@ -45,8 +45,8 @@ checking (a fact, a measurement, a quick prototype) is never a card.
 8. **Don't wait.** Build what both shapes share. Never write code that only
    one shape needs before the answer.
 9. **Record the answer** where the repo keeps decisions (its spec, decision
-   records, or the issue), with the card id. The PR links it; `verify` and
-   `merge-queue` check the change against it.
+   records, or the issue), with the card id. The PR links it; `verify` checks
+   the change against it.
 
 ## When Starbridge is unavailable
 

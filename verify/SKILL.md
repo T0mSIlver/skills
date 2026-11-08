@@ -1,6 +1,6 @@
 ---
 name: verify
-description: "The verifier: a second agent, not the author, checks a PR before merge. Reads the diff, issue, intent card, spec and the PR's blast radius; runs or reads the evidence; looks at every screenshot and video itself; compares against peers on the same screen, and against main for a bug fix; does a refuter pass; and returns VERIFIED, NOT VERIFIED or INCONCLUSIVE with its scope, recorded for the ramp-up tally. Also how to write a repo's verify-<app> skill. Use when asked to verify a PR or change, before merge-queue merges one, and when a repo has no scripted way to drive its app."
+description: "The verifier: a second agent, not the author, checks a PR before merge. Reads the diff, issue, intent card, spec and the PR's blast radius; runs or reads the evidence; looks at every screenshot and video itself; compares against peers on the same screen, and against main for a bug fix; does a refuter pass; and returns VERIFIED, NOT VERIFIED or INCONCLUSIVE with its scope, recorded for the ramp-up tally. Also how to write a repo's verify-<app> skill. Use when asked to verify a PR or change, before one merges, and when a repo has no scripted way to drive its app."
 ---
 
 # Verify
@@ -58,8 +58,8 @@ Tally: kind=<kind> verdict=<verdict> head=<sha>
 ```
 
 One `Tally:` line per kind of risk the PR carries, using the blast radius's
-kinds. `merge-queue` adds the owner's verdict beside it during the ramp-up
-and counts the matches.
+kinds. During the ramp-up the owner's verdict goes beside it, and the
+matches are counted.
 
 ## Verdicts
 
