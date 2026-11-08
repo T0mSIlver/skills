@@ -115,6 +115,4 @@ in case.
 - A correction the owner makes twice becomes a check (lint, test, type or
   verifier rule) that fails on the old mistake (`correct`), so they never
   make it a third time.
-- Once a week, an agent reviews the week's merged changes for debt and
-  proposes redesigns, one card each (`debt-review`).
 - When an agent is wrong, it says so in one line and fixes it.

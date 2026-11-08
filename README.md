@@ -97,7 +97,6 @@ phone app for decisions. They are here to read and adapt.
 | [`verify`](verify/SKILL.md) | A second agent checks a PR before merge: blast radius, intent, evidence it looked at, peers on the same screen, a baseline on main for bug fixes, then VERIFIED, NOT VERIFIED or INCONCLUSIVE with scope. Adapted from pstack |
 | [`evidence-bundle`](evidence-bundle/SKILL.md) | What an agent proves before the owner sees its PR or draft (tests on the pushed head, renders, claims against sources, a fresh refuter, cross-review), in one PR comment with a trust level that says whether the agent merges or the owner decides |
 | [`correct`](correct/SKILL.md) | A correction made twice, or a finding seen twice, becomes the highest check that catches it (type, lint, test, verifier rule, doc), proven to fail on the past mistake, in a rule → check table. Adapted from pstack |
-| [`debt-review`](debt-review/SKILL.md) | Weekly: reads the week's merged PRs, finds second ways, bolt-ons, dead code and workarounds, and proposes a redesign from first principles for each, one owner card each. Adapted from pstack |
 | [`cross-review`](cross-review/SKILL.md) | Review of a committed change by another vendor's model, launched before CI and the PR body so it runs while they do, with a rubric that keeps false positives down |
 | [`quota`](quota/SKILL.md) | What each usage window means, which model spends it, and a queue that fills every Codex window before it resets |
 | [`claude-remote-control-server`](claude-remote-control-server/SKILL.md) | A `claude remote-control` server per repo, run as a systemd service so it's always up |
@@ -106,6 +105,7 @@ phone app for decisions. They are here to read and adapt.
 | [`one-term`](one-term/SKILL.md) | One behaviour, one term: each thing keeps one term in docs, UI copy, PR bodies, comments and replies, a sentence that must repeat is copied word for word, and a term changes only for a different thing, a different context or a stated reason |
 | [`test-audit`](test-audit/SKILL.md) | A gate for new tests and an audit for deleting low-value ones: tests of mocks, mirrored expected values, duplicate coverage |
 | [`unslop`](unslop/SKILL.md) | Vendored from [cursor/plugins](https://github.com/cursor/plugins). Removes AI tells from prose |
+| [`herdr`](herdr/SKILL.md) | Vendored from [herdrdev/herdr](https://github.com/herdrdev/herdr). Controls panes and other agents inside herdr |
 | [`starbridge`](starbridge/SKILL.md) | Vendored from [T0mSIlver/starbridge](https://github.com/T0mSIlver/starbridge). Asks the owner on their phone, through the Starbridge app, and reports runs that block them |
 | [`council`](council/SKILL.md) | Vendored from [t3dotgg/tstack](https://github.com/t3dotgg/tstack). Convenes several models to deliberate on a question |
 

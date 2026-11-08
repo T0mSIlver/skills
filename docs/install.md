@@ -24,7 +24,7 @@ npx skills add T0mSIlver/skills -a claude-code -a codex -g -y # everything, glob
 /plugin install one-term@t0msilver-skills
 /plugin install blast-radius@t0msilver-skills
 /plugin install verify@t0msilver-skills       # pairs with blast-radius
-/plugin install vendored@t0msilver-skills          # unslop, starbridge
+/plugin install vendored@t0msilver-skills          # unslop, herdr, starbridge
 ```
 
 `owner-workflow` already contains `blast-radius` and `verify`. Install it or
@@ -61,7 +61,7 @@ that wants the owner workflow in every session, on any machine, runs
 ```
 
 It copies the owner workflow and the skills it relies on (`owner-charter`,
-`intent-card`, `blast-radius`, `verify`, `correct`, `debt-review`,
+`intent-card`, `blast-radius`, `verify`, `correct`,
 `cross-review`, `starbridge`, `unslop`, `unnarrate`, `docs-review`,
 `one-term`, `test-audit`) into `~/.claude/skills`, where the session finds them at once.
 It fetches each file from `main` on raw.githubusercontent.com, following

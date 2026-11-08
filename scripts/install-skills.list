@@ -24,14 +24,14 @@ cross-review/reference/proof-verdict.md
 cross-review/reference/sources.md
 cross-review/reference/vendors.md
 cross-review/scripts/cross-review
-debt-review/LICENSE
-debt-review/SKILL.md
-debt-review/reference/sources.md
 docs-review/SKILL.md
 docs-review/reference/examples.md
 docs-review/reference/sources.md
 evidence-bundle/SKILL.md
 evidence-bundle/reference/sources.md
+herdr/.vendored
+herdr/LICENSE
+herdr/SKILL.md
 intent-card/LICENSE
 intent-card/SKILL.md
 intent-card/reference/design-red-flags.md

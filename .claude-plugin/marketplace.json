@@ -9,15 +9,14 @@
       "name": "owner-workflow",
       "source": "./",
       "strict": false,
-      "description": "How agents work for an owner who decides intent and delegates the rest: the owner's charter, cards that ask before code, a change's blast radius, a second agent that verifies it, repeated corrections turned into checks, and a weekly debt review.",
+      "description": "How agents work for an owner who decides intent and delegates the rest: the owner's charter, cards that ask before code, a change's blast radius, a second agent that verifies it, and repeated corrections turned into checks.",
       "skills": [
         "./owner-charter",
         "./intent-card",
         "./blast-radius",
         "./verify",
         "./evidence-bundle",
-        "./correct",
-        "./debt-review"
+        "./correct"
       ],
       "author": {
         "name": "Tom Vaucourt"
@@ -64,6 +63,7 @@
       "description": "Pristine copies of third-party skills, vendored from their upstream repositories by scripts/vendor-skills.sh. Each directory keeps its upstream LICENSE and a .vendored stamp naming the repo, path, and pinned commit; fixes go upstream, never into this repo.",
       "skills": [
         "./unslop",
+        "./herdr",
         "./starbridge",
         "./council"
       ],
@@ -75,6 +75,7 @@
         "vendored",
         "third-party",
         "writing",
+        "herdr",
         "starbridge"
       ],
       "category": "workflow"
