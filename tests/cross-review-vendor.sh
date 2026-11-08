@@ -2,6 +2,8 @@
 # cross-review reuses an earlier review of HEAD only when it came from the
 # vendor and model this call would use (#126). A stub codex stands in for the reviewer.
 set -euo pipefail
+# A T3 session would hand the review off instead of running the stub.
+unset T3CODE_THREAD_ID
 
 script=$(readlink -f "$(dirname "$0")/../cross-review/scripts/cross-review")
 tmp=$(mktemp -d)

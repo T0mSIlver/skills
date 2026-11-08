@@ -8,6 +8,13 @@
 #                [--timeout SECONDS]
 #   cross-review --proof PR [--brief FILE] [...]
 #   cross-review --continue RUN_DIR [--timeout SECONDS]
+#   cross-review --ingest RUN_DIR [ANSWER_FILE]
+#
+# In a T3 Code session ($T3CODE_THREAD_ID set) the script runs no reviewer:
+# it prepares the frozen copy and the prompt, prints how to start the review
+# as a T3 child with delegate_task, and exits 5. When the child is done,
+# --ingest scores its answer (RUN_DIR/answer.json by default) like a
+# headless review. --headless runs the reviewer's CLI anyway.
 #
 # After a completed review of the branch, the next run reviews only the
 # commits since then, with the earlier findings; --full reviews it all.
@@ -33,13 +40,15 @@
 # Exit 2: review incomplete (empty or invalid output, or a crash). Not a pass.
 # Exit 3: no reviewer has quota headroom left.
 # Exit 4: the reviewer timed out; its partial review is printed. Not a pass.
+# Exit 5: handed off to T3 Code; nothing is reviewed until --ingest.
 # Exit 1: usage error.
 set -euo pipefail
 
 die() { echo "cross-review: $*" >&2; exit "${code:-1}"; }
-usage() { sed -n '5,36p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '5,44p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
-brief="" base="" since="" full=0 vendor=auto effort="" timeout_s="" cont="" proof_pr="" proof_repo=""
+brief="" base="" since="" full=0 vendor=auto effort="" timeout_s="" cont="" proof_pr="" proof_repo="" ingest="" answer=""
+t3=0; [ -n "${T3CODE_THREAD_ID:-}" ] && t3=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --brief) brief=$2; shift 2 ;;
@@ -51,6 +60,8 @@ while [ $# -gt 0 ]; do
     --timeout) timeout_s=$2; shift 2 ;;
     --continue) cont=$2; shift 2 ;;
     --proof) proof_pr=$2; shift 2 ;;
+    --ingest) ingest=$2; shift 2; if [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then answer=$1; shift; fi ;;
+    --headless) t3=0; shift ;;
     -h|--help) usage ;;
     *) die "unknown argument: $1" ;;
   esac
@@ -58,7 +69,7 @@ done
 [[ ${timeout_s:-1} =~ ^[1-9][0-9]*$ ]] || die "--timeout must be a number of seconds"
 [ -z "$proof_pr" ] || [[ $proof_pr =~ ^[1-9][0-9]*$ ]] || die "--proof takes a pull request number"
 [ -z "$proof_pr" ] || { [ -z "$since" ] && [ -z "$base" ]; } || die "--proof grades the whole PR against its base: no --since or --base"
-if [ -z "$cont" ]; then
+if [ -z "$cont" ] && [ -z "$ingest" ]; then
   if [ -n "$proof_pr" ] && [ -z "$brief" ]; then :  # the PR body is the brief
   else
     [ -n "$brief" ] && [ -s "$brief" ] || die "--brief FILE is required: the task, its constraints, your claims"
@@ -430,6 +441,54 @@ prepare_tree() {
 }
 cleanup() { git -C "$repo" worktree remove --force "$tree" 2>/dev/null || true; git -C "$repo" worktree prune; }
 
+# T3 Code runs the reviewer as a child thread: keep the frozen copy and what
+# --ingest needs, and print the delegate_task call.
+handoff() {
+  local v=$1 k target
+  for k in vendor codex_model effort head branch whole range_base lines repo proof_pr proof_repo; do
+    if [ "$k" = vendor ]; then printf 'vendor=%q\n' "$v"; else printf '%s=%q\n' "$k" "${!k}"; fi
+  done > "$run/state"
+  trap - EXIT
+  case $v in
+    glm) target="{providerInstanceId: \"opencode\", model: \"$(model_of glm)\", options: {agent: \"reviewer\"$([ "$effort" = medium ] || echo ", variant: \"$effort\"")}}" ;;
+    codex) target="{providerInstanceId: \"codex\", model: \"$codex_model\", options: {reasoningEffort: \"$effort\"}}" ;;
+  esac
+  {
+    echo "You are a read-only code reviewer. The change is checked out in $tree, a"
+    echo "frozen copy: work there, and never modify a file there or anywhere else,"
+    echo "except the one answer file below."
+    echo
+    sed '1,/^---$/{/^---$/!d};1,/^---$/d' "$skill_dir/assets/cross-reviewer.md"
+    echo
+    echo "Your instructions and the change are in $run/prompt.md: read it first."
+    echo "When done, write the JSON answer to $run/answer.json with a shell command"
+    echo "(file edits are off for you), and end your reply"
+    echo "with the same JSON object."
+  } > "$run/t3-task.md"
+  echo "cross-review: handed off to T3 Code; nothing is reviewed yet. Run dir: $run"
+  echo "Start the review with delegate_task (mode async):"
+  echo "  role: review"
+  echo "  title: cross-review $(basename "$run")"
+  echo "  target: $target"
+  echo "  task: the text of $run/t3-task.md"
+  echo "When the child finishes: cross-review --ingest $run"
+  exit 5
+}
+
+if [ -n "$ingest" ]; then
+  run=$(readlink -f "$ingest")
+  [ -f "$run/state" ] && [ -f "$run/t3-task.md" ] || die "no T3 review to ingest in $ingest"
+  # shellcheck source=/dev/null
+  . "$run/state"
+  tree="$run/tree" answer=$(readlink -f "${answer:-$run/answer.json}")
+  [ -s "$answer" ] || code=2 die "no answer in $answer: the child has not written one"
+  trap cleanup EXIT
+  rc=0; validate "$answer" || rc=$?
+  [ "$rc" = 0 ] || code=2 die "the child's answer is invalid: $(cat "$run/invalid" 2>/dev/null). Ask it once to fix only that, then ingest again"
+  finish "$vendor"
+  exit 0
+fi
+
 if [ -n "$cont" ]; then
   run=$(readlink -f "$cont")
   [ -f "$run/state" ] || die "no timed-out review to continue in $cont"
@@ -571,6 +630,8 @@ if [ "$vendor" = auto ]; then
 else
   vendors=("$vendor")
 fi
+
+[ "$t3" = 0 ] || handoff "${vendors[0]}"
 
 for v in "${vendors[@]}"; do
   rc=0; session="" attempt=1; review "$v" || rc=$?

@@ -48,6 +48,13 @@ code about to change; launching last doubles your wall time.
 4. Do not mark the PR ready, merge, or report done until the notification
    has arrived and you have acted on it.
 
+**In T3 Code** (`$T3CODE_THREAD_ID` is set) the review runs as a T3 child,
+not the reviewer's CLI. Run the same command in the foreground: it freezes
+HEAD, picks the reviewer by quota and exits 5 with the async `delegate_task`
+call to make. When the child finishes, `cross-review --ingest RUN_DIR`
+scores its answer as in step 3; on exit 2 ask the child once to fix only the
+reason printed. `--headless` runs the CLI anyway.
+
 ## 3. Act on the result
 
 Exit 0 prints the verdict and findings, most severe first. For each finding:
