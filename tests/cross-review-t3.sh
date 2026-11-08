@@ -51,8 +51,13 @@ grep -q " glm zai-coding-plan/glm-5.3$" "$run/reviewed" || fail "the review is n
 rc=0; out=$(cd "$repo" && "$script" --brief "$tmp/brief" --base main 2>&1) || rc=$?
 [ "$rc" = 0 ] && [[ $out == *"already reviewed"* ]] || fail "a reviewed HEAD was handed off again: $out"
 
-# --headless runs the CLI even in T3.
+# A full GLM week sends the review to Codex.
+printf '#!/bin/sh\necho "zai 5h 0%%"\necho "zai week 100%%"\necho "codex 5h 0%%"\necho "codex week 0%%"\n' > "$tmp/bin/quota"
 echo more >> "$repo/f"; git -C "$repo" commit -qam more
+rc=0; out=$(cd "$repo" && "$script" --brief "$tmp/brief" --base main --full 2>&1) || rc=$?
+[ "$rc" = 5 ] && [[ $out == *'providerInstanceId: "codex"'* ]] || fail "a full GLM week still picked GLM: $out"
+
+# --headless runs the CLI even in T3.
 rc=0; out=$(cd "$repo" && "$script" --brief "$tmp/brief" --base main --full --headless 2>&1) || rc=$?
 [ -e "$tmp/cli-ran" ] || fail "--headless did not run a reviewer CLI: $out"
 

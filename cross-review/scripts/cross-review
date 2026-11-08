@@ -95,9 +95,16 @@ pct() {
 }
 # Reviewers with headroom, in the order to try them.
 order() {
-  if ! command -v quota >/dev/null || [ "$(pct zai 5h)" -lt 90 ] 2>/dev/null || [ -z "$(pct zai 5h)" ]; then echo glm; fi
+  glm_ok && echo glm
   codex_ok && echo codex
   true
+}
+# GLM's weekly window is shown only when the plan has one; a full one stops it
+# as surely as the 5-hour window.
+glm_ok() {
+  command -v quota >/dev/null || return 0
+  [ "$(pct zai week)" -lt 95 ] 2>/dev/null || [ -z "$(pct zai week)" ] || return 1
+  [ "$(pct zai 5h)" -lt 90 ] 2>/dev/null || [ -z "$(pct zai 5h)" ]
 }
 codex_ok() {
   command -v codex >/dev/null || return 1
