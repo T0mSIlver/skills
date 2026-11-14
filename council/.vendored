@@ -3,8 +3,8 @@
   "repo": "https://github.com/t3dotgg/tstack",
   "ref": "main",
   "path": "skills/council",
-  "commit": "1085050f3baed1ac724caa4a8166145fb2ac88af",
-  "upstream": "https://github.com/t3dotgg/tstack/tree/1085050f3baed1ac724caa4a8166145fb2ac88af/skills/council",
-  "vendored_at": "2026-11-06",
+  "commit": "11e37a74d0a6868c121cd0910ab2b3bd9873b92a",
+  "upstream": "https://github.com/t3dotgg/tstack/tree/11e37a74d0a6868c121cd0910ab2b3bd9873b92a/skills/council",
+  "vendored_at": "2026-11-14",
   "note": "Pristine vendored copy. Do not edit in place — send fixes upstream."
 }
