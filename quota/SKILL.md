@@ -48,13 +48,13 @@ mistral vibe   37%  €93.66 / €255.00 · €161.34 left
 ## Who spends what
 
 1. **Per-change reviews** (`cross-review`): GLM 5.3 through opencode, then
-   Codex (gpt-6.1-sol) only when GLM is spent or failed. GLM goes first
+   Codex (gpt-6.2-sol) only when GLM is spent or failed. GLM goes first
    because its window has no weekly cap. Never Vibe.
 2. **A window about to reset with room left goes first.** A zai window with
    reserve and under an hour to go, or a Codex weekly limit resetting
    within a day. Spend that one before the usual order.
 3. **Fill every Codex 5-hour window with the strongest model**
-   (gpt-6.1-sol at high effort; never gpt-6-astra, which spends a whole 5-hour window before one run finishes) on deep reviews and audits, through
+   (gpt-6.2-sol at high effort; never gpt-6-astra, which spends a whole 5-hour window before one run finishes) on deep reviews and audits, through
    `quota-queue`. Room left when a window closes is lost. This is
    separate from step 1. Routine reviews don't wait for Codex, and deep
    reviews don't wait for GLM.
